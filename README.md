@@ -9,13 +9,13 @@ We explore how **zk-STARKs** (client-side) and **zk-SNARKs** (server-side) can b
 ---
 
 ## 📌 Contributors
-- @krishantt  
-- @bigya  
+- [@krishantt](https://github.com/krishantt) 
+- [@bigya01](https://github.com/bigya01) 
 
 ---
 
 ## 📂 Repository Structure (planned)
-
+```
 secure-fl/
 ├── docs/           # Documentation, design notes, reports
 ├── fl/             # Federated learning baseline (Flower + PyTorch)
@@ -26,4 +26,4 @@ secure-fl/
 ├── infra/          # OpenTofu/Terraform IaC configs
 ├── .gitignore
 └── README.md
-
+```
