@@ -1,0 +1,69 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.6in]{geometry}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{graphicx,caption}
+\usepackage{ragged2e}
+\usepackage{MnSymbol}
+\usepackage{wasysym}
+\usepackage{hyperref}
+\graphicspath{{./images/}}
+
+\begin{document}
+
+\section*{Major Project Title}
+
+Federated Learning with Verifiable Clients and Aggregators
+
+\section*{Proposed Cluster}
+\begin{itemize}
+    \item AIML
+    \item BD
+\end{itemize}
+
+\section*{Team Members}
+\begin{itemize}
+    \item Bindu Paudel (078BCT032)
+    \item Krishant Timilsina (078BCT045)
+\end{itemize}
+
+\section*{Project Overview}
+\justifying
+This project proposes a novel Federated Learning (FL) framework based on the paper \textit{zkFL: Zero-Knowledge Federated Learning with Verifiable Clients and Aggregators} \cite{xu2021zkfl}. The core idea is to enhance the trustworthiness of federated learning through cryptographic enforcement using Zero-Knowledge Proofs (ZKPs).
+
+In zkFL, each client locally trains its model and generates a succinct ZKP that the training was done correctly on genuine data. The aggregator, rather than just blindly summing model updates, performs a verifiable aggregation process and produces its own ZKP ensuring that it only aggregated valid updates from honest clients.
+
+Our implementation will simulate clients using the Flower or TensorFlow Federated framework and incorporate zk-SNARKs or Halo2 for the proof system. Clients will submit their model updates along with proofs, while the server verifies and aggregates them, also generating a global ZKP of correct aggregation. This dual-verification approach strengthens FL by preventing both client- and server-side tampering, ensuring privacy, integrity, and auditability—making it suitable for sensitive domains such as healthcare (e.g., using the MIMIC-III dataset) and autonomous vehicle collaboration.
+
+\section*{Motivation}
+\justifying
+Current Federated Learning systems either assume the aggregator is honest or only verify client-side updates. However, adversaries can exist on both ends. Combining ZKP-based mechanisms for both clients and servers allows us to develop a system where trust is cryptographically enforced, enabling secure deployments in critical domains without sacrificing privacy or performance \cite{li2020federated}.
+
+\section*{Implementation Plan}
+\justifying
+We will simulate multiple clients using a federated learning framework (e.g., Flower or TFF), integrating ZKPs for both local training proofs and secure aggregation. The implementation will be benchmarked using real datasets such as MIMIC-III (ICU data) \cite{johnson2016mimic}. \newline
+
+\includegraphics[width=\linewidth]{zkfl_architecture.png} \\
+\captionof{figure}{Proposed architecture: ZKPs from clients prove honest training; server generates ZKP of correct aggregation.}
+
+\section*{Use Cases}
+\begin{itemize}
+    \item Secure healthcare prediction using ICU records (e.g., mortality prediction)
+    \item Collaborative autonomous driving models without raw data sharing
+    \item Privacy-preserving smart device learning in IoT environments
+\end{itemize}
+
+\section*{Resource Required}
+\begin{itemize}
+    \item High-performance computing system with 16 GB RAM, GPU (NVIDIA GTX 1660 or higher)
+    \item Python-based libraries: PyTorch/TensorFlow, Flower/TFF, zkSNARK libraries (e.g., libsnark, Halo2)
+    \item Public datasets (e.g., MIMIC-III, CIFAR-10)
+    \item Optional: Docker, Git, VS Code, Colab Pro for collaborative development
+\end{itemize}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
