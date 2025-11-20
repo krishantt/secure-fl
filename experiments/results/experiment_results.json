@@ -1,0 +1,25 @@
+{
+  "experiment_config": {
+    "num_clients": 5,
+    "num_rounds": 8,
+    "dataset": "synthetic",
+    "enable_zkp": true,
+    "proof_rigor": "high",
+    "momentum": 0.9,
+    "server_lr": 0.01,
+    "client_lr": 0.01,
+    "local_epochs": 1,
+    "batch_size": 32
+  },
+  "results_summary": {
+    "total_rounds": 8,
+    "total_clients": 5,
+    "final_accuracy": 0.7506529369314181,
+    "total_time": 70.90225410461426,
+    "zkp_enabled": true,
+    "proof_rigor": "high"
+  },
+  "training_metrics": [],
+  "client_metrics": [],
+  "proof_metrics": []
+}

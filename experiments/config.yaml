@@ -1,0 +1,161 @@
+# Secure Federated Learning Experiment Configuration
+# This file contains all configurable parameters for running secure FL experiments
+
+# Basic experiment settings
+experiment:
+  name: "secure_fl_baseline"
+  description: "Dual ZKP verification federated learning with FedJSCM aggregation"
+  output_dir: "./results"
+  seed: 42
+
+# Federated learning parameters
+federated_learning:
+  num_clients: 5
+  num_rounds: 15
+  min_clients_per_round: 3
+  client_fraction: 1.0  # Fraction of clients to use per round
+
+  # Local training parameters
+  local_epochs: 2
+  batch_size: 32
+  client_lr: 0.01
+
+  # Server parameters
+  server_lr: 0.01
+  momentum: 0.9
+  weight_decay: 0.0001
+  adaptive_momentum: false
+
+# Dataset configuration
+dataset:
+  name: "synthetic"  # Options: "synthetic", "medmnist", "cifar10"
+  data_path: "./data"
+
+  # Data distribution settings
+  non_iid: true
+  classes_per_client: 3
+  alpha: 0.5  # Dirichlet distribution parameter for non-IID
+
+  # Data preprocessing
+  normalize: true
+  augmentation: false
+
+# Model architecture
+model:
+  name: "simple_nn"
+  input_dim: 784
+  hidden_dim: 128
+  num_classes: 10
+  dropout: 0.2
+
+# Zero-knowledge proof settings
+zkp:
+  enable_zkp: true
+  proof_rigor: "high"  # Options: "low", "medium", "high"
+  blockchain_verification: false
+
+  # Client-side zk-STARK parameters
+  client_proof:
+    quantization_bits: 8
+    max_trace_length: 1024
+    commitment_scheme: "merkle"
+
+  # Server-side zk-SNARK parameters
+  server_proof:
+    circuit_size: 1000
+    proving_scheme: "groth16"
+    trusted_setup: false
+
+# Dynamic proof adjustment
+stability_monitor:
+  enable_adaptive: true
+  window_size: 10
+  stability_threshold_high: 0.9
+  stability_threshold_medium: 0.7
+  convergence_patience: 5
+  min_rounds_for_adjustment: 3
+
+# Network and communication
+networking:
+  server_host: "localhost"
+  server_port: 8080
+  client_timeout: 300  # seconds
+  proof_timeout: 120   # seconds
+  max_retries: 3
+
+# Logging and monitoring
+logging:
+  level: "INFO"  # Options: "DEBUG", "INFO", "WARNING", "ERROR"
+  log_file: "experiment.log"
+  console_output: true
+
+# Visualization and analysis
+visualization:
+  enable_plots: true
+  save_plots: true
+  plot_format: "png"
+  plot_dpi: 300
+  metrics_to_plot:
+    - "training_time"
+    - "proof_time"
+    - "client_participation"
+    - "momentum_evolution"
+    - "stability_score"
+
+# Performance and resource management
+resources:
+  max_memory_gb: 8
+  max_cpu_cores: 4
+  gpu_enabled: false
+  parallel_clients: true
+
+# Security settings
+security:
+  data_encryption: false
+  secure_communication: false
+  audit_logging: true
+  proof_verification_timeout: 60
+
+# Evaluation settings
+evaluation:
+  test_fraction: 0.2
+  validation_frequency: 5  # Every N rounds
+  metrics:
+    - "accuracy"
+    - "loss"
+    - "f1_score"
+    - "precision"
+    - "recall"
+
+# Experimental variations (for parameter sweeps)
+parameter_sweep:
+  enabled: false
+  parameters:
+    momentum: [0.5, 0.7, 0.9, 0.95]
+    proof_rigor: ["low", "medium", "high"]
+    num_clients: [3, 5, 10]
+    local_epochs: [1, 2, 3]
+
+# Advanced settings
+advanced:
+  # Fault tolerance
+  byzantine_tolerance: false
+  max_byzantine_clients: 1
+
+  # Optimization
+  gradient_clipping: true
+  clip_norm: 1.0
+
+  # Quantization
+  parameter_quantization: true
+  gradient_quantization: false
+
+  # Compression
+  communication_compression: false
+  compression_ratio: 0.1
+
+# Reproducibility
+reproducibility:
+  deterministic: true
+  cuda_deterministic: true
+  benchmark: false

@@ -1,0 +1,49 @@
+# Core ML and FL frameworks
+torch
+torchvision
+flwr
+numpy
+scikit-learn
+
+# ZKP libraries and cryptography
+py-ecc
+eth-account
+web3
+
+# Data handling and utilities
+pandas
+matplotlib
+seaborn
+tqdm
+requests
+
+# Medical datasets
+medmnist
+
+# Development and testing
+pytest
+jupyter
+jupyterlab
+
+# Blockchain and smart contracts
+# solcx
+# brownie-eth
+
+# ZKP circuit compilation (external dependencies)
+# Note: Cairo and Circom need to be installed separately
+# Cairo: https://github.com/starkware-libs/cairo
+# Circom: https://github.com/iden3/circom
+# SnarkJS: npm install -g snarkjs
+
+# System utilities
+psutil
+pyyaml
+python-dotenv
+
+# Networking and communication
+fastapi
+uvicorn
+websockets
+
+# Quantization and optimization
+quantization
