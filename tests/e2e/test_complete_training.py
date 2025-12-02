@@ -319,15 +319,19 @@ class TestCompleteTrainingWorkflow:
                     input_dim=20, hidden_dims=[64, 32, 16, 8], output_dim=2
                 ),
             ),
-            # TODO: Fix MNIST model parameter shape mismatch issue
-            # ("mnist_model", lambda: MNISTModel(hidden_dims=[64, 32], output_dim=2)),
+            ("mnist_model", lambda: MNISTModel(hidden_dims=[64, 32], output_dim=2)),
         ]
 
         for model_name, model_fn in models_to_test:
             print(f"\nTesting model architecture: {model_name}")
 
-            # Create appropriate datasets
-            datasets = self._create_heterogeneous_datasets(3, 200, input_dim=20)
+            # Create appropriate datasets based on model type
+            if model_name == "mnist_model":
+                # MNIST model expects 784-dimensional input (28x28 flattened)
+                datasets = self._create_heterogeneous_datasets(3, 200, input_dim=784)
+            else:
+                # Other models use 20-dimensional input
+                datasets = self._create_heterogeneous_datasets(3, 200, input_dim=20)
 
             # Create fresh strategy for each model architecture to avoid momentum state issues
             strategy = create_server_strategy(

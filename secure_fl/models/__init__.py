@@ -192,7 +192,19 @@ class MNISTModel(nn.Module):
             Output logits of shape (batch_size, output_dim)
         """
         x = self.flatten(x)
-        return self.classifier(x)
+
+        # Handle batch_size=1 case for batch normalization
+        if x.shape[0] == 1 and self.use_batch_norm and self.training:
+            # Temporarily switch to eval mode for single sample inference
+            # This preserves gradients while avoiding BatchNorm issues
+            was_training = self.training
+            self.eval()
+            output = self.classifier(x)
+            if was_training:
+                self.train()
+            return output
+        else:
+            return self.classifier(x)
 
 
 class CIFAR10Model(nn.Module):
