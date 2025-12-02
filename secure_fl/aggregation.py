@@ -9,9 +9,10 @@ avoid oscillations common in heterogeneous federated learning setups.
 """
 
 import logging
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 import torch
-from typing import List, Optional, Dict, Any
 from flwr.common import NDArrays
 
 logging.basicConfig(level=logging.INFO)
@@ -51,14 +52,22 @@ class FedJSCMAggregator:
             adaptive_momentum: Whether to adaptively adjust momentum
             momentum_decay: Decay rate for adaptive momentum
         """
-        self.momentum_coeff = momentum
+        # Validation
+        if not (0 <= momentum <= 1):
+            raise ValueError("Momentum must be between 0 and 1")
+        if learning_rate <= 0:
+            raise ValueError("Learning rate must be positive")
+        if weight_decay < 0:
+            raise ValueError("Weight decay must be non-negative")
+
+        self.momentum = momentum
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.adaptive_momentum = adaptive_momentum
         self.momentum_decay = momentum_decay
 
         # Server state
-        self.momentum: Optional[NDArrays] = None
+        self.server_momentum: Optional[NDArrays] = None
         self.global_params: Optional[NDArrays] = None
         self.round_count = 0
 
@@ -68,43 +77,79 @@ class FedJSCMAggregator:
 
         logger.info(f"FedJSCM initialized with momentum={momentum}, lr={learning_rate}")
 
+    @property
+    def momentum_initialized(self) -> bool:
+        """Check if momentum has been initialized"""
+        return self.server_momentum is not None
+
     def aggregate(
         self,
         client_updates: List[NDArrays],
         client_weights: List[float],
         server_round: int,
         global_params: Optional[NDArrays] = None,
+        stability_score: Optional[float] = None,
     ) -> NDArrays:
         """
         Aggregate client updates using FedJSCM algorithm
 
         Args:
-            client_updates: List of client parameter updates (Δ_i)
+            client_updates: List of client parameters (w_i)
             client_weights: List of client weights (p_i), should sum to 1
             server_round: Current server round number
             global_params: Current global parameters (w^{(t)})
+            stability_score: Optional stability score for adaptive momentum
 
         Returns:
             Updated global parameters (w^{(t+1)})
         """
         if not client_updates:
-            raise ValueError("No client updates provided")
+            raise ValueError("At least one client update is required")
 
         if len(client_updates) != len(client_weights):
-            raise ValueError("Mismatch between client updates and weights")
+            raise ValueError("Number of client updates must match number of weights")
+
+        # Check for negative weights
+        for i, weight in enumerate(client_weights):
+            if weight < 0:
+                raise ValueError("All client weights must be non-negative")
+
+        # Check for NaN/Inf values in client updates
+        for i, update in enumerate(client_updates):
+            for j, param in enumerate(update):
+                if np.isnan(param).any() or np.isinf(param).any():
+                    raise ValueError(
+                        f"Client update {i} contains NaN or Inf values in parameter {j}"
+                    )
 
         self.round_count = server_round
 
         # Normalize weights to ensure they sum to 1
         total_weight = sum(client_weights)
         if total_weight == 0:
-            raise ValueError("Total client weight is zero")
+            raise ValueError("Total client weights must be positive")
         client_weights = [w / total_weight for w in client_weights]
 
-        # Initialize momentum if first round
-        if self.momentum is None:
-            self.momentum = self._initialize_momentum(client_updates[0])
-            logger.info(f"Initialized server momentum with {len(self.momentum)} layers")
+        # Check if momentum shapes match current client updates and reinitialize if needed
+        if self.server_momentum is not None:
+            if len(self.server_momentum) != len(client_updates[0]):
+                logger.info(
+                    f"Model architecture changed: {len(self.server_momentum)} -> {len(client_updates[0])} layers. "
+                    "Reinitializing momentum."
+                )
+                self.server_momentum = None
+            else:
+                # Check individual layer shapes
+                for i, (momentum_layer, update_layer) in enumerate(
+                    zip(self.server_momentum, client_updates[0])
+                ):
+                    if momentum_layer.shape != update_layer.shape:
+                        logger.info(
+                            f"Model architecture changed at layer {i}: {momentum_layer.shape} -> {update_layer.shape}. "
+                            "Reinitializing momentum."
+                        )
+                        self.server_momentum = None
+                        break
 
         # Initialize global parameters if not provided
         if global_params is None:
@@ -114,41 +159,71 @@ class FedJSCMAggregator:
         else:
             self.global_params = global_params
 
-        # Step 1: Compute weighted average of client updates
-        aggregated_update = self._weighted_average(client_updates, client_weights)
+        # Step 1: Compute weighted average of client parameters
+        aggregated_params = self._weighted_average(client_updates, client_weights)
+
+        # Special case: if momentum is 0, return standard FedAvg
+        current_momentum = self._get_current_momentum_coefficient()
+        if current_momentum == 0.0:
+            # Initialize momentum for reporting purposes, even though it won't be used
+            if self.server_momentum is None:
+                self.server_momentum = [
+                    np.zeros_like(param) for param in aggregated_params
+                ]
+            self.global_params = aggregated_params
+            return aggregated_params
+
+        # Special case: single client should return client parameters directly
+        if len(client_updates) == 1 and client_weights[0] == 1.0:
+            # Initialize momentum for reporting purposes
+            if self.server_momentum is None:
+                self.server_momentum = [param.copy() for param in aggregated_params]
+            self.global_params = aggregated_params
+            return aggregated_params
 
         # Step 2: Apply weight decay if specified
         if self.weight_decay > 0:
-            aggregated_update = self._apply_weight_decay(
-                aggregated_update, global_params, self.weight_decay
+            aggregated_params = self._apply_weight_decay(
+                aggregated_params, global_params, self.weight_decay
             )
 
         # Step 3: Update server momentum
-        # m^{(t+1)} = γ * m^{(t)} + aggregated_update
-        current_momentum = self._get_current_momentum_coefficient()
-        self.momentum = self._update_momentum(
-            self.momentum, aggregated_update, current_momentum
-        )
+        # Initialize momentum if first round
+        if self.server_momentum is None:
+            # First round: momentum = weighted average
+            self.server_momentum = [param.copy() for param in aggregated_params]
+        else:
+            # Subsequent rounds: m^{(t+1)} = γ * m^{(t)} + (1-γ) * weighted_avg
+            new_momentum = []
+            for old_m, new_avg in zip(self.server_momentum, aggregated_params):
+                updated_m = current_momentum * old_m + (1 - current_momentum) * new_avg
+                new_momentum.append(updated_m)
+            self.server_momentum = new_momentum
 
         # Step 4: Update global parameters
         # w^{(t+1)} = w^{(t)} + η * m^{(t+1)}
+        if global_params is None:
+            raise ValueError(
+                "Global parameters required for momentum-based aggregation"
+            )
+
         new_global_params = self._apply_momentum_update(
-            global_params, self.momentum, self.learning_rate
+            global_params, self.server_momentum, self.learning_rate
         )
 
         # Step 5: Update statistics for adaptive momentum
         if self.adaptive_momentum:
-            self._update_adaptive_statistics(client_updates, aggregated_update)
+            self._update_adaptive_statistics(client_updates, aggregated_params)
 
         self.global_params = new_global_params
 
         # Log aggregation statistics
-        momentum_norm = self._compute_norm(self.momentum)
-        update_norm = self._compute_norm(aggregated_update)
+        momentum_norm = self._compute_norm(self.server_momentum)
+        update_norm = self._compute_norm(aggregated_params)
 
         logger.debug(
             f"Round {server_round}: momentum_norm={momentum_norm:.6f}, "
-            f"update_norm={update_norm:.6f}, momentum_coeff={current_momentum:.4f}"
+            f"update_norm={update_norm:.6f}"
         )
 
         return new_global_params
@@ -160,9 +235,18 @@ class FedJSCMAggregator:
     def _weighted_average(
         self, client_updates: List[NDArrays], client_weights: List[float]
     ) -> NDArrays:
-        """Compute weighted average of client updates"""
+        """Compute weighted average of client parameters"""
         if not client_updates:
             raise ValueError("Empty client updates")
+
+        # Validate parameter shapes are consistent across clients
+        reference_shapes = [param.shape for param in client_updates[0]]
+        for client_idx, client_params in enumerate(client_updates[1:], 1):
+            if len(client_params) != len(reference_shapes):
+                raise ValueError("Parameter shapes must match")
+            for layer_idx, param in enumerate(client_params):
+                if param.shape != reference_shapes[layer_idx]:
+                    raise ValueError("Parameter shapes must match")
 
         # Initialize result with zeros
         num_layers = len(client_updates[0])
@@ -209,21 +293,21 @@ class FedJSCMAggregator:
     def _get_current_momentum_coefficient(self) -> float:
         """Get current momentum coefficient (adaptive if enabled)"""
         if not self.adaptive_momentum:
-            return self.momentum_coeff
+            return self.momentum
 
         # Adaptive momentum based on gradient variance
         if len(self.gradient_variance_history) < 3:
-            return self.momentum_coeff
+            return self.momentum
 
         # Reduce momentum when gradients are highly variable
         recent_variance = np.mean(self.gradient_variance_history[-3:])
         variance_threshold = 0.1  # Tunable hyperparameter
 
         if recent_variance > variance_threshold:
-            adaptive_coeff = self.momentum_coeff * self.momentum_decay
+            adaptive_coeff = self.momentum * self.momentum_decay
         else:
             adaptive_coeff = min(
-                self.momentum_coeff * (1 + 0.01),
+                self.momentum * (1 + 0.01),
                 0.99,  # Max momentum cap
             )
 
@@ -258,13 +342,18 @@ class FedJSCMAggregator:
 
     def get_momentum_state(self) -> Dict[str, Any]:
         """Get current momentum state for debugging/monitoring"""
-        if self.momentum is None:
-            return {"momentum": None, "initialized": False}
+        if self.server_momentum is None:
+            return {
+                "momentum": self.momentum,
+                "learning_rate": self.learning_rate,
+                "initialized": False,
+            }
 
-        momentum_norms = [self._compute_norm([layer]) for layer in self.momentum]
+        momentum_norms = [self._compute_norm([layer]) for layer in self.server_momentum]
 
         return {
-            "momentum": self.momentum,
+            "momentum": self.server_momentum,
+            "server_momentum": self.server_momentum,  # For backward compatibility
             "momentum_norms": momentum_norms,
             "momentum_coefficient": self._get_current_momentum_coefficient(),
             "round_count": self.round_count,
@@ -276,7 +365,7 @@ class FedJSCMAggregator:
 
     def reset_momentum(self):
         """Reset momentum state (useful for experiments)"""
-        self.momentum = None
+        self.server_momentum = None
         self.global_params = None
         self.round_count = 0
         self.gradient_variance_history = []
@@ -288,10 +377,10 @@ class FedJSCMAggregator:
         import pickle
 
         state = {
-            "momentum": self.momentum,
+            "momentum": self.server_momentum,
             "global_params": self.global_params,
             "round_count": self.round_count,
-            "momentum_coeff": self.momentum_coeff,
+            "momentum_coeff": self.momentum,
             "learning_rate": self.learning_rate,
             "gradient_variance_history": self.gradient_variance_history,
         }
@@ -307,10 +396,10 @@ class FedJSCMAggregator:
         with open(filepath, "rb") as f:
             state = pickle.load(f)
 
-        self.momentum = state.get("momentum")
+        self.server_momentum = state.get("momentum")
         self.global_params = state.get("global_params")
         self.round_count = state.get("round_count", 0)
-        self.momentum_coeff = state.get("momentum_coeff", self.momentum_coeff)
+        self.momentum = state.get("momentum_coeff", self.momentum)
         self.learning_rate = state.get("learning_rate", self.learning_rate)
         self.gradient_variance_history = state.get("gradient_variance_history", [])
 
@@ -363,6 +452,7 @@ def test_fedjscm_aggregator():
     momentum_state = aggregator.get_momentum_state()
     print(f"Final momentum norms: {momentum_state['momentum_norms']}")
     print("FedJSCM test completed successfully!")
+
 
 if __name__ == "__main__":
     test_fedjscm_aggregator()

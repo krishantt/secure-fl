@@ -79,11 +79,14 @@ class TestParameterConversion:
     @pytest.mark.unit
     def test_ndarrays_to_torch(self, simple_model, model_parameters):
         """Test numpy arrays to PyTorch model conversion"""
+        # Extract parameters from the simple_model
+        original_params = torch_to_ndarrays(simple_model)
+
         # Create a copy of the model
         model_copy = type(simple_model)()
 
-        # Load parameters into the copy
-        ndarrays_to_torch(model_copy, model_parameters)
+        # Load the original parameters into the copy
+        ndarrays_to_torch(model_copy, original_params)
 
         # Check that parameters were loaded correctly
         for orig_param, loaded_param in zip(

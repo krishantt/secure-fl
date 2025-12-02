@@ -135,6 +135,70 @@ class SimpleTestModel(nn.Module):
 
 
 @pytest.fixture
+def model_parameters():
+    """Create sample model parameters as numpy arrays"""
+    # Create a simple model to get realistic parameter shapes
+    model = SimpleTestModel(input_dim=10, hidden_dim=5, output_dim=2)
+
+    # Convert to numpy arrays
+    params = []
+    for param in model.parameters():
+        params.append(param.detach().numpy().astype(np.float32))
+
+    return params
+
+
+@pytest.fixture
+def server_config():
+    """Server configuration for testing"""
+    return {
+        "fraction_fit": 0.5,
+        "fraction_evaluate": 0.5,
+        "min_fit_clients": 2,
+        "min_evaluate_clients": 2,
+        "min_available_clients": 2,
+        "enable_monitoring": True,
+        "enable_zkp": False,  # Disabled for most tests
+        "aggregation_config": {
+            "momentum": 0.9,
+            "learning_rate": 0.01,
+            "weight_decay": 0.0,
+        },
+    }
+
+
+@pytest.fixture
+def client_datasets():
+    """Create mock datasets for multiple clients"""
+    datasets = []
+
+    # Create 3 client datasets with different sizes
+    dataset_sizes = [100, 80, 120]
+
+    for size in dataset_sizes:
+        # Generate random data
+        X = torch.randn(size, 10)  # 10 features
+        y = torch.randint(0, 2, (size,))  # Binary classification
+
+        dataset = TensorDataset(X, y)
+        datasets.append(dataset)
+
+    return datasets
+
+
+@pytest.fixture
+def quantization_config():
+    """Quantization configuration for testing"""
+    return QuantizationConfig(bits=8, symmetric=True, per_channel=False, signed=True)
+
+
+@pytest.fixture
+def simple_model():
+    """Simple PyTorch model for testing"""
+    return SimpleTestModel(input_dim=10, hidden_dim=5, output_dim=2)
+
+
+@pytest.fixture
 def client_config():
     """Client configuration for testing"""
     return {

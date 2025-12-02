@@ -72,15 +72,19 @@ def ndarrays_to_torch(model: torch.nn.Module, ndarrays: NDArrays) -> None:
 
     Args:
         model: PyTorch model
-        ndarrays: List of NumPy arrays
+        ndarrays: List of NumPy arrays (only learnable parameters)
     """
-    state_dict = model.state_dict()
-    keys = list(state_dict.keys())
+    # Only update learnable parameters to match torch_to_ndarrays
+    params = list(model.parameters())
 
-    for i, (key, array) in enumerate(zip(keys, ndarrays)):
-        state_dict[key] = torch.from_numpy(array)
+    if len(params) != len(ndarrays):
+        raise ValueError(
+            f"Number of model parameters ({len(params)}) does not match "
+            f"number of arrays ({len(ndarrays)})"
+        )
 
-    model.load_state_dict(state_dict)
+    for param, array in zip(params, ndarrays):
+        param.data = torch.from_numpy(array)
 
 
 def compute_parameter_norm(parameters: NDArrays, norm_type: str = "l2") -> float:
@@ -97,17 +101,17 @@ def compute_parameter_norm(parameters: NDArrays, norm_type: str = "l2") -> float
         total_norm = 0.0
         for param in parameters:
             total_norm += np.sum(param**2)
-        return np.sqrt(total_norm)
+        return float(np.sqrt(total_norm))
     elif norm_type == "l1":
         total_norm = 0.0
         for param in parameters:
             total_norm += np.sum(np.abs(param))
-        return total_norm
+        return float(total_norm)
     elif norm_type == "linf":
         max_norm = 0.0
         for param in parameters:
             max_norm = max(max_norm, np.max(np.abs(param)))
-        return max_norm
+        return float(max_norm)
     else:
         raise ValueError(f"Unsupported norm type: {norm_type}")
 

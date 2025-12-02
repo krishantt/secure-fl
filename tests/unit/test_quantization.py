@@ -484,11 +484,12 @@ class TestEdgeCases:
 
         quantized, metadata = quantizer.quantize(model_parameters)
 
-        # Corrupt metadata
+        # Corrupt metadata by removing one layer's scale
         corrupted_metadata = metadata.copy()
-        corrupted_metadata["scales"] = corrupted_metadata["scales"][
-            :-1
-        ]  # Remove one scale
+        corrupted_metadata["scales"] = corrupted_metadata["scales"].copy()
+        # Remove the first layer's scale
+        first_layer_key = list(corrupted_metadata["scales"].keys())[0]
+        del corrupted_metadata["scales"][first_layer_key]
 
         with pytest.raises((ValueError, IndexError)):
             quantizer.dequantize(quantized, corrupted_metadata)

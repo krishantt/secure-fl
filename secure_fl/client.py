@@ -86,14 +86,21 @@ class SecureFlowerClient(fl.client.NumPyClient):
         logger.info(f"Client {client_id} initialized with ZKP={enable_zkp}")
 
     def get_parameters(self, config: Dict[str, Any]) -> NDArrays:
-        """Get model parameters"""
-        return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
+        """Get model parameters (only learnable parameters)"""
+        return [param.detach().cpu().numpy() for param in self.model.parameters()]
 
     def set_parameters(self, parameters: NDArrays) -> None:
-        """Set model parameters"""
-        params_dict = zip(self.model.state_dict().keys(), parameters)
-        state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-        self.model.load_state_dict(state_dict, strict=True)
+        """Set model parameters (only learnable parameters)"""
+        model_params = list(self.model.parameters())
+
+        if len(model_params) != len(parameters):
+            raise ValueError(
+                f"Number of model parameters ({len(model_params)}) does not match "
+                f"number of provided parameters ({len(parameters)})"
+            )
+
+        for param, array in zip(model_params, parameters):
+            param.data = torch.tensor(array)
 
     def fit(
         self, parameters: NDArrays, config: Dict[str, Any]
@@ -124,8 +131,11 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
         # Quantize parameters if enabled
         if self.quantize_weights:
-            param_delta = quantize_parameters(param_delta, bits=8)
-            updated_params = quantize_parameters(updated_params, bits=8)
+            from .quantization import QuantizationConfig
+
+            config = QuantizationConfig(bits=8)
+            param_delta, _ = quantize_parameters(param_delta, config)
+            updated_params, _ = quantize_parameters(updated_params, config)
 
         # Generate ZKP proof
         proof_time = 0
@@ -426,13 +436,24 @@ def create_client(
     # Create model
     model = model_fn()
 
+    # Filter kwargs to only include supported parameters for SecureFlowerClient
+    supported_params = {
+        "device",
+        "enable_zkp",
+        "proof_rigor",
+        "quantize_weights",
+        "local_epochs",
+        "learning_rate",
+    }
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k in supported_params}
+
     # Create client
     client = SecureFlowerClient(
         client_id=client_id,
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        **kwargs,
+        **filtered_kwargs,
     )
 
     return client

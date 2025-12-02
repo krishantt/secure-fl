@@ -10,19 +10,20 @@ This module implements the main FL server that:
 
 import logging
 import time
+from collections import OrderedDict
+from typing import Dict, List, Optional, Tuple, Union, override
+
+import flwr as fl
 import numpy as np
 import torch
-from typing import Dict, List, Optional, Tuple, Union, override
-from collections import OrderedDict
-import flwr as fl
-from flwr.common import Parameters, FitRes, EvaluateRes, Scalar, NDArrays
-from flwr.server.strategy import Strategy
+from flwr.common import EvaluateRes, FitRes, NDArrays, Parameters, Scalar
 from flwr.server.client_proxy import ClientProxy
+from flwr.server.strategy import Strategy
 
 from .aggregation import FedJSCMAggregator
 from .proof_manager import ServerProofManager
 from .stability_monitor import StabilityMonitor
-from .utils import parameters_to_ndarrays, ndarrays_to_parameters
+from .utils import ndarrays_to_parameters, parameters_to_ndarrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,12 +73,15 @@ class SecureFlowerStrategy(Strategy):
 
         # Training state
         self.current_round = 0
+        self.current_global_params = None
         self.training_metrics = []
 
         logger.info(f"Initialized SecureFlowerStrategy with ZKP={enable_zkp}")
 
     def initialize_parameters(self, client_manager) -> Optional[Parameters]:
         """Initialize global model parameters"""
+        if self.initial_parameters:
+            self.current_global_params = parameters_to_ndarrays(self.initial_parameters)
         return self.initial_parameters
 
     def configure_fit(
@@ -160,7 +164,11 @@ class SecureFlowerStrategy(Strategy):
             client_updates=client_updates,
             client_weights=client_weights,
             server_round=server_round,
+            global_params=self.current_global_params,
         )
+
+        # Update current global parameters
+        self.current_global_params = aggregated_params
 
         # Step 4: Generate server ZKP if enabled
         server_proof_time = 0
@@ -188,7 +196,7 @@ class SecureFlowerStrategy(Strategy):
             "verified_clients": len(verified_results),
             "total_clients": len(results),
             "momentum_norm": float(
-                np.linalg.norm([p.flatten() for p in self.aggregator.momentum])
+                np.sqrt(sum(np.sum(p**2) for p in self.aggregator.server_momentum))
             ),
             "proof_rigor": self.proof_rigor,
         }
@@ -264,7 +272,9 @@ class SecureFlowerStrategy(Strategy):
         return weighted_loss, metrics
 
     @override
-    def evaluate(self, server_round: int, parameters: Parameters) -> Optional[tuple[float, dict[str, Scalar]]]:
+    def evaluate(
+        self, server_round: int, parameters: Parameters
+    ) -> Optional[tuple[float, dict[str, Scalar]]]:
         return super().evaluate(server_round, parameters)
 
     def _verify_client_proof(self, client: ClientProxy, fit_res: FitRes) -> bool:
@@ -391,10 +401,25 @@ def create_server_strategy(
 ) -> SecureFlowerStrategy:
     """Factory function to create server strategy with initial model"""
 
-    # Initialize model to get initial parameters
+    # Initialize model to get initial parameters (only learnable parameters)
     model = model_fn()
-    initial_params = [val.cpu().numpy() for _, val in model.state_dict().items()]
+    initial_params = [param.detach().cpu().numpy() for param in model.parameters()]
     initial_parameters = ndarrays_to_parameters(initial_params)
+
+    # Filter kwargs to only include valid SecureFlowerStrategy parameters
+    valid_kwargs = {
+        k: v
+        for k, v in kwargs.items()
+        if k
+        in {
+            "min_available_clients",
+            "min_fit_clients",
+            "min_evaluate_clients",
+            "fraction_fit",
+            "fraction_evaluate",
+            "blockchain_verification",
+        }
+    }
 
     return SecureFlowerStrategy(
         initial_parameters=initial_parameters,
@@ -402,8 +427,9 @@ def create_server_strategy(
         learning_rate=learning_rate,
         enable_zkp=enable_zkp,
         proof_rigor=proof_rigor,
-        **kwargs,
+        **valid_kwargs,
     )
+
 
 if __name__ == "__main__":
     # Example usage
