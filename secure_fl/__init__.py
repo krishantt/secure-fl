@@ -1,7 +1,8 @@
 """
-Secure Federated Learning (FL) Module
+Secure Federated Learning (secure-fl)
 
-This module provides a complete implementation of federated learning with
+A dual-verifiable framework for federated learning using zero-knowledge proofs.
+This package provides a complete implementation of federated learning with
 dual zero-knowledge proof verification using zk-STARKs (client-side) and
 zk-SNARKs (server-side).
 
@@ -15,7 +16,7 @@ Main components:
 
 Example usage:
     # Server setup
-    from secure_fl.fl import SecureFlowerServer, create_server_strategy
+    from secure_fl import SecureFlowerServer, create_server_strategy
 
     strategy = create_server_strategy(
         model_fn=lambda: MyModel(),
@@ -26,7 +27,7 @@ Example usage:
     server.start()
 
     # Client setup
-    from secure_fl.fl import SecureFlowerClient, create_client, start_client
+    from secure_fl import SecureFlowerClient, create_client, start_client
 
     client = create_client(
         client_id="client_1",
@@ -37,32 +38,32 @@ Example usage:
     start_client(client, server_address="localhost:8080")
 """
 
-from .server import SecureFlowerServer, SecureFlowerStrategy, create_server_strategy
-from .client import SecureFlowerClient, create_client, start_client
 from .aggregation import FedJSCMAggregator
-from .proof_manager import ProofManagerBase, ClientProofManager, ServerProofManager
-from .stability_monitor import StabilityMonitor, StabilityMetrics
+from .client import SecureFlowerClient, create_client, start_client
+from .proof_manager import ClientProofManager, ProofManagerBase, ServerProofManager
 from .quantization import (
     FixedPointQuantizer,
     GradientAwareQuantizer,
     QuantizationConfig,
-    quantize_parameters,
-    dequantize_parameters,
     compute_quantization_error,
+    dequantize_parameters,
+    quantize_parameters,
 )
+from .server import SecureFlowerServer, SecureFlowerStrategy, create_server_strategy
+from .stability_monitor import StabilityMetrics, StabilityMonitor
 from .utils import (
-    parameters_to_ndarrays,
-    ndarrays_to_parameters,
-    torch_to_ndarrays,
-    ndarrays_to_torch,
-    compute_parameter_norm,
-    compute_parameter_diff,
-    compute_hash,
-    serialize_parameters,
-    deserialize_parameters,
     aggregate_weighted_average,
-    validate_parameters,
+    compute_hash,
+    compute_parameter_diff,
+    compute_parameter_norm,
+    deserialize_parameters,
     get_parameter_stats,
+    ndarrays_to_parameters,
+    ndarrays_to_torch,
+    parameters_to_ndarrays,
+    serialize_parameters,
+    torch_to_ndarrays,
+    validate_parameters,
 )
 
 # Version information
@@ -71,11 +72,13 @@ __author__ = "Krishant Timilsina, Bindu Paudel"
 __email__ = "krishantt@example.com, bigya01@example.com"
 
 # Package metadata
-__title__ = "Secure Federated Learning with ZKPs"
+__title__ = "secure-fl"
 __description__ = (
     "Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs"
 )
 __url__ = "https://github.com/krishantt/secure-fl"
+__license__ = "MIT"
+__copyright__ = "Copyright (c) 2024 Krishant Timilsina, Bindu Paudel"
 
 # Export main classes and functions
 __all__ = [

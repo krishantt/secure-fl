@@ -1,0 +1,139 @@
+# .dockerignore for secure-fl
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# PDM
+.pdm-python
+.pdm.toml
+__pypackages__/
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Documentation
+docs/_build/
+site/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Data and results (exclude large files)
+data/datasets/
+data/temp/
+results/
+experiments/results/
+*.csv
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# Compiled ZKP circuits
+proofs/compiled/
+proofs/**/witness/
+proofs/**/*.wasm
+proofs/**/circuit_js/
+*.r1cs
+*.sym
+
+# Blockchain artifacts
+blockchain/artifacts/
+blockchain/cache/
+node_modules/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Model files (can be large)
+*.pth
+*.pt
+*.onnx
+*.pb
+
+# Configuration secrets
+.env.local
+.env.production
+secrets.yaml
+private_keys/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# README and docs (keep lightweight versions)
+INSTALL.md
+CONTRIBUTING.md
+CHANGELOG.md

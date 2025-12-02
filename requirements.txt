@@ -1,49 +1,78 @@
+# Requirements file for backwards compatibility
+#
+# Note: This project now uses PDM for dependency management.
+# The canonical dependencies are defined in pyproject.toml
+#
+# For installation, use one of these methods:
+#
+# 1. Install with PDM (recommended):
+#    pdm install
+#
+# 2. Install with pip:
+#    pip install -e .
+#
+# 3. Install from PyPI (when published):
+#    pip install secure-fl
+#
+# 4. Install with specific extras:
+#    pip install "secure-fl[dev,medical,notebook]"
+#
+# Legacy pip installation (not recommended):
+# If you must use this requirements.txt file directly, run:
+#    pip install -r requirements.txt
+# However, this won't include the secure-fl package itself.
+
 # Core ML and FL frameworks
-torch
-torchvision
-flwr
-numpy
-scikit-learn
+torch>=2.0.0
+torchvision>=0.15.0
+flwr>=1.5.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
 
 # ZKP libraries and cryptography
-py-ecc
-eth-account
-web3
+py-ecc>=6.0.0
+eth-account>=0.9.0
+web3>=6.0.0
 
 # Data handling and utilities
-pandas
-matplotlib
-seaborn
-tqdm
-requests
-
-# Medical datasets
-medmnist
-
-# Development and testing
-pytest
-jupyter
-jupyterlab
-
-# Blockchain and smart contracts
-# solcx
-# brownie-eth
-
-# ZKP circuit compilation (external dependencies)
-# Note: Cairo and Circom need to be installed separately
-# Cairo: https://github.com/starkware-libs/cairo
-# Circom: https://github.com/iden3/circom
-# SnarkJS: npm install -g snarkjs
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tqdm>=4.65.0
+requests>=2.31.0
 
 # System utilities
-psutil
-pyyaml
-python-dotenv
+psutil>=5.9.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
 
 # Networking and communication
-fastapi
-uvicorn
-websockets
+fastapi>=0.100.0
+uvicorn>=0.23.0
+websockets>=11.0
 
-# Quantization and optimization
-quantization
+# Configuration and CLI
+click>=8.0.0
+rich>=13.0.0
+typer>=0.9.0
+
+# Development dependencies (optional)
+# Uncomment if you want to install dev dependencies via requirements.txt
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+# black>=23.0.0
+# isort>=5.12.0
+# mypy>=1.5.0
+
+# Medical datasets (optional)
+# medmnist>=2.2.0
+
+# Jupyter support (optional)
+# jupyter>=1.0.0
+# jupyterlab>=4.0.0
+
+# Note: ZKP tools (Cairo, Circom, SnarkJS) need to be installed separately
+# Run: secure-fl setup zkp
+# Or install manually:
+# - Cairo: pip install cairo-lang
+# - Circom & SnarkJS: npm install -g circom snarkjs

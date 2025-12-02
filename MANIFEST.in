@@ -1,0 +1,59 @@
+# MANIFEST.in for secure-fl package
+# Include additional files beyond Python modules
+
+# Documentation
+include README.md
+include LICENSE
+recursive-include docs *.md *.rst *.txt
+
+# Configuration files
+include *.yaml *.yml *.toml *.cfg *.ini
+
+# ZKP circuits and proofs
+recursive-include proofs *.cairo *.circom *.json *.md
+exclude proofs/compiled/*
+exclude proofs/**/witness
+exclude proofs/**/*.wasm
+exclude proofs/**/circuit_js
+
+# Blockchain contracts
+recursive-include blockchain *.sol *.json *.md
+exclude blockchain/artifacts/*
+exclude blockchain/cache/*
+
+# Experiment scripts and configs
+recursive-include experiments *.py *.yaml *.yml *.json *.md
+exclude experiments/results/*
+exclude experiments/**/temp_*
+
+# Infrastructure and deployment
+recursive-include k8s *.yaml *.yml
+recursive-include infra *.tf *.yaml *.yml *.json
+
+# Data files (but not actual datasets)
+recursive-include data *.md *.txt
+exclude data/datasets/*
+exclude data/temp/*
+
+# Scripts
+recursive-include scripts *.sh *.py *.bat
+
+# Tests
+recursive-include tests *.py
+
+# Exclude unwanted files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .git*
+global-exclude *.egg-info
+global-exclude build
+global-exclude dist
+global-exclude .venv
+global-exclude venv
+global-exclude node_modules
+global-exclude *.log

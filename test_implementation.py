@@ -19,13 +19,13 @@ from pathlib import Path
 # Add the project root to path
 sys.path.append(str(Path(__file__).parent))
 
-from fl.server import SecureFlowerStrategy, create_server_strategy
-from fl.client import SecureFlowerClient, create_client
-from fl.aggregation import FedJSCMAggregator
-from fl.proof_manager import ClientProofManager, ServerProofManager
-from fl.stability_monitor import StabilityMonitor
-from fl.quantization import FixedPointQuantizer, QuantizationConfig
-from fl.utils import (
+from secure_fl.server import SecureFlowerStrategy, create_server_strategy
+from secure_fl.client import SecureFlowerClient, create_client
+from secure_fl.aggregation import FedJSCMAggregator
+from secure_fl.proof_manager import ClientProofManager, ServerProofManager
+from secure_fl.stability_monitor import StabilityMonitor
+from secure_fl.quantization import FixedPointQuantizer, QuantizationConfig
+from secure_fl.utils import (
     parameters_to_ndarrays,
     ndarrays_to_parameters,
     compute_parameter_norm,
@@ -55,7 +55,7 @@ def test_basic_imports():
     logger.info("Testing basic imports...")
 
     try:
-        from fl import (
+        from secure_fl import (
             SecureFlowerServer,
             SecureFlowerClient,
             FedJSCMAggregator,

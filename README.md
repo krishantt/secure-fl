@@ -91,44 +91,105 @@ secure-fl/
 
 ### Installation
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/krishantt/secure-fl.git
-   cd secure-fl
-   ```
+#### Option 1: Install from PyPI (Recommended)
 
-2. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+# Install the package
+pip install secure-fl
 
-3. **Install ZKP tools:**
-   ```bash
-   # Install Cairo (for client-side zk-STARKs)
-   curl -L https://github.com/starkware-libs/cairo/releases/download/v2.4.0/cairo-lang-2.4.0.tar.gz | tar xz
-   cd cairo-lang-2.4.0 && pip install .
-   
-   # Install Circom and SnarkJS (for server-side zk-SNARKs)
-   npm install -g circom snarkjs
-   ```
+# Setup ZKP tools (optional but recommended)
+secure-fl setup zkp
+
+# Run a quick demo
+secure-fl demo
+```
+
+#### Option 2: Install with PDM (For Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/krishantt/secure-fl.git
+cd secure-fl
+
+# Install PDM if you don't have it
+pip install pdm
+
+# Install dependencies
+pdm install
+
+# Setup ZKP tools
+pdm run setup-zkp
+
+# Run tests
+pdm run test
+```
+
+#### Option 3: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/krishantt/secure-fl.git
+cd secure-fl
+
+# Install in development mode
+pip install -e .
+
+# Setup environment
+secure-fl setup full
+```
 
 ### Basic Usage
 
-1. **Run a simple experiment:**
-   ```bash
-   cd experiments
-   python train_secure_fl.py --num-clients 3 --rounds 5 --dataset synthetic
-   ```
+#### Command Line Interface
 
-2. **Run with custom configuration:**
-   ```bash
-   python train_secure_fl.py --config config.yaml --visualize
-   ```
+```bash
+# Run a quick demo
+secure-fl demo
 
-3. **Disable ZKP for testing:**
-   ```bash
-   python train_secure_fl.py --num-clients 3 --rounds 5 --enable-zkp=false
-   ```
+# Run a federated learning experiment
+secure-fl experiment --num-clients 3 --rounds 5 --dataset synthetic
+
+# Start a server
+secure-fl server --rounds 10 --enable-zkp
+
+# Connect a client
+secure-fl client --client-id client_1 --dataset mnist
+
+# Check system requirements
+secure-fl setup check
+```
+
+#### Python API
+
+```python
+from secure_fl import SecureFlowerServer, create_client, create_server_strategy
+import torch.nn as nn
+
+# Define your model
+class MyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(784, 10)
+    
+    def forward(self, x):
+        return self.fc(x.flatten(1))
+
+# Create server
+strategy = create_server_strategy(
+    model_fn=lambda: MyModel(),
+    enable_zkp=True,
+    proof_rigor="medium"
+)
+server = SecureFlowerServer(strategy=strategy)
+
+# Create clients
+client = create_client(
+    client_id="client_1",
+    model_fn=lambda: MyModel(),
+    train_data=your_train_data,
+    enable_zkp=True
+)
+```
 
 ## 🔬 Technical Details
 
@@ -203,18 +264,23 @@ The system automatically adjusts proof complexity based on training stability:
 ### Custom Model Integration
 
 ```python
-from fl import create_server_strategy, SecureFlowerServer
+from secure_fl import create_server_strategy, SecureFlowerServer
 import torch.nn as nn
 
 class MyCustomModel(nn.Module):
     def __init__(self):
         super().__init__()
         # Your model definition
-        pass
+        self.conv1 = nn.Conv2d(3, 32, 3)
+        self.fc1 = nn.Linear(32 * 30 * 30, 128)
+        self.fc2 = nn.Linear(128, 10)
     
     def forward(self, x):
         # Your forward pass
-        pass
+        x = torch.relu(self.conv1(x))
+        x = x.flatten(1)
+        x = torch.relu(self.fc1(x))
+        return self.fc2(x)
 
 # Create server strategy
 strategy = create_server_strategy(
@@ -329,7 +395,7 @@ The framework automatically tracks:
 ### Custom Metrics
 
 ```python
-from fl.stability_monitor import StabilityMonitor
+from secure_fl import StabilityMonitor
 
 monitor = StabilityMonitor()
 # Add custom metrics
@@ -353,18 +419,18 @@ We welcome contributions! Please follow these steps:
 ### Development Setup
 
 ```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
+# Using PDM (recommended)
+pdm install -d
+pdm run test
+pdm run format
+pdm run lint
 
-# Run tests
-python -m pytest tests/
-
-# Format code
-black fl/ experiments/
-isort fl/ experiments/
-
-# Type checking
-mypy fl/
+# Using pip
+pip install -e ".[dev]"
+pytest
+black secure_fl/
+isort secure_fl/
+mypy secure_fl/
 ```
 
 ## 📝 Citation
@@ -379,6 +445,33 @@ If you use this work in your research, please cite:
   institution={Tribhuvan University, Institute of Engineering}
 }
 ```
+
+## 📦 Package Information
+
+### PyPI Installation
+
+```bash
+pip install secure-fl
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/krishantt/secure-fl.git
+cd secure-fl
+pdm install -d
+```
+
+### Available Extras
+
+- `dev`: Development dependencies (pytest, black, mypy, etc.)
+- `medical`: Medical dataset support (medmnist, nibabel, etc.)  
+- `notebook`: Jupyter notebook support
+- `quantization`: Advanced quantization tools
+- `blockchain`: Blockchain integration tools
+- `all`: All optional dependencies
+
+Example: `pip install "secure-fl[dev,medical,notebook]"`
 
 ## 📄 License
 

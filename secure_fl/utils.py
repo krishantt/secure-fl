@@ -8,13 +8,14 @@ This module provides common utility functions for:
 4. Data handling helpers
 """
 
-import logging
 import hashlib
+import logging
+import struct
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
-from typing import List, Dict, Any, Optional, Union, Tuple
 from flwr.common import NDArrays, Parameters
-import struct
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -476,6 +477,176 @@ def test_quantization():
         assert orig.shape == deq.shape
 
     print("Quantization test passed!")
+
+
+def get_default_config() -> Dict[str, Any]:
+    """Get default configuration dictionary"""
+    return {
+        "server": {
+            "host": "localhost",
+            "port": 8080,
+            "num_rounds": 10,
+            "min_fit_clients": 2,
+            "min_evaluate_clients": 2,
+            "fraction_fit": 1.0,
+            "fraction_evaluate": 1.0,
+        },
+        "aggregation": {
+            "momentum": 0.9,
+            "learning_rate": 0.01,
+            "weight_decay": 0.0,
+            "adaptive_momentum": False,
+        },
+        "zkp": {
+            "enable_zkp": True,
+            "proof_rigor": "high",
+            "blockchain_verification": False,
+            "quantize_weights": True,
+            "quantization_bits": 8,
+        },
+        "stability": {
+            "window_size": 10,
+            "stability_threshold_high": 0.9,
+            "stability_threshold_medium": 0.7,
+            "convergence_patience": 5,
+            "min_rounds_for_adjustment": 3,
+        },
+    }
+
+
+def load_dataset(dataset_name: str, partition_id: int = 0) -> Tuple[Any, Optional[Any]]:
+    """
+    Load dataset for federated learning
+
+    Args:
+        dataset_name: Name of dataset ('mnist', 'cifar10', 'synthetic')
+        partition_id: Partition ID for client data
+
+    Returns:
+        Tuple of (train_data, val_data)
+    """
+    if dataset_name == "synthetic":
+        # Generate synthetic data
+        from torch.utils.data import DataLoader, TensorDataset
+
+        # Simple synthetic dataset
+        num_samples = 1000
+        input_dim = 784
+        num_classes = 10
+
+        X = torch.randn(num_samples, input_dim)
+        y = torch.randint(0, num_classes, (num_samples,))
+
+        # Split into train/val
+        train_size = int(0.8 * num_samples)
+        train_dataset = TensorDataset(X[:train_size], y[:train_size])
+        val_dataset = TensorDataset(X[train_size:], y[train_size:])
+
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+        return train_loader, val_loader
+
+    elif dataset_name == "mnist":
+        try:
+            import torchvision
+            import torchvision.transforms as transforms
+            from torch.utils.data import DataLoader, Subset
+
+            # Load MNIST
+            transform = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+            )
+
+            train_dataset = torchvision.datasets.MNIST(
+                root="./data", train=True, download=True, transform=transform
+            )
+            val_dataset = torchvision.datasets.MNIST(
+                root="./data", train=False, download=True, transform=transform
+            )
+
+            # Create partition for this client
+            num_clients = 10  # Default partitioning
+            samples_per_client = len(train_dataset) // num_clients
+            start_idx = partition_id * samples_per_client
+            end_idx = start_idx + samples_per_client
+
+            train_indices = list(range(start_idx, min(end_idx, len(train_dataset))))
+            train_subset = Subset(train_dataset, train_indices)
+
+            # Use a portion of test set for validation
+            val_samples = len(val_dataset) // num_clients
+            val_start = partition_id * val_samples
+            val_end = val_start + val_samples
+            val_indices = list(range(val_start, min(val_end, len(val_dataset))))
+            val_subset = Subset(val_dataset, val_indices)
+
+            train_loader = DataLoader(train_subset, batch_size=32, shuffle=True)
+            val_loader = DataLoader(val_subset, batch_size=32, shuffle=False)
+
+            return train_loader, val_loader
+
+        except ImportError:
+            logger.warning("torchvision not available, falling back to synthetic data")
+            return load_dataset("synthetic", partition_id)
+
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset_name}")
+
+
+def create_federated_config(
+    num_clients: int = 3,
+    num_rounds: int = 10,
+    dataset: str = "synthetic",
+    enable_zkp: bool = True,
+    **kwargs,
+) -> Dict[str, Any]:
+    """
+    Create a federated learning configuration
+
+    Args:
+        num_clients: Number of federated clients
+        num_rounds: Number of training rounds
+        dataset: Dataset name
+        enable_zkp: Enable ZKP verification
+        **kwargs: Additional configuration options
+
+    Returns:
+        Configuration dictionary
+    """
+    config = get_default_config()
+
+    # Update with provided parameters
+    config["server"]["num_rounds"] = num_rounds
+    config["server"]["min_fit_clients"] = min(2, num_clients)
+    config["server"]["min_evaluate_clients"] = min(2, num_clients)
+
+    config["zkp"]["enable_zkp"] = enable_zkp
+
+    # Add experiment-specific config
+    config["experiment"] = {
+        "num_clients": num_clients,
+        "dataset": dataset,
+        "output_dir": "./results",
+        "save_models": False,
+        "visualize": True,
+    }
+
+    # Apply any additional kwargs
+    for key, value in kwargs.items():
+        if "." in key:
+            # Handle nested keys like "server.port"
+            parts = key.split(".")
+            current = config
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            current[parts[-1]] = value
+        else:
+            config[key] = value
+
+    return config
 
 
 if __name__ == "__main__":
