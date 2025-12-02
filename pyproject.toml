@@ -3,12 +3,12 @@ name = "secure-fl"
 version = "0.1.0"
 description = "Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs"
 authors = [
-    {name = "Krishant Timilsina", email = "krishantt@example.com"},
-    {name = "Bindu Paudel", email = "bigya01@example.com"}
+    {name = "Krishant Timilsina", email = "krishtimil@gmail.com"},
+    {name = "Bindu Paudel", email = "binduupaudel565@gmail.com"}
 ]
 maintainers = [
-    {name = "Krishant Timilsina", email = "krishantt@example.com"},
-    {name = "Bindu Paudel", email = "bigya01@example.com"}
+    {name = "Krishant Timilsina", email = "krishtimil@gmail.com"},
+    {name = "Bindu Paudel", email = "binduupaudel565@gmail.com"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -40,7 +40,7 @@ classifiers = [
     "Topic :: Security :: Cryptography",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 dependencies = [
     # Core ML and FL frameworks
     "torch>=2.0.0",

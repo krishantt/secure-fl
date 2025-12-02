@@ -1,2 +1,5 @@
 .DS_STORE
 __pycache__
+.pdm-python
+dist/
+.venv/
