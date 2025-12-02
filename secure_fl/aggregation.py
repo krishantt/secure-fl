@@ -364,6 +364,5 @@ def test_fedjscm_aggregator():
     print(f"Final momentum norms: {momentum_state['momentum_norms']}")
     print("FedJSCM test completed successfully!")
 
-
 if __name__ == "__main__":
     test_fedjscm_aggregator()

@@ -9,32 +9,36 @@ Usage:
     python test_implementation.py
 """
 
-import sys
 import logging
+import sys
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 # Add the project root to path
 sys.path.append(str(Path(__file__).parent))
 
-from secure_fl.server import SecureFlowerStrategy, create_server_strategy
-from secure_fl.client import SecureFlowerClient, create_client
 from secure_fl.aggregation import FedJSCMAggregator
+from secure_fl.client import SecureFlowerClient, create_client
 from secure_fl.proof_manager import ClientProofManager, ServerProofManager
-from secure_fl.stability_monitor import StabilityMonitor
 from secure_fl.quantization import FixedPointQuantizer, QuantizationConfig
+from secure_fl.server import SecureFlowerStrategy, create_server_strategy
+from secure_fl.stability_monitor import StabilityMonitor
 from secure_fl.utils import (
-    parameters_to_ndarrays,
-    ndarrays_to_parameters,
     compute_parameter_norm,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
     validate_parameters,
 )
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Model moved to secure_fl.models
+from secure_fl.models import SimpleModel
 
 
 class SimpleTestModel(nn.Module):
@@ -56,9 +60,9 @@ def test_basic_imports():
 
     try:
         from secure_fl import (
-            SecureFlowerServer,
-            SecureFlowerClient,
             FedJSCMAggregator,
+            SecureFlowerClient,
+            SecureFlowerServer,
             StabilityMonitor,
         )
 

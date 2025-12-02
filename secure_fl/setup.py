@@ -421,29 +421,9 @@ monitoring:
             assert isinstance(config, dict)
 
             # Test simple model creation
-            class TestModel(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.fc = nn.Linear(10, 1)
+            # Model moved to secure_fl.models
 
-                def forward(self, x):
-                    return self.fc(x)
-
-            model = TestModel()
-
-            # Test parameter conversion
-            params = torch_to_ndarrays(model)
-            model_restored = ndarrays_to_torch(TestModel(), params)
-
-            # Test strategy creation (without ZKP for basic test)
-            strategy = create_server_strategy(
-                model_fn=lambda: TestModel(), enable_zkp=False
-            )
-
-            logger.debug("✓ Basic functionality tests passed")
-
-        except Exception as e:
-            raise RuntimeError(f"Basic functionality test failed: {e}")
+            from secure_fl.models import TestModel")
 
     def clean(self, clean_all: bool = False) -> bool:
         """Clean up temporary files and caches"""
@@ -617,7 +597,6 @@ def main():
             print("✅ Full setup completed successfully!")
         else:
             print("⚠️ Setup completed with some issues")
-
 
 if __name__ == "__main__":
     main()

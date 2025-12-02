@@ -141,7 +141,7 @@ build-backend = "pdm.backend"
 
 [tool.pdm]
 version = {source = "file", path = "secure_fl/__init__.py"}
-author-email = "krishantt@example.com"
+author-email = "krishtimil@gmail.com"
 license = {text = "MIT"}
 
 [tool.pdm.dev-dependencies]

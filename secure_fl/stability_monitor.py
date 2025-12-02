@@ -26,8 +26,8 @@ from flwr.common import NDArrays
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 @dataclass
+
 class StabilityMetrics:
     """Container for stability metrics"""
 
@@ -438,7 +438,6 @@ def test_stability_monitor():
     print(f"Rigor history: {final_state['rigor_history']}")
 
     print("StabilityMonitor test completed!")
-
 
 if __name__ == "__main__":
     test_stability_monitor()

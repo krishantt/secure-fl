@@ -262,7 +262,7 @@ class SecureFlowerStrategy(Strategy):
         metrics["total_examples"] = total_examples
 
         return weighted_loss, metrics
-        
+
     @override
     def evaluate(self, server_round: int, parameters: Parameters) -> Optional[tuple[float, dict[str, Scalar]]]:
         return super().evaluate(server_round, parameters)
@@ -404,7 +404,6 @@ def create_server_strategy(
         proof_rigor=proof_rigor,
         **kwargs,
     )
-
 
 if __name__ == "__main__":
     # Example usage

@@ -10,19 +10,20 @@ This module implements FL clients that:
 
 import logging
 import time
+from collections import OrderedDict
+from typing import Any, Dict, List, Optional, Tuple
+
+import flwr as fl
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from typing import Dict, List, Optional, Tuple, Any
-import flwr as fl
 from flwr.common import NDArrays, Parameters
-from collections import OrderedDict
+from torch.utils.data import DataLoader
 
 from .proof_manager import ClientProofManager
-from .utils import parameters_to_ndarrays, ndarrays_to_parameters
-from .quantization import quantize_parameters, dequantize_parameters
+from .quantization import dequantize_parameters, quantize_parameters
+from .utils import ndarrays_to_parameters, parameters_to_ndarrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -452,39 +453,9 @@ if __name__ == "__main__":
     from torch.utils.data import TensorDataset
 
     # Simple test model
-    class SimpleModel(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.fc1 = nn.Linear(784, 128)
-            self.fc2 = nn.Linear(128, 10)
+    # Model moved to secure_fl.models
+    from secure_fl.models import SimpleModel
 
-        def forward(self, x):
-            x = x.view(-1, 784)
-            x = F.relu(self.fc1(x))
-            x = self.fc2(x)
-            return x
-
-    # Create dummy data
-    X_train = torch.randn(100, 784)
-    y_train = torch.randint(0, 10, (100,))
-    train_dataset = TensorDataset(X_train, y_train)
-
-    X_val = torch.randn(20, 784)
-    y_val = torch.randint(0, 10, (20,))
-    val_dataset = TensorDataset(X_val, y_val)
-
-    # Create client
-    client = create_client(
-        client_id="test_client_1",
-        model_fn=SimpleModel,
-        train_data=train_dataset,
-        val_data=val_dataset,
-        enable_zkp=False,  # Disable ZKP for testing
-        local_epochs=2,
-    )
-
-    # Test local training
-    initial_params = client.get_parameters({})
     config = {"server_round": 1, "local_epochs": 2}
 
     updated_params, num_examples, metrics = client.fit(initial_params, config)

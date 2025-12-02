@@ -926,6 +926,5 @@ def test_proof_managers():
 
     print("ProofManager tests completed!")
 
-
 if __name__ == "__main__":
     test_proof_managers()

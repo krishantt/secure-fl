@@ -19,147 +19,9 @@ from torch.utils.data import DataLoader, TensorDataset
 
 logger = logging.getLogger(__name__)
 
+# Model moved to secure_fl.models
 
-class SimpleModel(nn.Module):
-    """Simple neural network for demo purposes"""
-
-    def __init__(
-        self, input_dim: int = 784, hidden_dim: int = 64, output_dim: int = 10
-    ):
-        super().__init__()
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.fc3 = nn.Linear(hidden_dim // 2, output_dim)
-        self.dropout = nn.Dropout(0.2)
-
-    def forward(self, x):
-        x = self.flatten(x)
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = F.relu(self.fc2(x))
-        return self.fc3(x)
-
-
-def generate_synthetic_data(
-    num_samples: int = 1000,
-    input_dim: int = 784,
-    num_classes: int = 10,
-    noise_level: float = 0.1,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Generate synthetic data for demo"""
-
-    # Generate random input data
-    X = torch.randn(num_samples, input_dim)
-
-    # Generate labels with some structure
-    # Create class-specific patterns
-    class_patterns = torch.randn(num_classes, input_dim)
-
-    # Assign labels based on similarity to patterns
-    similarities = torch.mm(X, class_patterns.T)
-    y = torch.argmax(similarities, dim=1)
-
-    # Add some noise to make it more realistic
-    X += noise_level * torch.randn_like(X)
-
-    return X, y
-
-
-def create_federated_datasets(
-    num_clients: int = 3,
-    samples_per_client: int = 300,
-    input_dim: int = 784,
-    num_classes: int = 10,
-    iid: bool = False,
-) -> List[Tuple[DataLoader, DataLoader]]:
-    """Create federated datasets for demo"""
-
-    datasets = []
-
-    for client_id in range(num_clients):
-        if iid:
-            # IID: Each client gets random samples
-            X_train, y_train = generate_synthetic_data(
-                samples_per_client, input_dim, num_classes
-            )
-            X_val, y_val = generate_synthetic_data(
-                samples_per_client // 4, input_dim, num_classes
-            )
-        else:
-            # Non-IID: Each client specializes in certain classes
-            client_classes = np.random.choice(
-                num_classes, size=max(2, num_classes // 2), replace=False
-            )
-
-            # Generate data biased towards client's classes
-            X_train_list, y_train_list = [], []
-            X_val_list, y_val_list = [], []
-
-            for class_id in client_classes:
-                # Generate samples for this class
-                class_samples = samples_per_client // len(client_classes)
-                X_class = torch.randn(class_samples, input_dim)
-
-                # Add class-specific pattern
-                class_pattern = torch.zeros(input_dim)
-                class_pattern[
-                    class_id * (input_dim // num_classes) : (class_id + 1)
-                    * (input_dim // num_classes)
-                ] = 2.0
-
-                X_class += class_pattern.unsqueeze(0)
-                y_class = torch.full((class_samples,), class_id, dtype=torch.long)
-
-                X_train_list.append(X_class)
-                y_train_list.append(y_class)
-
-                # Validation data
-                X_val_class = torch.randn(
-                    class_samples // 4, input_dim
-                ) + class_pattern.unsqueeze(0)
-                y_val_class = torch.full(
-                    (class_samples // 4,), class_id, dtype=torch.long
-                )
-
-                X_val_list.append(X_val_class)
-                y_val_list.append(y_val_class)
-
-            X_train = torch.cat(X_train_list, dim=0)
-            y_train = torch.cat(y_train_list, dim=0)
-            X_val = torch.cat(X_val_list, dim=0)
-            y_val = torch.cat(y_val_list, dim=0)
-
-            # Shuffle
-            perm_train = torch.randperm(len(X_train))
-            X_train, y_train = X_train[perm_train], y_train[perm_train]
-
-            perm_val = torch.randperm(len(X_val))
-            X_val, y_val = X_val[perm_val], y_val[perm_val]
-
-        # Create dataloaders
-        train_dataset = TensorDataset(X_train, y_train)
-        val_dataset = TensorDataset(X_val, y_val)
-
-        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-        datasets.append((train_loader, val_loader))
-
-    return datasets
-
-
-def simulate_federated_round(
-    global_model: nn.Module,
-    client_datasets: List[Tuple[DataLoader, DataLoader]],
-    local_epochs: int = 3,
-    learning_rate: float = 0.01,
-) -> Tuple[nn.Module, Dict[str, float]]:
-    """Simulate a single federated learning round"""
-
-    client_models = []
-    client_weights = []
-    metrics = {}
+from secure_fl.models import SimpleModel
 
     # Client training
     for client_id, (train_loader, val_loader) in enumerate(client_datasets):
@@ -400,7 +262,6 @@ def run_demo() -> bool:
         print(f"\n❌ Comprehensive demo failed: {e}")
         logger.exception("Demo error")
         return False
-
 
 if __name__ == "__main__":
     import sys

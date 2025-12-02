@@ -13,11 +13,22 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+
+from secure_fl.client import create_client, start_client
+
+# Import centralized models
+from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel
+from secure_fl.models import SimpleModel
+from secure_fl.server import SecureFlowerServer, create_server_strategy
+from secure_fl.setup import SecureFLSetup
 
 # Setup rich console and logging
 console = Console()
@@ -29,11 +40,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 @click.group()
 @click.version_option(version="0.1.0")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress output")
+
 def main(verbose: bool, quiet: bool):
     """
     🔐 Secure FL: Dual-Verifiable Federated Learning with Zero-Knowledge Proofs
@@ -52,7 +63,6 @@ def main(verbose: bool, quiet: bool):
 [bold blue]🔐 Secure FL Framework[/bold blue]
 [dim]Dual-Verifiable Federated Learning with Zero-Knowledge Proofs[/dim]
         """)
-
 
 @main.command()
 @click.option(
@@ -87,6 +97,7 @@ def main(verbose: bool, quiet: bool):
     default="mnist",
     help="Model type to use",
 )
+
 def server(
     config: Optional[str],
     host: str,
@@ -137,47 +148,16 @@ def server(
             }
         )
 
-        # Define model based on choice
+        # Define model based on choice using centralized models
         if model == "mnist":
-
-            class MNISTModel(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.flatten = nn.Flatten()
-                    self.fc1 = nn.Linear(28 * 28, 128)
-                    self.fc2 = nn.Linear(128, 64)
-                    self.fc3 = nn.Linear(64, 10)
-
-                def forward(self, x):
-                    x = self.flatten(x)
-                    x = F.relu(self.fc1(x))
-                    x = F.relu(self.fc2(x))
-                    return self.fc3(x)
-
             model_fn = lambda: MNISTModel()
-
         elif model == "cifar10":
-
-            class CIFAR10Model(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-                    self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-                    self.pool = nn.MaxPool2d(2, 2)
-                    self.fc1 = nn.Linear(64 * 8 * 8, 128)
-                    self.fc2 = nn.Linear(128, 10)
-
-                def forward(self, x):
-                    x = self.pool(F.relu(self.conv1(x)))
-                    x = self.pool(F.relu(self.conv2(x)))
-                    x = x.view(-1, 64 * 8 * 8)
-                    x = F.relu(self.fc1(x))
-                    return self.fc2(x)
-
             model_fn = lambda: CIFAR10Model()
+        elif model == "simple":
+            model_fn = lambda: SimpleModel(input_dim=784, output_dim=10)
         else:
             raise click.ClickException(
-                "Custom model not implemented in CLI. Use Python API."
+                f"Unknown model '{model}'. Available: mnist, cifar10, simple"
             )
 
         # Create server strategy
@@ -220,7 +200,6 @@ def server(
         logger.error(f"Server failed to start: {e}")
         raise click.ClickException(f"Server error: {e}")
 
-
 @main.command()
 @click.option(
     "--server-address",
@@ -249,6 +228,7 @@ def server(
 @click.option(
     "--learning-rate", "-lr", default=0.01, type=float, help="Local learning rate"
 )
+
 def client(
     server_address: str,
     client_id: str,
@@ -276,46 +256,13 @@ def client(
 
         # Define model (should match server model)
         if dataset in ["mnist", "synthetic"]:
-            import torch.nn as nn
-            import torch.nn.functional as F
-
-            class MNISTModel(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.flatten = nn.Flatten()
-                    self.fc1 = nn.Linear(28 * 28, 128)
-                    self.fc2 = nn.Linear(128, 64)
-                    self.fc3 = nn.Linear(64, 10)
-
-                def forward(self, x):
-                    x = self.flatten(x)
-                    x = F.relu(self.fc1(x))
-                    x = F.relu(self.fc2(x))
-                    return self.fc3(x)
-
-            model_fn = lambda: MNISTModel()
-
-        elif dataset == "cifar10":
-            import torch.nn as nn
-            import torch.nn.functional as F
-
-            class CIFAR10Model(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-                    self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-                    self.pool = nn.MaxPool2d(2, 2)
-                    self.fc1 = nn.Linear(64 * 8 * 8, 128)
-                    self.fc2 = nn.Linear(128, 10)
-
-                def forward(self, x):
-                    x = self.pool(F.relu(self.conv1(x)))
-                    x = self.pool(F.relu(self.conv2(x)))
-                    x = x.view(-1, 64 * 8 * 8)
-                    x = F.relu(self.fc1(x))
-                    return self.fc2(x)
-
-            model_fn = lambda: CIFAR10Model()
+            if dataset != "custom":
+                if dataset == "mnist":
+                    model_fn = lambda: MNISTModel()
+                elif dataset == "cifar10":
+                    model_fn = lambda: CIFAR10Model()
+                else:
+                    model_fn = lambda: SimpleModel()
 
         # Create client
         client = create_client(
@@ -358,7 +305,6 @@ def client(
         logger.error(f"Client failed to start: {e}")
         raise click.ClickException(f"Client error: {e}")
 
-
 @main.command()
 @click.option(
     "--config", "-c", type=click.Path(exists=True), help="Experiment configuration file"
@@ -395,6 +341,7 @@ def client(
 @click.option(
     "--save-models/--no-save-models", default=False, help="Save trained models"
 )
+
 def experiment(
     config: Optional[str],
     num_clients: int,
@@ -482,7 +429,6 @@ def experiment(
         logger.error(f"Experiment failed: {e}")
         raise click.ClickException(f"Experiment error: {e}")
 
-
 @main.command()
 @click.option(
     "--action",
@@ -492,6 +438,7 @@ def experiment(
 )
 @click.option("--force", is_flag=True, help="Force reinstallation")
 @click.option("--skip-zkp", is_flag=True, help="Skip ZKP tools installation")
+
 def setup(action: str, force: bool, skip_zkp: bool):
     """Setup and configure Secure FL environment"""
 
@@ -566,8 +513,8 @@ def setup(action: str, force: bool, skip_zkp: bool):
         logger.error(f"Setup failed: {e}")
         raise click.ClickException(f"Setup error: {e}")
 
-
 @main.command()
+
 def demo():
     """Run a quick demonstration of Secure FL"""
 
@@ -603,8 +550,8 @@ def demo():
         logger.error(f"Demo failed: {e}")
         raise click.ClickException(f"Demo error: {e}")
 
-
 @main.command()
+
 def info():
     """Display system information and component status"""
 
@@ -612,8 +559,8 @@ def info():
 
     print_system_info()
 
-
 # Convenience functions for programmatic access
+
 def server_command():
     """Entry point for secure-fl-server command"""
     main(["server"] + sys.argv[1:])
@@ -632,7 +579,6 @@ def experiment_command():
 def setup_command():
     """Entry point for secure-fl-setup command"""
     main(["setup"] + sys.argv[1:])
-
 
 if __name__ == "__main__":
     main()

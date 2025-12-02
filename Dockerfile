@@ -4,7 +4,7 @@ FROM node:18-slim as node-stage
 # Install ZKP tools
 RUN npm install -g circom snarkjs
 
-FROM python:3.9-slim as base
+FROM python:3.12-slim as base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

@@ -221,8 +221,8 @@ def print_system_info():
     print("Note: Cairo, Circom, and SnarkJS are required for full ZKP functionality")
     print("Install them separately for complete proof generation capabilities")
 
-
 # Convenience function for quick setup
+
 def create_secure_fl_setup(
     model_fn,
     train_datasets,

@@ -21,8 +21,8 @@ from flwr.common import NDArrays
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 @dataclass
+
 class QuantizationConfig:
     """Configuration for quantization parameters"""
 
@@ -525,7 +525,6 @@ def test_quantization():
     )
 
     print("All quantization tests passed!")
-
 
 if __name__ == "__main__":
     test_quantization()
