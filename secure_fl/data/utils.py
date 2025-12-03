@@ -7,7 +7,7 @@ across different federated learning experiments.
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import torch
 from torchvision import transforms
@@ -137,7 +137,7 @@ def _create_default_transforms() -> transforms.Compose:
     )
 
 
-def get_dataset_info(dataset_name: str) -> Dict[str, Any]:
+def get_dataset_info(dataset_name: str) -> dict[str, Any]:
     """
     Get comprehensive information about a dataset.
 
@@ -241,7 +241,7 @@ def get_dataset_info(dataset_name: str) -> Dict[str, Any]:
     )
 
 
-def calculate_dataset_stats(dataset) -> Dict[str, float]:
+def calculate_dataset_stats(dataset) -> dict[str, float]:
     """
     Calculate mean and standard deviation statistics for a dataset.
 
@@ -284,7 +284,7 @@ def calculate_dataset_stats(dataset) -> Dict[str, float]:
 
 
 def validate_dataset_compatibility(
-    dataset_name: str, model_input_shape: Tuple[int, ...]
+    dataset_name: str, model_input_shape: tuple[int, ...]
 ) -> bool:
     """
     Validate that a dataset is compatible with a model's input shape.
@@ -332,7 +332,7 @@ def create_federated_split_strategy(
     strategy: str = "iid",
     alpha: float = 0.5,
     min_samples: int = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create configuration for federated data splitting strategies.
 
@@ -403,7 +403,7 @@ def print_dataset_summary(dataset_name: str, num_clients: int = 1) -> None:
         train_samples = info["num_samples"].get("train", info["num_samples"])
         if isinstance(train_samples, int):
             samples_per_client = train_samples // num_clients
-            print(f"\nFEDERATED SETUP:")
+            print("\nFEDERATED SETUP:")
             print(f"Clients: {num_clients}")
             print(f"Samples per Client: ~{samples_per_client}")
 

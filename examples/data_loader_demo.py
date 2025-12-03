@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from secure_fl.data import FederatedDataLoader
-from secure_fl.data.utils import get_dataset_info, print_dataset_summary
+from secure_fl.data.utils import print_dataset_summary
 
 
 def demo_basic_usage():
@@ -139,7 +139,7 @@ def demo_data_loaders():
             print(f"  Batch shape: {data.shape}, Labels: {target.shape}")
 
     # Get data loader for specific client
-    print(f"\n--- Specific Client DataLoader ---")
+    print("\n--- Specific Client DataLoader ---")
     train_loader, val_loader = loader.create_client_dataloaders(client_id=0)
     print(f"Client 0 - Train batches: {len(train_loader)}")
 

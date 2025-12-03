@@ -14,9 +14,8 @@ Features:
 """
 
 import logging
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
@@ -87,7 +86,7 @@ class FederatedDataLoader:
             f"{num_clients} clients ({'IID' if iid else 'Non-IID'})"
         )
 
-    def load_dataset(self) -> Tuple[Dataset, Optional[Dataset]]:
+    def load_dataset(self) -> tuple[Dataset, Dataset | None]:
         """
         Load the full dataset (train and optional test).
 
@@ -113,7 +112,7 @@ class FederatedDataLoader:
 
         return self._train_dataset, self._test_dataset
 
-    def create_client_datasets(self) -> List[Tuple[Dataset, Optional[Dataset]]]:
+    def create_client_datasets(self) -> list[tuple[Dataset, Dataset | None]]:
         """
         Create datasets for each federated client.
 
@@ -134,13 +133,13 @@ class FederatedDataLoader:
 
     def create_client_dataloaders(
         self,
-        client_id: Optional[int] = None,
-        batch_size: Optional[int] = None,
+        client_id: int | None = None,
+        batch_size: int | None = None,
         shuffle: bool = True,
-    ) -> Union[
-        List[Tuple[DataLoader, Optional[DataLoader]]],
-        Tuple[DataLoader, Optional[DataLoader]],
-    ]:
+    ) -> (
+        list[tuple[DataLoader, DataLoader | None]]
+        | tuple[DataLoader, DataLoader | None]
+    ):
         """
         Create data loaders for clients.
 
@@ -187,7 +186,7 @@ class FederatedDataLoader:
 
         return client_loaders
 
-    def get_dataset_info(self) -> Dict[str, Any]:
+    def get_dataset_info(self) -> dict[str, Any]:
         """Get information about the loaded dataset."""
         info_map = {
             "mnist": {
@@ -226,7 +225,7 @@ class FederatedDataLoader:
             },
         )
 
-    def _load_mnist(self) -> Tuple[Dataset, Dataset]:
+    def _load_mnist(self) -> tuple[Dataset, Dataset]:
         """Load MNIST dataset."""
         try:
             from torchvision import datasets, transforms
@@ -246,7 +245,7 @@ class FederatedDataLoader:
 
         return train_dataset, test_dataset
 
-    def _load_cifar10(self) -> Tuple[Dataset, Dataset]:
+    def _load_cifar10(self) -> tuple[Dataset, Dataset]:
         """Load CIFAR-10 dataset."""
         try:
             from torchvision import datasets, transforms
@@ -269,7 +268,7 @@ class FederatedDataLoader:
 
         return train_dataset, test_dataset
 
-    def _load_medmnist(self) -> Tuple[Dataset, Dataset]:
+    def _load_medmnist(self) -> tuple[Dataset, Dataset]:
         """Load MedMNIST dataset."""
         try:
             import medmnist
@@ -279,7 +278,7 @@ class FederatedDataLoader:
             )
 
         # Use PathMNIST as default MedMNIST dataset
-        DataClass = getattr(medmnist, "PathMNIST")
+        DataClass = medmnist.PathMNIST
 
         train_dataset = DataClass(split="train", download=True, root=str(self.data_dir))
         test_dataset = DataClass(split="test", download=True, root=str(self.data_dir))
@@ -302,7 +301,7 @@ class FederatedDataLoader:
 
     def _load_synthetic(
         self, num_samples: int = 1000, input_dim: int = 784, num_classes: int = 10
-    ) -> Tuple[Dataset, Dataset]:
+    ) -> tuple[Dataset, Dataset]:
         """Load synthetic dataset."""
         # Generate synthetic training data
         torch.manual_seed(self.seed)
@@ -319,7 +318,7 @@ class FederatedDataLoader:
 
     def _create_iid_partitions(
         self, dataset: Dataset
-    ) -> List[Tuple[Dataset, Optional[Dataset]]]:
+    ) -> list[tuple[Dataset, Dataset | None]]:
         """Create IID data partitions for clients."""
         total_size = len(dataset)
         partition_size = total_size // self.num_clients
@@ -349,7 +348,7 @@ class FederatedDataLoader:
 
     def _create_non_iid_partitions(
         self, dataset: Dataset
-    ) -> List[Tuple[Dataset, Optional[Dataset]]]:
+    ) -> list[tuple[Dataset, Dataset | None]]:
         """Create Non-IID data partitions for clients."""
         # For Non-IID, we'll create class-based partitions
         # This is a simplified Non-IID strategy where each client gets data from limited classes
@@ -408,7 +407,7 @@ class FederatedDataLoader:
             )
             return self._create_iid_partitions(dataset)
 
-    def get_client_stats(self) -> Dict[str, Any]:
+    def get_client_stats(self) -> dict[str, Any]:
         """Get statistics about client data distribution."""
         client_datasets = self.create_client_datasets()
 
