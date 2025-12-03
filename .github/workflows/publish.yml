@@ -1,0 +1,309 @@
+name: Manual Publishing
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_target:
+        description: 'What to publish'
+        required: true
+        type: choice
+        options:
+          - pypi
+          - docker
+          - both
+        default: 'pypi'
+      increment_version:
+        description: 'Increment version before publishing'
+        required: true
+        type: boolean
+        default: true
+      docker_tags:
+        description: 'Additional Docker tags (comma-separated)'
+        required: false
+        type: string
+        default: 'latest'
+
+jobs:
+  prepare-version:
+    name: Prepare Version for Publishing
+    runs-on: ubuntu-latest
+    if: inputs.increment_version
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install PDM
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdm
+
+      - name: Install package
+        run: |
+          pip install -e .
+
+      - name: Show current version
+        run: |
+          echo "Current version before increment:"
+          pdm run version
+
+      - name: Increment version for publishing
+        run: |
+          pdm run version-publish
+
+      - name: Get new version
+        id: get-version
+        run: |
+          VERSION=$(python -c "from secure_fl._version import get_version; print(get_version())")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $VERSION"
+
+      - name: Commit version increment
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add secure_fl/.build_number
+          git commit -m "Increment version to ${{ steps.get-version.outputs.version }} for publishing" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [prepare-version]
+    runs-on: ubuntu-latest
+    if: always() && (inputs.publish_target == 'pypi' || inputs.publish_target == 'both')
+    environment: pypi
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}  # Get latest commit with version increment
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install PDM
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdm
+
+      - name: Install dependencies
+        run: |
+          pdm install -d
+
+      - name: Display publishing version
+        run: |
+          echo "Publishing version to PyPI:"
+          pdm run version
+
+      - name: Build package
+        run: |
+          pdm build
+
+      - name: Check package
+        run: |
+          pip install twine
+          twine check dist/*
+
+      - name: Test package installation
+        run: |
+          pip install dist/*.whl
+          python -c "
+          import secure_fl
+          print(f'Successfully installed secure_fl version: {secure_fl.__version__}')
+
+          # Verify it's not a dev version
+          if '.dev.' in secure_fl.__version__:
+              print('Warning: Publishing a dev version!')
+          else:
+              print('✅ Publishing a proper release version')
+          "
+
+      - name: Publish to PyPI
+        env:
+          PDM_PUBLISH_USERNAME: __token__
+          PDM_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pdm publish --repository pypi
+
+      - name: Create release tag
+        run: |
+          VERSION=$(python -c "from secure_fl._version import get_version; print(get_version())")
+          TAG_NAME="v${VERSION}"
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag "${TAG_NAME}"
+          git push origin "${TAG_NAME}"
+
+          echo "Created and pushed tag: ${TAG_NAME}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pypi-dist
+          path: dist/
+
+  publish-docker:
+    name: Publish Docker Images
+    needs: [prepare-version]
+    runs-on: ubuntu-latest
+    if: always() && (inputs.publish_target == 'docker' || inputs.publish_target == 'both')
+    environment: docker
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}  # Get latest commit with version increment
+
+      - name: Set up Python (for version info)
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install package (for version info)
+        run: |
+          pip install -e .
+
+      - name: Get version for Docker tags
+        id: version
+        run: |
+          VERSION=$(python -c "from secure_fl._version import get_version; print(get_version())")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Docker will be tagged with version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Docker tags
+        id: tags
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ADDITIONAL_TAGS="${{ inputs.docker_tags }}"
+
+          # Base images
+          IMAGES="krishantt/secure-fl,ghcr.io/${{ github.repository }}"
+
+          # Default tags
+          TAGS="${VERSION}"
+
+          # Add additional tags if provided
+          if [[ -n "$ADDITIONAL_TAGS" ]]; then
+            IFS=',' read -ra TAG_ARRAY <<< "$ADDITIONAL_TAGS"
+            for tag in "${TAG_ARRAY[@]}"; do
+              TAGS="${TAGS},${tag// /}"
+            done
+          fi
+
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "images=$IMAGES" >> $GITHUB_OUTPUT
+
+          echo "Docker images: $IMAGES"
+          echo "Docker tags: $TAGS"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.tags.outputs.images }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: krishantt/secure-fl
+          readme-filepath: ./README.md
+
+  publish-summary:
+    name: Publishing Summary
+    needs: [prepare-version, publish-pypi, publish-docker]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# 🚀 Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ inputs.increment_version }}" == "true" ]]; then
+            echo "## 📈 Version Management" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version incremented**: ✅ Yes" >> $GITHUB_STEP_SUMMARY
+            echo "- **New version**: \`${{ needs.prepare-version.outputs.version || 'N/A' }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Version incremented**: ❌ No (used existing version)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Publishing Results" >> $GITHUB_STEP_SUMMARY
+
+          # PyPI results
+          if [[ "${{ inputs.publish_target }}" == "pypi" || "${{ inputs.publish_target }}" == "both" ]]; then
+            if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+              echo "- **PyPI**: ✅ Published successfully" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **PyPI**: ❌ Failed (${{ needs.publish-pypi.result }})" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          # Docker results
+          if [[ "${{ inputs.publish_target }}" == "docker" || "${{ inputs.publish_target }}" == "both" ]]; then
+            if [[ "${{ needs.publish-docker.result }}" == "success" ]]; then
+              echo "- **Docker**: ✅ Published successfully" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Docker**: ❌ Failed (${{ needs.publish-docker.result }})" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ inputs.publish_target }}" == "pypi" || "${{ inputs.publish_target }}" == "both" ]] && [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+            echo "- [PyPI Package](https://pypi.org/project/secure-fl/)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ inputs.publish_target }}" == "docker" || "${{ inputs.publish_target }}" == "both" ]] && [[ "${{ needs.publish-docker.result }}" == "success" ]]; then
+            echo "- [Docker Hub](https://hub.docker.com/r/krishantt/secure-fl)" >> $GITHUB_STEP_SUMMARY
+            echo "- [GitHub Container Registry](https://github.com/${{ github.repository }}/pkgs/container/secure-fl)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify the published package works correctly" >> $GITHUB_STEP_SUMMARY
+          echo "- Update documentation if needed" >> $GITHUB_STEP_SUMMARY
+          echo "- Announce the release if this was a major update" >> $GITHUB_STEP_SUMMARY

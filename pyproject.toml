@@ -1,6 +1,6 @@
 [project]
 name = "secure-fl"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs"
 authors = [
     {name = "Krishant Timilsina", email = "krishtimil@gmail.com"},
@@ -140,7 +140,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
-version = {source = "file", path = "secure_fl/__init__.py"}
+version = {source = "call", getter = "secure_fl._version:get_version"}
 author-email = "krishtimil@gmail.com"
 license = {text = "MIT"}
 
@@ -175,6 +175,14 @@ format = "black . && isort ."
 setup-zkp = "python -m secure_fl.setup zkp"
 setup-full = "python -m secure_fl.setup full"
 check-system = "python -m secure_fl.setup check"
+
+# Version management scripts
+version = "python scripts/version.py show"
+version-increment = "python scripts/version.py increment"
+version-set = "python scripts/version.py set"
+version-publish = "python scripts/version.py publish"
+version-build-info = "python scripts/version.py build-info"
+build-with-version = "python scripts/version.py build"
 
 # Experiment scripts
 demo = "python -m secure_fl.experiments.demo"

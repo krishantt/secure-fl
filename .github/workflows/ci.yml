@@ -3,6 +3,7 @@ name: Secure FL CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    tags: ["v*"]
   pull_request:
     branches: [main, develop]
   release:
@@ -12,6 +13,7 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
     # Allow manual triggers
+
 
 jobs:
   code-quality:
@@ -23,7 +25,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Install PDM
         run: |
@@ -33,6 +35,10 @@ jobs:
       - name: Install dependencies
         run: |
           pdm install -d
+
+      - name: Display version information
+        run: |
+          pdm run version
 
       - name: Run black formatting check
         run: |
@@ -93,6 +99,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pdm
+
+      - name: Display version information
+        run: |
+          pdm run version
 
       - name: Cache dependencies
         uses: actions/cache@v3
@@ -173,7 +183,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Install PDM
         run: |
@@ -183,6 +193,10 @@ jobs:
       - name: Install dependencies
         run: |
           pdm install -d
+
+      - name: Display version information
+        run: |
+          pdm run version
 
       - name: Run end-to-end tests
         env:
@@ -211,7 +225,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Install PDM
         run: |
@@ -221,6 +235,10 @@ jobs:
       - name: Install dependencies
         run: |
           pdm install -d
+
+      - name: Display version information
+        run: |
+          pdm run version
 
       - name: Run performance benchmarks
         run: |
@@ -244,12 +262,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Install PDM
         run: |
           python -m pip install --upgrade pip
           pip install pdm
+
+      - name: Display version information
+        run: |
+          pdm run version
 
       - name: Build package
         run: |
@@ -263,7 +285,7 @@ jobs:
       - name: Test package installation
         run: |
           pip install dist/*.whl
-          python -c "import secure_fl; print('Package imported successfully')"
+          python -c "import secure_fl; print(f'Package imported successfully, version: {secure_fl.__version__}')"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
@@ -271,100 +293,11 @@ jobs:
           name: dist
           path: dist/
 
-  publish:
-    name: Publish to PyPI
-    needs: [test, build, benchmark]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
-    environment: release
+  # Publishing is now manual - remove automated PyPI publishing
+  # Use: pdm run version-publish && pdm build && pdm publish
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dist
-          path: dist/
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
-
-      - name: Publish to PyPI
-        env:
-          PDM_PUBLISH_USERNAME: __token__
-          PDM_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          pdm publish --repository pypi
-
-  docker:
-    name: Build Docker Images
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') || github.event_name == 'release'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        if: github.event_name == 'release' || github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Log in to GitHub Container Registry
-        if: github.event_name == 'release' || github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            krishantt/secure-fl
-            ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'release' || github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Update Docker Hub description
-        if: github.event_name == 'release'
-        uses: peter-evans/dockerhub-description@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: krishantt/secure-fl
-          readme-filepath: ./README.md
+  # Docker building is now manual - remove automated Docker publishing
+  # Use manual docker build and push when needed
 
   security:
     name: Security Scanning
@@ -375,7 +308,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Install security tools
         run: |
@@ -428,6 +361,10 @@ jobs:
       - name: Install docs dependencies
         run: |
           pdm install -d --group docs
+
+      - name: Display version in docs
+        run: |
+          pdm run version
 
       - name: Build documentation
         run: |

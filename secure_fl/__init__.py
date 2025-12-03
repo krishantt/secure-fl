@@ -38,6 +38,8 @@ Example usage:
     start_client(client, server_address="localhost:8080")
 """
 
+# Version information
+from ._version import __version__, get_build_info, print_version_info
 from .aggregation import FedJSCMAggregator
 from .client import SecureFlowerClient, create_client, start_client
 from .proof_manager import ClientProofManager, ProofManagerBase, ServerProofManager
@@ -66,8 +68,6 @@ from .utils import (
     validate_parameters,
 )
 
-# Version information
-__version__ = "0.1.0"
 __author__ = "Krishant Timilsina, Bindu Paudel"
 __email__ = "krishantt@example.com, bigya01@example.com"
 
@@ -82,6 +82,10 @@ __copyright__ = "Copyright (c) 2024 Krishant Timilsina, Bindu Paudel"
 
 # Export main classes and functions
 __all__ = [
+    # Version information
+    "__version__",
+    "get_build_info",
+    "print_version_info",
     # Main FL components
     "SecureFlowerServer",
     "SecureFlowerStrategy",
@@ -221,7 +225,9 @@ def print_system_info():
     print("Note: Cairo, Circom, and SnarkJS are required for full ZKP functionality")
     print("Install them separately for complete proof generation capabilities")
 
+
 # Convenience function for quick setup
+
 
 def create_secure_fl_setup(
     model_fn,
