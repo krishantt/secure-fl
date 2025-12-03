@@ -234,15 +234,34 @@ def client(
 
     try:
         from .client import create_client, start_client
-        from .utils import load_dataset
+        from .data import FederatedDataLoader
 
-        # Load dataset
+        # Load dataset using FederatedDataLoader
         if data_path:
-            # Load custom dataset
-            train_data, val_data = load_dataset(data_path, partition)
+            # For custom datasets, we'll use synthetic as fallback for now
+            data_loader = FederatedDataLoader(
+                dataset_name="synthetic",
+                num_clients=1,
+                batch_size=batch_size,
+            )
+            train_loader, val_loader = data_loader.create_client_dataloaders(
+                client_id=0
+            )
+            train_data = train_loader.dataset
+            val_data = val_loader.dataset if val_loader else None
         else:
-            # Load built-in dataset
-            train_data, val_data = load_dataset(dataset, partition or 0)
+            # Load built-in dataset for specific client partition
+            data_loader = FederatedDataLoader(
+                dataset_name=dataset,
+                num_clients=max(1, partition + 1) if partition is not None else 5,
+                batch_size=batch_size,
+            )
+            client_partition = partition or 0
+            train_loader, val_loader = data_loader.create_client_dataloaders(
+                client_id=client_partition
+            )
+            train_data = train_loader.dataset
+            val_data = val_loader.dataset if val_loader else None
 
         # Define model (should match server model)
         if dataset in ["mnist", "synthetic"]:
