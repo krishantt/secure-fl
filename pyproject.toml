@@ -46,7 +46,6 @@ dependencies = [
     "torch>=2.0.0",
     "torchvision>=0.15.0",
     "flwr>=1.5.0",
-    "numpy>=1.24.0",
     "scikit-learn>=1.3.0",
 
     # ZKP libraries and cryptography
@@ -104,14 +103,14 @@ notebook = [
 
 # Advanced quantization support
 quantization = [
-    "brevitas>=0.10.0",
-    "pytorch-quantization>=2.1.2",
+    # "brevitas>=0.10.0",
+    # "pytorch-quantization>=2.1.2",
 ]
 
 # Blockchain and smart contract tools (optional, requires external setup)
 blockchain = [
-    "brownie-eth>=1.19.0; platform_system != 'Windows'",
-    "solcx>=1.12.0",
+    # "brownie-eth>=1.19.0; platform_system != 'Windows'",
+    # "solcx>=1.12.0",
 ]
 
 # All optional dependencies
@@ -133,7 +132,7 @@ secure-fl-experiment = "secure_fl.cli:experiment_command"
 secure-fl-setup = "secure_fl.cli:setup_command"
 
 [build-system]
-requires = ["pdm-backend"]
+requires = ["pdm-backend", "numpy", "flwr", "torch"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
