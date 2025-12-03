@@ -213,44 +213,6 @@ jobs:
           pdm run secure-fl setup check
           echo "CLI tests completed"
 
-  benchmark:
-    name: Performance Benchmarks
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
-
-      - name: Install dependencies
-        run: |
-          pdm install -d
-
-      - name: Display version information
-        run: |
-          pdm run version
-
-      - name: Run performance benchmarks
-        run: |
-          pdm run pytest tests/unit/ -m performance --benchmark-only --benchmark-json=benchmark.json || echo "Benchmarks completed"
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: benchmark-results
-          path: benchmark.json
-
   build:
     name: Build Package
     needs: [test, e2e-tests]
@@ -293,12 +255,6 @@ jobs:
           name: dist
           path: dist/
 
-  # Publishing is now manual - remove automated PyPI publishing
-  # Use: pdm run version-publish && pdm build && pdm publish
-
-  # Docker building is now manual - remove automated Docker publishing
-  # Use manual docker build and push when needed
-
   security:
     name: Security Scanning
     runs-on: ubuntu-latest
@@ -339,47 +295,3 @@ jobs:
             safety-report.json
             bandit-report.json
             semgrep-report.json
-
-  docs:
-    name: Build Documentation
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
-
-      - name: Install docs dependencies
-        run: |
-          pdm install -d --group docs
-
-      - name: Display version in docs
-        run: |
-          pdm run version
-
-      - name: Build documentation
-        run: |
-          cd docs/
-          make html || echo "Documentation build completed"
-
-      - name: Upload documentation
-        uses: actions/upload-artifact@v3
-        with:
-          name: documentation
-          path: docs/_build/html/
-
-      - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/_build/html
