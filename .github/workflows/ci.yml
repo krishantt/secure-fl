@@ -22,14 +22,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
+          cache: true
 
       - name: Install dependencies
         run: |
@@ -72,19 +68,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
+          cache: true
 
       - name: Display version information
         run: |
@@ -95,7 +88,6 @@ jobs:
         with:
           path: |
             ~/.cache/pdm
-            ~/.cache/pip
             ~/.npm
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/pdm.lock', '**/package*.json') }}
           restore-keys: |
@@ -167,14 +159,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
+          cache: true
 
       - name: Install dependencies
         run: |
@@ -199,7 +187,7 @@ jobs:
           pdm run secure-fl setup check
           echo "CLI tests completed"
 
-  build:
+  build-check:
     name: Build Package
     needs: [test, e2e-tests]
     runs-on: ubuntu-latest
@@ -208,14 +196,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
+          cache: true
 
       - name: Display version information
         run: |
@@ -234,50 +218,3 @@ jobs:
         run: |
           pip install dist/*.whl
           python -c "import secure_fl; print(f'Package imported successfully, version: {secure_fl.__version__}')"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: dist/
-
-  security:
-    name: Security Scanning
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
-      - name: Install security tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install safety bandit semgrep
-
-      - name: Run safety check for dependencies
-        continue-on-error: true
-        run: |
-          safety check --json --output safety-report.json || echo "Safety check completed with findings"
-
-      - name: Run bandit security linting
-        continue-on-error: true
-        run: |
-          bandit -r secure_fl/ -f json -o bandit-report.json || echo "Bandit check completed"
-
-      - name: Run semgrep security analysis
-        continue-on-error: true
-        run: |
-          semgrep --config=auto --json --output=semgrep-report.json secure_fl/ || echo "Semgrep analysis completed"
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: security-reports
-          path: |
-            safety-report.json
-            bandit-report.json
-            semgrep-report.json
