@@ -1,4 +1,5 @@
 from secure_fl.models import SimpleModel
+
 #!/usr/bin/env python3
 """
 Code Cleanup Script for Secure FL Project
@@ -520,6 +521,7 @@ def main():
     cleanup.run_cleanup()
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

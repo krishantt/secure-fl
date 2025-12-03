@@ -39,8 +39,9 @@ from typing import Any, Dict, List, Optional, Union
 import yaml
 
 try:
-    from pydantic import BaseModel, Field, root_validator, validator
+    from pydantic import BaseModel
     from pydantic import BaseSettings as PydanticBaseSettings
+    from pydantic import Field, root_validator, validator
 
     PYDANTIC_AVAILABLE = True
 except ImportError:
@@ -64,6 +65,7 @@ except ImportError:
 
         return decorator
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,8 +87,8 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
-@dataclass
 
+@dataclass
 class ServerConfig:
     """Server configuration settings"""
 
@@ -116,8 +118,8 @@ class ServerConfig:
     rate_limit_enabled: bool = True
     max_requests_per_minute: int = 100
 
-@dataclass
 
+@dataclass
 class ClientConfig:
     """Client configuration settings"""
 
@@ -141,8 +143,8 @@ class ClientConfig:
     dp_epsilon: float = 1.0
     dp_delta: float = 1e-5
 
-@dataclass
 
+@dataclass
 class ZKPConfig:
     """Zero-Knowledge Proof configuration"""
 
@@ -170,8 +172,8 @@ class ZKPConfig:
     private_key: Optional[str] = None
     gas_limit: int = 2000000
 
-@dataclass
 
+@dataclass
 class AggregationConfig:
     """Aggregation algorithm configuration"""
 
@@ -191,8 +193,8 @@ class AggregationConfig:
     # SCAFFOLD specific
     server_control_variates: bool = False
 
-@dataclass
 
+@dataclass
 class StabilityConfig:
     """Stability monitoring configuration"""
 
@@ -206,8 +208,8 @@ class StabilityConfig:
     rigor_adjustment_factor: float = 0.1
     min_rigor_rounds: int = 2
 
-@dataclass
 
+@dataclass
 class SecurityConfig:
     """Security and privacy configuration"""
 
@@ -232,8 +234,8 @@ class SecurityConfig:
     rate_limit_requests: int = 100
     rate_limit_window: int = 60
 
-@dataclass
 
+@dataclass
 class DatabaseConfig:
     """Database configuration for metrics and logs"""
 
@@ -249,8 +251,8 @@ class DatabaseConfig:
     metrics_retention_days: int = 30
     logs_retention_days: int = 7
 
-@dataclass
 
+@dataclass
 class MonitoringConfig:
     """Monitoring and observability configuration"""
 
@@ -276,8 +278,8 @@ class MonitoringConfig:
     tracing_service_name: str = "secure-fl"
     jaeger_endpoint: Optional[str] = None
 
-@dataclass
 
+@dataclass
 class ExperimentConfig:
     """Experiment and research configuration"""
 
@@ -295,8 +297,8 @@ class ExperimentConfig:
     profile_memory: bool = False
     profile_cpu: bool = False
 
-@dataclass
 
+@dataclass
 class SecureFlConfig:
     """Main configuration class containing all settings"""
 
@@ -604,12 +606,13 @@ class ConfigManager:
         self._config_cache = None
         return self.load_config()
 
+
 # Global configuration manager instance
 _config_manager: Optional[ConfigManager] = None
 _config: Optional[SecureFlConfig] = None
 
-@lru_cache(maxsize=1)
 
+@lru_cache(maxsize=1)
 def get_config_manager(env: Optional[str] = None) -> ConfigManager:
     """Get or create global configuration manager"""
     global _config_manager
@@ -692,7 +695,9 @@ def create_default_configs(config_dir: Path) -> None:
                 yaml.dump(config_data, f, default_flow_style=False, indent=2)
             logger.info(f"Created default config: {config_path}")
 
+
 # Convenience functions for common configuration access patterns
+
 
 def get_server_config() -> ServerConfig:
     """Get server configuration"""
@@ -717,6 +722,7 @@ def is_production() -> bool:
 def is_debug_enabled() -> bool:
     """Check if debug mode is enabled"""
     return get_config().debug or get_config().environment == Environment.DEVELOPMENT
+
 
 # Export all public classes and functions
 __all__ = [

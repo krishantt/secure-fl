@@ -396,9 +396,9 @@ class HealthChecker:
 
                 connectivity_results[target] = {
                     "reachable": result == 0,
-                    "error": None
-                    if result == 0
-                    else f"Connection failed (code: {result})",
+                    "error": (
+                        None if result == 0 else f"Connection failed (code: {result})"
+                    ),
                 }
             except Exception as e:
                 connectivity_results[target] = {"reachable": False, "error": str(e)}

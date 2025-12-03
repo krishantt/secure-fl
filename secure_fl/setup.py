@@ -537,7 +537,8 @@ monitoring:
 
     def print_installation_guide(self) -> None:
         """Print installation guide"""
-        print("""
+        print(
+            """
 🚀 Secure FL Installation Guide
 ================================
 
@@ -558,7 +559,8 @@ monitoring:
 
 For more information, visit:
 https://github.com/krishantt/secure-fl
-        """)
+        """
+        )
 
 
 def main():

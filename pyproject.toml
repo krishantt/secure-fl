@@ -83,11 +83,8 @@ dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
     "mypy>=1.5.0",
-    "pre-commit>=3.4.0",
+    "ruff>=0.14.7",
 ]
 
 # Medical datasets and research tools
@@ -151,13 +148,6 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-mock>=3.11.0",
 ]
-lint = [
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "mypy>=1.5.0",
-    "pre-commit>=3.4.0",
-]
 docs = [
     "sphinx>=7.1.0",
     "sphinx-rtd-theme>=1.3.0",
@@ -167,9 +157,11 @@ docs = [
 [tool.pdm.scripts]
 # Development scripts
 test = "pytest tests/ -v --cov=secure_fl --cov-report=html"
-lint = "black . && isort . && flake8 ."
+lint = "ruff check ."
+format = "ruff format ."
 type-check = "mypy secure_fl/"
-format = "black . && isort ."
+lint-fix = "ruff check --fix ."
+
 
 # Setup and installation scripts
 setup-zkp = "python -m secure_fl.setup zkp"
@@ -194,31 +186,31 @@ train-mnist = "python -m secure_fl.experiments.train --dataset mnist"
 clean = "python -m secure_fl.setup clean"
 clean-all = "python -m secure_fl.setup clean --all"
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-target-version = ["py38", "py39", "py310", "py311"]
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-  | proofs/compiled
-)/
-'''
+target-version = "py311"
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-known_first_party = ["secure_fl"]
-known_third_party = ["torch", "flwr", "numpy", "pandas", "matplotlib", "seaborn", "tqdm", "web3", "eth_account"]
+select = [
+    "E",  # pyflakes
+    "F",  # pycodestyle
+    "B",  # bugbear
+    "I",  # import sorting
+    "UP", # pyupgrade
+]
+
+ignore = [
+    "E501",  # line length handled by formatter instead
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["secure_fl"]
+known-third-party = ["torch", "flwr", "numpy", "pandas", "matplotlib", "seaborn", "tqdm", "web3", "eth_account"]
+
 
 [tool.mypy]
 python_version = "3.8"
@@ -304,4 +296,10 @@ excludes = [
     "**/circuit_js/",
     "**/.venv/",
     "**/node_modules/",
+]
+
+[dependency-groups]
+lint = [
+    "mypy>=1.5.0",
+    "ruff>=0.14.7",
 ]

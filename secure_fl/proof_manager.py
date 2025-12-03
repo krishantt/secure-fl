@@ -14,17 +14,18 @@ The proof managers handle:
 4. Integration with Cairo (zk-STARKs) and Circom (zk-SNARKs)
 """
 
-import logging
-import json
 import hashlib
+import json
+import logging
+import os
 import subprocess
 import tempfile
-import os
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Tuple, Union
-from flwr.common import NDArrays
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
+from flwr.common import NDArrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -491,7 +492,7 @@ func verify_delta_norm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
                 [
                     "python",
                     "-c",
-                    f'''
+                    f"""
 import json
 import time
 import hashlib
@@ -515,7 +516,7 @@ proof = {{
 
 with open("{proof_file_path}", "w") as f:
     json.dump(proof, f, indent=2)
-''',
+""",
                 ],
                 capture_output=True,
                 text=True,
@@ -925,6 +926,7 @@ def test_proof_managers():
     print(f"Server proof verification: {server_verification_result}")
 
     print("ProofManager tests completed!")
+
 
 if __name__ == "__main__":
     test_proof_managers()

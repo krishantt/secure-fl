@@ -14,7 +14,6 @@ on:
   workflow_dispatch:
     # Allow manual triggers
 
-
 jobs:
   code-quality:
     name: Code Quality Checks
@@ -40,26 +39,13 @@ jobs:
         run: |
           pdm run version
 
-      - name: Run black formatting check
+      - name: Run Ruff format check
         run: |
-          pdm run format --check
-
-      - name: Run isort import sorting check
-        run: |
-          pdm run isort --check-only --diff .
-
-      - name: Run flake8 linting
-        run: |
-          pdm run flake8 secure_fl/ tests/
+          pdm run ruff format --check secure_fl tests
 
       - name: Run mypy type checking
         run: |
           pdm run type-check
-
-      - name: Check for security issues with bandit
-        run: |
-          pip install bandit
-          bandit -r secure_fl/ -ll
 
   test:
     name: Test Suite

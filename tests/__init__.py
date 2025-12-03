@@ -199,6 +199,7 @@ def check_optional_dependencies():
 
     return deps_status
 
+
 # Initialize test environment when module is imported
 if TEST_CONFIG["test_mode"]:
     setup_test_environment()

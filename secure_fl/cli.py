@@ -26,7 +26,6 @@ from secure_fl.client import create_client, start_client
 
 # Import centralized models
 from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel
-from secure_fl.models import SimpleModel
 from secure_fl.server import SecureFlowerServer, create_server_strategy
 from secure_fl.setup import SecureFLSetup
 
@@ -40,11 +39,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 @click.group()
 @click.version_option(version="0.1.0")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress output")
-
 def main(verbose: bool, quiet: bool):
     """
     🔐 Secure FL: Dual-Verifiable Federated Learning with Zero-Knowledge Proofs
@@ -59,10 +58,13 @@ def main(verbose: bool, quiet: bool):
 
     # Display banner
     if not quiet:
-        rprint("""
+        rprint(
+            """
 [bold blue]🔐 Secure FL Framework[/bold blue]
 [dim]Dual-Verifiable Federated Learning with Zero-Knowledge Proofs[/dim]
-        """)
+        """
+        )
+
 
 @main.command()
 @click.option(
@@ -97,7 +99,6 @@ def main(verbose: bool, quiet: bool):
     default="mnist",
     help="Model type to use",
 )
-
 def server(
     config: Optional[str],
     host: str,
@@ -200,6 +201,7 @@ def server(
         logger.error(f"Server failed to start: {e}")
         raise click.ClickException(f"Server error: {e}")
 
+
 @main.command()
 @click.option(
     "--server-address",
@@ -228,7 +230,6 @@ def server(
 @click.option(
     "--learning-rate", "-lr", default=0.01, type=float, help="Local learning rate"
 )
-
 def client(
     server_address: str,
     client_id: str,
@@ -305,6 +306,7 @@ def client(
         logger.error(f"Client failed to start: {e}")
         raise click.ClickException(f"Client error: {e}")
 
+
 @main.command()
 @click.option(
     "--config", "-c", type=click.Path(exists=True), help="Experiment configuration file"
@@ -341,7 +343,6 @@ def client(
 @click.option(
     "--save-models/--no-save-models", default=False, help="Save trained models"
 )
-
 def experiment(
     config: Optional[str],
     num_clients: int,
@@ -429,6 +430,7 @@ def experiment(
         logger.error(f"Experiment failed: {e}")
         raise click.ClickException(f"Experiment error: {e}")
 
+
 @main.command()
 @click.option(
     "--action",
@@ -438,7 +440,6 @@ def experiment(
 )
 @click.option("--force", is_flag=True, help="Force reinstallation")
 @click.option("--skip-zkp", is_flag=True, help="Skip ZKP tools installation")
-
 def setup(action: str, force: bool, skip_zkp: bool):
     """Setup and configure Secure FL environment"""
 
@@ -513,8 +514,8 @@ def setup(action: str, force: bool, skip_zkp: bool):
         logger.error(f"Setup failed: {e}")
         raise click.ClickException(f"Setup error: {e}")
 
-@main.command()
 
+@main.command()
 def demo():
     """Run a quick demonstration of Secure FL"""
 
@@ -550,8 +551,8 @@ def demo():
         logger.error(f"Demo failed: {e}")
         raise click.ClickException(f"Demo error: {e}")
 
-@main.command()
 
+@main.command()
 def info():
     """Display system information and component status"""
 
@@ -559,7 +560,6 @@ def info():
 
     print_system_info()
 
-# Convenience functions for programmatic access
 
 def server_command():
     """Entry point for secure-fl-server command"""
@@ -579,6 +579,7 @@ def experiment_command():
 def setup_command():
     """Entry point for secure-fl-setup command"""
     main(["setup"] + sys.argv[1:])
+
 
 if __name__ == "__main__":
     main()

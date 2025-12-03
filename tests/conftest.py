@@ -383,9 +383,9 @@ def assert_parameters_equal(
     assert len(params1) == len(params2), "Parameter lists have different lengths"
 
     for i, (p1, p2) in enumerate(zip(params1, params2)):
-        assert p1.shape == p2.shape, (
-            f"Parameter {i} shapes don't match: {p1.shape} vs {p2.shape}"
-        )
+        assert (
+            p1.shape == p2.shape
+        ), f"Parameter {i} shapes don't match: {p1.shape} vs {p2.shape}"
         assert np.allclose(p1, p2, rtol=rtol), f"Parameter {i} values don't match"
 
 
