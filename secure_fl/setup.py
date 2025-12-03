@@ -423,7 +423,16 @@ monitoring:
             # Test simple model creation
             # Model moved to secure_fl.models
 
-            from secure_fl.models import TestModel")
+            from secure_fl.models import SimpleModel
+
+            # Create a simple model instance to test
+            model = SimpleModel()
+            assert model is not None
+
+        except ImportError as e:
+            logger.warning(f"Basic functionality test failed: {e}")
+        except Exception as e:
+            logger.warning(f"Basic functionality test error: {e}")
 
     def clean(self, clean_all: bool = False) -> bool:
         """Clean up temporary files and caches"""
@@ -597,6 +606,7 @@ def main():
             print("✅ Full setup completed successfully!")
         else:
             print("⚠️ Setup completed with some issues")
+
 
 if __name__ == "__main__":
     main()
