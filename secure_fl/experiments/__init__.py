@@ -7,7 +7,7 @@ for the Secure FL framework.
 
 from .benchmark import main as benchmark_main
 from .demo import run_demo, run_quick_demo
-from .train_secure_fl import main as train_main
+from .train import main as train_main
 
 __all__ = [
     "run_demo",

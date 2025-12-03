@@ -178,8 +178,7 @@ build-with-version = "python scripts/version.py build"
 # Experiment scripts
 demo = "python -m secure_fl.experiments.demo"
 benchmark = "python -m secure_fl.experiments.benchmark"
-train-synthetic = "python -m secure_fl.experiments.train --dataset synthetic"
-train-mnist = "python -m secure_fl.experiments.train --dataset mnist"
+train = "python -m secure_fl.experiments.train"
 
 # Cleanup
 clean = "python -m secure_fl.setup clean"
