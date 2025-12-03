@@ -468,7 +468,6 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
 
 # Example usage and testing
 if __name__ == "__main__":
-
     # Simple test model
     # Model moved to secure_fl.models
 

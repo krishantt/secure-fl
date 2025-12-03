@@ -582,9 +582,9 @@ class TestCompleteTrainingWorkflow:
 
         # Reasonable performance thresholds (adjust based on hardware)
         assert avg_round_time < 120, f"Average round time too high: {avg_round_time}s"
-        assert (
-            max_memory_increase < 30
-        ), f"Memory usage increase too high: {max_memory_increase}%"
+        assert max_memory_increase < 30, (
+            f"Memory usage increase too high: {max_memory_increase}%"
+        )
 
     def _create_heterogeneous_datasets(
         self, num_clients: int, samples_per_client: int, input_dim: int = 20

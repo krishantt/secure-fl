@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Code Cleanup Script for Secure FL Project

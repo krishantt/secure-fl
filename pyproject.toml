@@ -190,7 +190,7 @@ clean-all = "python -m secure_fl.setup clean --all"
 line-length = 88
 target-version = "py311"
 
-select = [
+lint.select = [
     "E",  # pyflakes
     "F",  # pycodestyle
     "B",  # bugbear
@@ -198,7 +198,7 @@ select = [
     "UP", # pyupgrade
 ]
 
-ignore = [
+lint.ignore = [
     "E501",  # line length handled by formatter instead
 ]
 
