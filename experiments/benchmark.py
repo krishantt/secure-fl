@@ -1,0 +1,1737 @@
+"""
+Enhanced Multi-Dataset Benchmark for Secure FL
+
+This module provides comprehensive benchmarking utilities to evaluate
+the Secure FL framework across multiple datasets and their corresponding models.
+
+Supported datasets and models:
+- MNIST: MNISTModel (fully connected)
+- CIFAR-10: CIFAR10Model (CNN)
+- Synthetic: SimpleModel (configurable MLP)
+
+Features:
+- Multi-dataset support with appropriate models
+- Performance comparison across configurations
+- ZKP overhead analysis
+- Convergence analysis
+- Rich visualizations
+"""
+
+import argparse
+import json
+import logging
+
+# Import Secure FL components
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.nn as nn
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, TensorDataset
+
+sys.path.append(str(Path(__file__).parent.parent))
+
+from secure_fl.models import (
+    CIFAR10Model,
+    FlexibleMLP,
+    MNISTModel,
+    SimpleModel,
+)
+from secure_fl.utils import (
+    ndarrays_to_torch,
+    torch_to_ndarrays,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class DatasetManager:
+    """Manages multiple datasets and their corresponding models"""
+
+    def __init__(self, data_dir: str = "./_data"):
+        self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(exist_ok=True)
+
+        self.dataset_configs = {
+            # Image datasets
+            "mnist": {
+                "model_class": MNISTModel,
+                "model_kwargs": {"hidden_dims": [128, 64], "output_dim": 10},
+                "input_shape": (1, 28, 28),
+                "num_classes": 10,
+                "data_loader": self._load_mnist_data,
+                "description": "MNIST handwritten digits (28x28 grayscale)",
+            },
+            "fashion_mnist": {
+                "model_class": MNISTModel,
+                "model_kwargs": {"hidden_dims": [256, 128], "output_dim": 10},
+                "input_shape": (1, 28, 28),
+                "num_classes": 10,
+                "data_loader": self._load_fashion_mnist_data,
+                "description": "Fashion-MNIST clothing items (28x28 grayscale)",
+            },
+            "cifar10": {
+                "model_class": CIFAR10Model,
+                "model_kwargs": {"num_classes": 10},
+                "input_shape": (3, 32, 32),
+                "num_classes": 10,
+                "data_loader": self._load_cifar10_data,
+                "description": "CIFAR-10 natural images (32x32 RGB)",
+            },
+            "cifar100": {
+                "model_class": CIFAR10Model,  # Reuse architecture but with 100 classes
+                "model_kwargs": {"num_classes": 100},
+                "input_shape": (3, 32, 32),
+                "num_classes": 100,
+                "data_loader": self._load_cifar100_data,
+                "description": "CIFAR-100 natural images (32x32 RGB, 100 classes)",
+            },
+            # Synthetic datasets with different models
+            "synthetic": {
+                "model_class": SimpleModel,
+                "model_kwargs": {
+                    "input_dim": 784,
+                    "hidden_dims": [128, 64],
+                    "output_dim": 10,
+                },
+                "input_shape": (784,),
+                "num_classes": 10,
+                "data_loader": self._load_synthetic_data,
+                "description": "Synthetic data for basic testing",
+            },
+            "synthetic_large": {
+                "model_class": FlexibleMLP,
+                "model_kwargs": {
+                    "input_dim": 1024,
+                    "hidden_dims": [512, 256, 128],
+                    "output_dim": 20,
+                    "activation": "relu",
+                    "dropout_rate": 0.2,
+                    "use_batch_norm": True,
+                },
+                "input_shape": (1024,),
+                "num_classes": 20,
+                "data_loader": self._load_synthetic_large_data,
+                "description": "Large synthetic dataset with 20 classes",
+            },
+            "synthetic_small": {
+                "model_class": FlexibleMLP,
+                "model_kwargs": {
+                    "input_dim": 100,
+                    "hidden_dims": [64, 32],
+                    "output_dim": 5,
+                    "activation": "tanh",
+                    "dropout_rate": 0.1,
+                },
+                "input_shape": (100,),
+                "num_classes": 5,
+                "data_loader": self._load_synthetic_small_data,
+                "description": "Small synthetic dataset for quick testing",
+            },
+            # Text-like datasets (using flexible MLP)
+            "text_classification": {
+                "model_class": FlexibleMLP,
+                "model_kwargs": {
+                    "input_dim": 300,  # Word embedding dimension
+                    "hidden_dims": [256, 128, 64],
+                    "output_dim": 4,  # Sentiment classes
+                    "activation": "gelu",
+                    "dropout_rate": 0.3,
+                    "use_batch_norm": True,
+                },
+                "input_shape": (300,),
+                "num_classes": 4,
+                "data_loader": self._load_text_classification_data,
+                "description": "Simulated text classification (4 sentiment classes)",
+            },
+            # Medical-like datasets
+            "medical": {
+                "model_class": FlexibleMLP,
+                "model_kwargs": {
+                    "input_dim": 256,
+                    "hidden_dims": [128, 64, 32],
+                    "output_dim": 3,  # Disease classes
+                    "activation": "relu",
+                    "dropout_rate": 0.4,
+                    "use_batch_norm": True,
+                },
+                "input_shape": (256,),
+                "num_classes": 3,
+                "data_loader": self._load_medical_data,
+                "description": "Simulated medical diagnosis (3 disease classes)",
+            },
+            # Financial-like datasets
+            "financial": {
+                "model_class": FlexibleMLP,
+                "model_kwargs": {
+                    "input_dim": 50,  # Financial features
+                    "hidden_dims": [128, 64],
+                    "output_dim": 2,  # Binary classification
+                    "activation": "leaky_relu",
+                    "dropout_rate": 0.2,
+                    "final_activation": "sigmoid",
+                },
+                "input_shape": (50,),
+                "num_classes": 2,
+                "data_loader": self._load_financial_data,
+                "description": "Simulated financial fraud detection (binary)",
+            },
+        }
+
+    def list_available_datasets(self) -> dict[str, str]:
+        """List all available datasets with descriptions"""
+        return {
+            name: config["description"] for name, config in self.dataset_configs.items()
+        }
+
+    def get_dataset_categories(self) -> dict[str, list[str]]:
+        """Get datasets organized by category"""
+        categories = {
+            "Image Datasets": ["mnist", "fashion_mnist", "cifar10", "cifar100"],
+            "Synthetic Datasets": ["synthetic", "synthetic_large", "synthetic_small"],
+            "Domain-Specific": ["text_classification", "medical", "financial"],
+        }
+        return categories
+
+    def get_model(self, dataset_name: str) -> nn.Module:
+        """Get appropriate model for dataset"""
+        if dataset_name not in self.dataset_configs:
+            raise ValueError(f"Unknown dataset: {dataset_name}")
+
+        config = self.dataset_configs[dataset_name]
+        return config["model_class"](**config["model_kwargs"])
+
+    def get_dataset_info(self, dataset_name: str) -> dict[str, Any]:
+        """Get dataset configuration information"""
+        info = self.dataset_configs[dataset_name].copy()
+        # Make JSON serializable by removing non-serializable items
+        info["model_class"] = info["model_class"].__name__
+        # Remove function references that can't be serialized
+        info.pop("data_loader", None)
+        return info
+
+    def load_federated_data(
+        self, dataset_name: str, num_clients: int = 3, iid: bool = True
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Load federated data splits for specified dataset"""
+        if dataset_name not in self.dataset_configs:
+            raise ValueError(f"Unknown dataset: {dataset_name}")
+
+        loader_func = self.dataset_configs[dataset_name]["data_loader"]
+        return loader_func(num_clients, iid)
+
+    def _load_mnist_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Load MNIST data split across clients"""
+        transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        )
+
+        # Download MNIST if not exists
+        train_dataset = torchvision.datasets.MNIST(
+            root=self.data_dir, train=True, download=True, transform=transform
+        )
+        test_dataset = torchvision.datasets.MNIST(
+            root=self.data_dir, train=False, download=True, transform=transform
+        )
+
+        return self._create_federated_splits(
+            train_dataset, test_dataset, num_clients, iid
+        )
+
+    def _load_fashion_mnist_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Load Fashion-MNIST data split across clients"""
+        transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.2860,), (0.3530,))]
+        )
+
+        # Download Fashion-MNIST if not exists
+        train_dataset = torchvision.datasets.FashionMNIST(
+            root=self.data_dir, train=True, download=True, transform=transform
+        )
+        test_dataset = torchvision.datasets.FashionMNIST(
+            root=self.data_dir, train=False, download=True, transform=transform
+        )
+
+        return self._create_federated_splits(
+            train_dataset, test_dataset, num_clients, iid
+        )
+
+    def _load_cifar100_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Load CIFAR-100 data split across clients"""
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.5070, 0.4865, 0.4409), (0.2673, 0.2564, 0.2761)
+                ),
+            ]
+        )
+
+        transform_test = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.5070, 0.4865, 0.4409), (0.2673, 0.2564, 0.2761)
+                ),
+            ]
+        )
+
+        train_dataset = torchvision.datasets.CIFAR100(
+            root=self.data_dir, train=True, download=True, transform=transform_train
+        )
+        test_dataset = torchvision.datasets.CIFAR100(
+            root=self.data_dir, train=False, download=True, transform=transform_test
+        )
+
+        return self._create_federated_splits(
+            train_dataset, test_dataset, num_clients, iid, num_classes=100
+        )
+
+    def _load_cifar10_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Load CIFAR-10 data split across clients"""
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                ),
+            ]
+        )
+
+        transform_test = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                ),
+            ]
+        )
+
+        train_dataset = torchvision.datasets.CIFAR10(
+            root=self.data_dir, train=True, download=True, transform=transform_train
+        )
+        test_dataset = torchvision.datasets.CIFAR10(
+            root=self.data_dir, train=False, download=True, transform=transform_test
+        )
+
+        return self._create_federated_splits(
+            train_dataset, test_dataset, num_clients, iid
+        )
+
+    def _load_synthetic_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate synthetic federated data"""
+        # Generate synthetic data
+        total_samples = 2000
+        samples_per_client = total_samples // num_clients
+        input_dim = 784
+        num_classes = 10
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                # IID: each client gets random samples from all classes
+                X = torch.randn(samples_per_client, input_dim)
+                y = torch.randint(0, num_classes, (samples_per_client,))
+            else:
+                # Non-IID: each client gets 2-3 classes
+                classes_per_client = 2 + (client_id % 2)  # 2 or 3 classes
+                start_class = (client_id * 2) % num_classes
+                client_classes = [
+                    (start_class + i) % num_classes for i in range(classes_per_client)
+                ]
+
+                X = torch.randn(samples_per_client, input_dim)
+                y = torch.tensor(
+                    [
+                        client_classes[i % len(client_classes)]
+                        for i in range(samples_per_client)
+                    ]
+                )
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _load_synthetic_large_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate large synthetic federated data"""
+        total_samples = 5000
+        samples_per_client = total_samples // num_clients
+        input_dim = 1024
+        num_classes = 20
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                # IID: each client gets random samples from all classes
+                X = torch.randn(samples_per_client, input_dim) * 2 + 1
+                y = torch.randint(0, num_classes, (samples_per_client,))
+            else:
+                # Non-IID: each client gets 4-6 classes
+                classes_per_client = 4 + (client_id % 3)  # 4, 5, or 6 classes
+                start_class = (client_id * 3) % num_classes
+                client_classes = [
+                    (start_class + i) % num_classes for i in range(classes_per_client)
+                ]
+
+                X = torch.randn(samples_per_client, input_dim) * 1.5 + 0.5
+                y = torch.tensor(
+                    [
+                        client_classes[i % len(client_classes)]
+                        for i in range(samples_per_client)
+                    ]
+                )
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _load_synthetic_small_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate small synthetic federated data for quick testing"""
+        total_samples = 500
+        samples_per_client = max(50, total_samples // num_clients)
+        input_dim = 100
+        num_classes = 5
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                X = torch.randn(samples_per_client, input_dim)
+                y = torch.randint(0, num_classes, (samples_per_client,))
+            else:
+                # Non-IID: each client gets 2-3 classes
+                classes_per_client = 2 + (client_id % 2)
+                start_class = (client_id * 2) % num_classes
+                client_classes = [
+                    (start_class + i) % num_classes for i in range(classes_per_client)
+                ]
+
+                X = torch.randn(samples_per_client, input_dim) * 0.8
+                y = torch.tensor(
+                    [
+                        client_classes[i % len(client_classes)]
+                        for i in range(samples_per_client)
+                    ]
+                )
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _load_text_classification_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate simulated text classification data (e.g., sentiment analysis)"""
+        total_samples = 3000
+        samples_per_client = total_samples // num_clients
+        input_dim = 300  # Simulating word embeddings
+        num_classes = 4  # Positive, Negative, Neutral, Mixed
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                # Random word embeddings
+                X = torch.randn(samples_per_client, input_dim) * 0.5
+                y = torch.randint(0, num_classes, (samples_per_client,))
+            else:
+                # Non-IID: clients might specialize in certain sentiments
+                primary_classes = [
+                    (client_id * 2) % num_classes,
+                    (client_id * 2 + 1) % num_classes,
+                ]
+
+                X = torch.randn(samples_per_client, input_dim) * 0.3
+                # 70% from primary classes, 30% from others
+                primary_samples = int(0.7 * samples_per_client)
+                y_primary = torch.randint(0, len(primary_classes), (primary_samples,))
+                y_primary = torch.tensor([primary_classes[i] for i in y_primary])
+                y_others = torch.randint(
+                    0, num_classes, (samples_per_client - primary_samples,)
+                )
+                y = torch.cat([y_primary, y_others])
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _load_medical_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate simulated medical diagnosis data"""
+        total_samples = 2000
+        samples_per_client = total_samples // num_clients
+        input_dim = 256  # Medical features (symptoms, test results, etc.)
+        num_classes = 3  # Healthy, Disease A, Disease B
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                # Random medical features
+                X = torch.abs(torch.randn(samples_per_client, input_dim)) * 2
+                y = torch.randint(0, num_classes, (samples_per_client,))
+            else:
+                # Non-IID: different hospitals might see different disease prevalence
+                if client_id % 3 == 0:
+                    # Hospital specializing in Disease A
+                    disease_dist = [0.3, 0.6, 0.1]
+                elif client_id % 3 == 1:
+                    # Hospital specializing in Disease B
+                    disease_dist = [0.3, 0.1, 0.6]
+                else:
+                    # General hospital
+                    disease_dist = [0.5, 0.25, 0.25]
+
+                X = torch.abs(torch.randn(samples_per_client, input_dim)) * 1.5
+                y = torch.multinomial(
+                    torch.tensor(disease_dist), samples_per_client, replacement=True
+                )
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _load_financial_data(
+        self, num_clients: int, iid: bool
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Generate simulated financial fraud detection data"""
+        total_samples = 4000
+        samples_per_client = total_samples // num_clients
+        input_dim = 50  # Financial features
+        num_classes = 2  # Normal, Fraud
+
+        client_loaders = []
+
+        for client_id in range(num_clients):
+            if iid:
+                X = torch.randn(samples_per_client, input_dim)
+                y = torch.bernoulli(
+                    torch.full((samples_per_client,), 0.1)
+                ).long()  # 10% fraud
+            else:
+                # Non-IID: different institutions might have different fraud rates
+                if client_id % 3 == 0:
+                    # High-risk institution
+                    fraud_rate = 0.2
+                elif client_id % 3 == 1:
+                    # Medium-risk institution
+                    fraud_rate = 0.1
+                else:
+                    # Low-risk institution
+                    fraud_rate = 0.05
+
+                X = torch.randn(samples_per_client, input_dim)
+                y = torch.bernoulli(
+                    torch.full((samples_per_client,), fraud_rate)
+                ).long()
+
+            # Split into train/val
+            split_idx = int(0.8 * samples_per_client)
+
+            train_dataset = TensorDataset(X[:split_idx], y[:split_idx])
+            val_dataset = TensorDataset(X[split_idx:], y[split_idx:])
+
+            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+            client_loaders.append((train_loader, val_loader))
+
+        return client_loaders
+
+    def _create_federated_splits(
+        self,
+        train_dataset,
+        test_dataset,
+        num_clients: int,
+        iid: bool,
+        num_classes: int = 10,
+    ) -> list[tuple[DataLoader, DataLoader]]:
+        """Create federated data splits from datasets"""
+        total_train = len(train_dataset)
+        samples_per_client = total_train // num_clients
+
+        client_loaders = []
+
+        if iid:
+            # IID: randomly distribute samples
+            indices = torch.randperm(total_train)
+
+            for i in range(num_clients):
+                start_idx = i * samples_per_client
+                end_idx = start_idx + samples_per_client
+                client_indices = indices[start_idx:end_idx]
+
+                client_train = torch.utils.data.Subset(train_dataset, client_indices)
+
+                # Use same test set for all clients (could be split too)
+                train_loader = DataLoader(client_train, batch_size=32, shuffle=True)
+                test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+                client_loaders.append((train_loader, test_loader))
+        else:
+            # Non-IID: distribute by class
+
+            # Group samples by class
+            class_indices = {i: [] for i in range(num_classes)}
+            for idx, (_, label) in enumerate(train_dataset):
+                class_indices[label].append(idx)
+
+            # Distribute classes to clients
+            classes_per_client = max(1, num_classes // num_clients)
+
+            for i in range(num_clients):
+                client_indices = []
+
+                # Assign classes to this client
+                start_class = (i * classes_per_client) % num_classes
+                client_classes = [
+                    (start_class + j) % num_classes for j in range(classes_per_client)
+                ]
+
+                # Add additional classes if needed
+                if len(client_classes) < 2:  # Ensure at least 2 classes per client
+                    additional_class = (start_class + classes_per_client) % num_classes
+                    client_classes.append(additional_class)
+
+                # Collect indices for assigned classes
+                for class_id in client_classes:
+                    class_size = len(class_indices[class_id])
+                    samples_from_class = min(
+                        class_size, samples_per_client // len(client_classes)
+                    )
+                    client_indices.extend(class_indices[class_id][:samples_from_class])
+
+                client_train = torch.utils.data.Subset(train_dataset, client_indices)
+
+                train_loader = DataLoader(client_train, batch_size=32, shuffle=True)
+                test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+                client_loaders.append((train_loader, test_loader))
+
+        return client_loaders
+
+
+class MultiDatasetBenchmarkRunner:
+    """Enhanced benchmark runner supporting multiple datasets and models"""
+
+    def __init__(self, output_dir: str = "results/multi_dataset_benchmark"):
+        self.base_output_dir = Path(output_dir)
+        self.output_dir = None  # Will be set based on datasets and configs
+        self.dataset_manager = DatasetManager()
+        self.results = {}
+
+    def run_comprehensive_benchmark(
+        self, datasets: list[str] = None, configs: list[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """Run comprehensive benchmark across multiple datasets"""
+
+        if datasets is None:
+            datasets = ["mnist", "cifar10", "synthetic"]
+
+        if configs is None:
+            configs = self.get_default_benchmark_configs()
+
+        # Create organized output directory based on datasets and configs
+        self.output_dir = self._create_output_directory(datasets, configs)
+
+        logger.info(f"Running multi-dataset benchmark on {datasets}")
+        logger.info(f"Configurations: {[c['name'] for c in configs]}")
+        logger.info(f"Results will be saved to: {self.output_dir}")
+
+        all_results = {}
+
+        for dataset in datasets:
+            logger.info(f"\n{'=' * 60}")
+            logger.info(f"BENCHMARKING DATASET: {dataset.upper()}")
+            logger.info(f"{'=' * 60}")
+
+            dataset_results = {}
+
+            for config in configs:
+                config_name = f"{dataset}_{config['name']}"
+                logger.info(f"\nRunning config: {config_name}")
+
+                try:
+                    result = self._run_single_dataset_benchmark(dataset, config)
+                    dataset_results[config["name"]] = result
+                    logger.info(f"✓ Completed {config_name}")
+
+                except Exception as e:
+                    logger.error(f"✗ Failed {config_name}: {e}")
+                    dataset_results[config["name"]] = {"error": str(e)}
+
+            all_results[dataset] = dataset_results
+
+        # Save results
+        self.results = all_results
+        self._save_results(all_results, datasets, configs)
+
+        # Generate comprehensive visualizations
+        self._generate_multi_dataset_plots(all_results)
+
+        return all_results
+
+    def _create_output_directory(
+        self, datasets: list[str], configs: list[dict[str, Any]]
+    ) -> Path:
+        """Create organized output directory based on datasets and configs"""
+        import datetime
+
+        # Create timestamp for uniqueness
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Create dataset string (limit length for filesystem compatibility)
+        if len(datasets) <= 3:
+            datasets_str = "_".join(datasets)
+        else:
+            datasets_str = f"{len(datasets)}datasets"
+
+        # Create config string (limit length)
+        config_names = [c["name"] for c in configs]
+        if len(config_names) <= 3:
+            configs_str = "_".join(config_names)
+        else:
+            configs_str = f"{len(config_names)}configs"
+
+        # Create organized directory structure
+        run_name = f"{datasets_str}_{configs_str}_{timestamp}"
+        output_dir = self.base_output_dir / run_name
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create subdirectories for organization
+        (output_dir / "plots").mkdir(exist_ok=True)
+        (output_dir / "raw_data").mkdir(exist_ok=True)
+
+        return output_dir
+
+    def _run_single_dataset_benchmark(
+        self, dataset: str, config: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Run benchmark for single dataset with specific config"""
+
+        # Get dataset-specific model
+        model = self.dataset_manager.get_model(dataset)
+        dataset_info = self.dataset_manager.get_dataset_info(dataset)
+
+        # Extract config parameters
+        num_clients = config.get("num_clients", 3)
+        num_rounds = config.get("num_rounds", 5)
+        local_epochs = config.get("local_epochs", 3)
+        learning_rate = config.get("learning_rate", 0.01)
+        enable_zkp = config.get("enable_zkp", False)
+        proof_rigor = config.get("proof_rigor", "medium")
+        iid = config.get("iid", True)
+
+        logger.info(f"Model: {model.__class__.__name__}")
+        logger.info(f"Clients: {num_clients}, Rounds: {num_rounds}")
+        logger.info(f"ZKP: {enable_zkp}, Rigor: {proof_rigor}")
+
+        # Load federated data
+        client_data = self.dataset_manager.load_federated_data(
+            dataset, num_clients, iid
+        )
+
+        # Initialize results tracking
+        results = {
+            "dataset": dataset,
+            "model_class": model.__class__.__name__,
+            "config": config.copy(),
+            "dataset_info": dataset_info,
+            "round_accuracies": [],
+            "round_losses": [],
+            "communication_overhead": [],
+            "proof_times": [],
+            "training_time": 0,
+            "memory_usage": [],
+        }
+
+        start_time = time.time()
+
+        # Simulate federated learning rounds
+        global_model = model
+        global_accuracy = 0.0
+
+        for round_num in range(num_rounds):
+            logger.info(f"  Round {round_num + 1}/{num_rounds}")
+
+            round_start = time.time()
+
+            # Simulate client training
+            client_updates = []
+            client_weights = []
+            total_samples = 0
+
+            for client_id in range(num_clients):
+                train_loader, val_loader = client_data[client_id]
+
+                # Count samples for weighting
+                samples_count = len(train_loader.dataset)
+                total_samples += samples_count
+
+                # Simulate local training
+                client_model = type(global_model)(**dataset_info["model_kwargs"])
+                client_model.load_state_dict(global_model.state_dict())
+
+                # Train for local epochs
+                client_model.train()
+                optimizer = torch.optim.SGD(client_model.parameters(), lr=learning_rate)
+                criterion = nn.CrossEntropyLoss()
+
+                for epoch in range(local_epochs):
+                    epoch_loss = 0.0
+                    for batch_idx, (data, target) in enumerate(train_loader):
+                        optimizer.zero_grad()
+
+                        # Handle different input shapes
+                        if dataset == "synthetic":
+                            data = data.view(data.size(0), -1)  # Flatten for synthetic
+
+                        output = client_model(data)
+                        loss = criterion(output, target)
+                        loss.backward()
+                        optimizer.step()
+                        epoch_loss += loss.item()
+
+                # Get client parameters
+                client_params = torch_to_ndarrays(client_model)
+                client_updates.append(client_params)
+                client_weights.append(samples_count)
+
+            # Normalize client weights
+            client_weights = [w / total_samples for w in client_weights]
+
+            # Simulate FedJSCM aggregation (simplified)
+            aggregated_params = []
+            for layer_idx in range(len(client_updates[0])):
+                weighted_layer = sum(
+                    w * client_update[layer_idx]
+                    for w, client_update in zip(client_weights, client_updates)
+                )
+                aggregated_params.append(weighted_layer)
+
+            # Update global model
+            ndarrays_to_torch(global_model, aggregated_params)
+
+            # Evaluate global model
+            global_model.eval()
+            correct = 0
+            total = 0
+            total_loss = 0.0
+
+            # Use first client's test data for evaluation (simplified)
+            _, test_loader = client_data[0]
+
+            with torch.no_grad():
+                for data, target in test_loader:
+                    if dataset == "synthetic":
+                        data = data.view(data.size(0), -1)
+
+                    outputs = global_model(data)
+                    loss = criterion(outputs, target)
+                    total_loss += loss.item()
+
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += target.size(0)
+                    correct += (predicted == target).sum().item()
+
+            accuracy = 100 * correct / total if total > 0 else 0.0
+            avg_loss = total_loss / len(test_loader) if len(test_loader) > 0 else 0.0
+
+            # Simulate ZKP overhead
+            proof_time = 0.0
+            if enable_zkp:
+                if proof_rigor == "high":
+                    proof_time = np.random.normal(2.5, 0.3)  # High rigor: ~2.5s
+                elif proof_rigor == "medium":
+                    proof_time = np.random.normal(1.2, 0.2)  # Medium rigor: ~1.2s
+                else:
+                    proof_time = np.random.normal(0.4, 0.1)  # Low rigor: ~0.4s
+                proof_time = max(0.1, proof_time)  # Ensure positive
+
+            # Calculate communication overhead (simplified)
+            base_comm = (
+                sum(param.numel() for param in global_model.parameters()) * 4 / 1024
+            )  # KB
+            zkp_overhead = 1.15 if enable_zkp else 1.0  # 15% overhead for ZKP
+            comm_overhead = base_comm * zkp_overhead
+
+            # Record results
+            results["round_accuracies"].append(accuracy)
+            results["round_losses"].append(avg_loss)
+            results["communication_overhead"].append(comm_overhead)
+            results["proof_times"].append(proof_time)
+
+            round_time = time.time() - round_start
+            logger.info(f"    Accuracy: {accuracy:.2f}%, Loss: {avg_loss:.4f}")
+            logger.info(
+                f"    Proof time: {proof_time:.3f}s, Comm: {comm_overhead:.1f}KB"
+            )
+
+        results["training_time"] = time.time() - start_time
+        results["final_accuracy"] = results["round_accuracies"][-1]
+        results["convergence_round"] = self._calculate_convergence_round(
+            results["round_accuracies"]
+        )
+
+        return results
+
+    def _calculate_convergence_round(
+        self, accuracies: list[float], threshold: float = 0.95
+    ) -> int:
+        """Calculate round at which model converged"""
+        if len(accuracies) < 2:
+            return len(accuracies)
+
+        max_accuracy = max(accuracies)
+        target_accuracy = max_accuracy * threshold
+
+        for i, acc in enumerate(accuracies):
+            if acc >= target_accuracy:
+                return i + 1
+
+        return len(accuracies)
+
+    def get_default_benchmark_configs(self) -> list[dict[str, Any]]:
+        """Get default benchmark configurations"""
+        return [
+            # Basic baselines
+            {
+                "name": "baseline_iid",
+                "num_clients": 3,
+                "num_rounds": 5,
+                "local_epochs": 3,
+                "learning_rate": 0.01,
+                "enable_zkp": False,
+                "iid": True,
+                "description": "IID baseline without ZKP",
+            },
+            {
+                "name": "baseline_non_iid",
+                "num_clients": 3,
+                "num_rounds": 5,
+                "local_epochs": 3,
+                "learning_rate": 0.01,
+                "enable_zkp": False,
+                "iid": False,
+                "description": "Non-IID baseline without ZKP",
+            },
+            # ZKP configurations
+            {
+                "name": "zkp_high_rigor",
+                "num_clients": 3,
+                "num_rounds": 5,
+                "local_epochs": 3,
+                "learning_rate": 0.01,
+                "enable_zkp": True,
+                "proof_rigor": "high",
+                "iid": False,
+                "description": "High ZKP rigor (~2.5s proof time)",
+            },
+            {
+                "name": "zkp_medium_rigor",
+                "num_clients": 3,
+                "num_rounds": 5,
+                "local_epochs": 3,
+                "learning_rate": 0.01,
+                "enable_zkp": True,
+                "proof_rigor": "medium",
+                "iid": False,
+                "description": "Medium ZKP rigor (~1.2s proof time)",
+            },
+            {
+                "name": "zkp_low_rigor",
+                "num_clients": 3,
+                "num_rounds": 5,
+                "local_epochs": 3,
+                "learning_rate": 0.01,
+                "enable_zkp": True,
+                "proof_rigor": "low",
+                "iid": False,
+                "description": "Low ZKP rigor (~0.4s proof time)",
+            },
+            # Scaled configurations
+            {
+                "name": "scaled_up",
+                "num_clients": 5,
+                "num_rounds": 8,
+                "local_epochs": 2,
+                "learning_rate": 0.01,
+                "enable_zkp": True,
+                "proof_rigor": "medium",
+                "iid": False,
+                "description": "Larger scale experiment (5 clients, 8 rounds)",
+            },
+            {
+                "name": "quick_test",
+                "num_clients": 2,
+                "num_rounds": 3,
+                "local_epochs": 2,
+                "learning_rate": 0.02,
+                "enable_zkp": True,
+                "proof_rigor": "low",
+                "iid": True,
+                "description": "Quick test configuration",
+            },
+            # Performance focused
+            {
+                "name": "performance_focused",
+                "num_clients": 4,
+                "num_rounds": 10,
+                "local_epochs": 5,
+                "learning_rate": 0.005,
+                "enable_zkp": False,
+                "iid": False,
+                "description": "Performance-focused without ZKP overhead",
+            },
+        ]
+
+    def _save_results(
+        self,
+        results: dict[str, Any],
+        datasets: list[str],
+        configs: list[dict[str, Any]],
+    ):
+        """Save benchmark results to JSON with organized structure"""
+
+        # Save main results file
+        results_file = self.output_dir / "raw_data" / "benchmark_results.json"
+
+        # Create metadata
+        metadata = {
+            "experiment_info": {
+                "timestamp": self.output_dir.name.split("_")[-1],
+                "datasets": datasets,
+                "configurations": [c["name"] for c in configs],
+                "total_datasets": len(datasets),
+                "total_configs": len(configs),
+            },
+            "results": {},
+        }
+
+        # Convert numpy arrays to lists for JSON serialization
+        for dataset, dataset_configs in results.items():
+            metadata["results"][dataset] = {}
+            for config_name, result in dataset_configs.items():
+                if isinstance(result, dict):
+                    serialized_result = {}
+                    for k, v in result.items():
+                        if isinstance(v, np.ndarray):
+                            serialized_result[k] = v.tolist()
+                        elif isinstance(v, type):
+                            # Convert class types to string
+                            serialized_result[k] = v.__name__
+                        elif hasattr(v, "__dict__"):
+                            # Skip complex objects that can't be serialized
+                            serialized_result[k] = str(v)
+                        else:
+                            serialized_result[k] = v
+                    metadata["results"][dataset][config_name] = serialized_result
+                else:
+                    metadata["results"][dataset][config_name] = result
+
+        with open(results_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        # Also save individual dataset results for easier analysis
+        for dataset, dataset_results in results.items():
+            dataset_file = self.output_dir / "raw_data" / f"{dataset}_results.json"
+            dataset_metadata = {
+                "dataset": dataset,
+                "timestamp": metadata["experiment_info"]["timestamp"],
+                "configurations": list(dataset_results.keys()),
+                "results": metadata["results"][dataset],
+            }
+            with open(dataset_file, "w") as f:
+                json.dump(dataset_metadata, f, indent=2)
+
+        # Create summary file
+        summary_file = self.output_dir / "experiment_summary.txt"
+        self._create_summary_file(summary_file, datasets, configs, results)
+
+        logger.info(f"Results saved to {self.output_dir}")
+        logger.info(f"  - Main results: {results_file.relative_to(self.output_dir)}")
+        logger.info(f"  - Individual datasets: raw_data/{dataset}_results.json")
+        logger.info("  - Summary: experiment_summary.txt")
+
+    def _create_summary_file(
+        self,
+        summary_file: Path,
+        datasets: list[str],
+        configs: list[dict[str, Any]],
+        results: dict[str, Any],
+    ):
+        """Create a human-readable summary file"""
+        with open(summary_file, "w") as f:
+            f.write("SECURE FL BENCHMARK EXPERIMENT SUMMARY\n")
+            f.write("=" * 50 + "\n\n")
+
+            f.write(f"Timestamp: {self.output_dir.name.split('_')[-1]}\n")
+            f.write(f"Total Datasets: {len(datasets)}\n")
+            f.write(f"Total Configurations: {len(configs)}\n\n")
+
+            f.write("DATASETS:\n")
+            for dataset in datasets:
+                dataset_info = self.dataset_manager.get_dataset_info(dataset)
+                f.write(
+                    f"  • {dataset:<15} → {dataset_info['model_class']:<12} | {dataset_info['description']}\n"
+                )
+            f.write("\n")
+
+            f.write("CONFIGURATIONS:\n")
+            for config in configs:
+                f.write(
+                    f"  • {config['name']:<18} | {config.get('description', 'No description')}\n"
+                )
+            f.write("\n")
+
+            f.write("RESULTS SUMMARY:\n")
+            for dataset, dataset_results in results.items():
+                f.write(f"\n{dataset.upper()} Dataset:\n")
+                for config_name, result in dataset_results.items():
+                    if isinstance(result, dict) and "final_accuracy" in result:
+                        accuracy = result["final_accuracy"]
+                        time = result.get("training_time", 0)
+                        f.write(
+                            f"  {config_name:<20}: {accuracy:6.2f}% ({time:5.1f}s)\n"
+                        )
+                    else:
+                        f.write(f"  {config_name:<20}: ERROR or incomplete\n")
+
+            f.write(
+                "\nDetailed results available in: raw_data/benchmark_results.json\n"
+            )
+            f.write("Plots and visualizations in: plots/\n")
+
+    def _generate_multi_dataset_plots(self, results: dict[str, Any]):
+        """Generate comprehensive visualization plots"""
+        logger.info("Generating multi-dataset visualizations...")
+
+        try:
+            # 1. Accuracy comparison across datasets and configurations
+            self._plot_accuracy_comparison(results)
+
+            # 2. ZKP overhead analysis
+            self._plot_zkp_overhead(results)
+
+            # 3. Convergence analysis
+            self._plot_convergence_analysis(results)
+
+            # 4. Model complexity vs performance
+            self._plot_model_complexity(results)
+
+            logger.info("All visualizations saved!")
+        except Exception as e:
+            logger.error(f"Visualization generation failed: {e}")
+            logger.info("Continuing without visualizations...")
+
+    def _plot_accuracy_comparison(self, results: dict[str, Any]):
+        """Plot accuracy comparison across datasets and configs"""
+        fig, axes = plt.subplots(1, len(results), figsize=(5 * len(results), 6))
+        if len(results) == 1:
+            axes = [axes]
+
+        for idx, (dataset, configs) in enumerate(results.items()):
+            ax = axes[idx]
+
+            config_names = []
+            final_accuracies = []
+            colors = []
+
+            color_map = {
+                "baseline_iid": "#2E8B57",  # Sea green
+                "baseline_non_iid": "#4682B4",  # Steel blue
+                "zkp_high_rigor": "#DC143C",  # Crimson
+                "zkp_medium_rigor": "#FF8C00",  # Dark orange
+                "scaled_up": "#9932CC",  # Dark orchid
+            }
+
+            for config_name, result in configs.items():
+                if "error" not in result:
+                    config_names.append(config_name.replace("_", "\n"))
+                    final_accuracies.append(result["final_accuracy"])
+                    colors.append(color_map.get(config_name, "#666666"))
+
+            bars = ax.bar(
+                config_names,
+                final_accuracies,
+                color=colors,
+                alpha=0.8,
+                edgecolor="black",
+            )
+
+            # Add value labels on bars
+            for bar, acc in zip(bars, final_accuracies):
+                height = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    height + 0.5,
+                    f"{acc:.1f}%",
+                    ha="center",
+                    va="bottom",
+                    fontweight="bold",
+                )
+
+            ax.set_title(
+                f"{dataset.upper()} Dataset\nFinal Accuracy Comparison",
+                fontweight="bold",
+            )
+            ax.set_ylabel("Accuracy (%)")
+            if final_accuracies:
+                ax.set_ylim(0, max(final_accuracies) * 1.1 + 5)
+            else:
+                ax.set_ylim(0, 100)
+            ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(
+            self.output_dir / "plots" / "accuracy_comparison.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+    def _plot_zkp_overhead(self, results: dict[str, Any]):
+        """Plot ZKP overhead analysis"""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Collect ZKP data
+        datasets = []
+        proof_times = []
+        rigor_levels = []
+
+        for dataset, configs in results.items():
+            for config_name, result in configs.items():
+                if "error" not in result and result.get("config", {}).get(
+                    "enable_zkp", False
+                ):
+                    datasets.append(dataset)
+                    proof_times.append(np.mean(result.get("proof_times", [0])))
+
+                    rigor = result.get("config", {}).get("proof_rigor", "medium")
+                    rigor_levels.append(rigor)
+
+        # Plot 1: Proof times by rigor level
+        rigor_colors = {"high": "#DC143C", "medium": "#FF8C00", "low": "#32CD32"}
+
+        for rigor in ["low", "medium", "high"]:
+            rigor_times = [
+                pt for pt, rl in zip(proof_times, rigor_levels) if rl == rigor
+            ]
+            rigor_datasets = [
+                ds for ds, rl in zip(datasets, rigor_levels) if rl == rigor
+            ]
+
+            if rigor_times:
+                ax1.scatter(
+                    rigor_datasets,
+                    rigor_times,
+                    label=f"{rigor.title()} Rigor",
+                    color=rigor_colors[rigor],
+                    s=100,
+                    alpha=0.7,
+                )
+
+        ax1.set_title("ZKP Proof Generation Time by Rigor Level", fontweight="bold")
+        ax1.set_ylabel("Proof Time (seconds)")
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Plot 2: Communication overhead
+        overhead_data = []
+        overhead_labels = []
+
+        for dataset, configs in results.items():
+            baseline_comm = None
+            zkp_comm = None
+
+            for config_name, result in configs.items():
+                if "error" not in result:
+                    avg_comm = np.mean(result.get("communication_overhead", [0]))
+
+                    if not result.get("config", {}).get("enable_zkp", False):
+                        baseline_comm = avg_comm
+                    else:
+                        zkp_comm = avg_comm
+
+            if baseline_comm and zkp_comm:
+                overhead_pct = ((zkp_comm - baseline_comm) / baseline_comm) * 100
+                overhead_data.append(overhead_pct)
+                overhead_labels.append(dataset)
+
+        if overhead_data:
+            bars = ax2.bar(
+                overhead_labels,
+                overhead_data,
+                color="#FF6347",
+                alpha=0.7,
+                edgecolor="black",
+            )
+
+            for bar, overhead in zip(bars, overhead_data):
+                height = bar.get_height()
+                ax2.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    height + 0.1,
+                    f"{overhead:.1f}%",
+                    ha="center",
+                    va="bottom",
+                    fontweight="bold",
+                )
+        else:
+            ax2.text(
+                0.5,
+                0.5,
+                "No ZKP overhead data available",
+                ha="center",
+                va="center",
+                transform=ax2.transAxes,
+            )
+
+        ax2.set_title("Communication Overhead from ZKP", fontweight="bold")
+        ax2.set_ylabel("Overhead (%)")
+        if overhead_data:
+            ax2.set_ylim(0, max(overhead_data) * 1.1 + 1)
+        ax2.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(
+            self.output_dir / "plots" / "zkp_overhead_analysis.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+    def _plot_convergence_analysis(self, results: dict[str, Any]):
+        """Plot convergence analysis for each dataset"""
+        fig, axes = plt.subplots(len(results), 2, figsize=(15, 5 * len(results)))
+        if len(results) == 1:
+            axes = axes.reshape(1, -1)
+
+        config_colors = {
+            "baseline_iid": "#2E8B57",
+            "baseline_non_iid": "#4682B4",
+            "zkp_high_rigor": "#DC143C",
+            "zkp_medium_rigor": "#FF8C00",
+            "scaled_up": "#9932CC",
+        }
+
+        for idx, (dataset, configs) in enumerate(results.items()):
+            ax_acc, ax_loss = axes[idx] if len(results) > 1 else axes
+
+            # Plot accuracy convergence
+            for config_name, result in configs.items():
+                if "error" not in result and result.get("round_accuracies"):
+                    rounds = range(1, len(result["round_accuracies"]) + 1)
+                    color = config_colors.get(config_name, "#666666")
+
+                    ax_acc.plot(
+                        rounds,
+                        result["round_accuracies"],
+                        marker="o",
+                        label=config_name.replace("_", " ").title(),
+                        color=color,
+                        linewidth=2,
+                    )
+
+            ax_acc.set_title(
+                f"{dataset.upper()} - Accuracy Convergence", fontweight="bold"
+            )
+            ax_acc.set_xlabel("Round")
+            ax_acc.set_ylabel("Accuracy (%)")
+            ax_acc.legend()
+            ax_acc.grid(True, alpha=0.3)
+
+            # Plot loss convergence
+            for config_name, result in configs.items():
+                if "error" not in result and result.get("round_losses"):
+                    rounds = range(1, len(result["round_losses"]) + 1)
+                    color = config_colors.get(config_name, "#666666")
+
+                    ax_loss.plot(
+                        rounds,
+                        result["round_losses"],
+                        marker="s",
+                        label=config_name.replace("_", " ").title(),
+                        color=color,
+                        linewidth=2,
+                    )
+
+            ax_loss.set_title(
+                f"{dataset.upper()} - Loss Convergence", fontweight="bold"
+            )
+            ax_loss.set_xlabel("Round")
+            ax_loss.set_ylabel("Loss")
+            ax_loss.legend()
+            ax_loss.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(
+            self.output_dir / "plots" / "convergence_analysis.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+    def _plot_model_complexity(self, results: dict[str, Any]):
+        """Plot model complexity vs performance"""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Collect model complexity data
+        datasets = []
+        accuracies = []
+        model_names = []
+        training_times = []
+
+        for dataset, configs in results.items():
+            # Use baseline_iid for fair comparison
+            baseline_result = configs.get(
+                "baseline_iid", configs.get("baseline_non_iid")
+            )
+            if baseline_result and "error" not in baseline_result:
+                datasets.append(dataset)
+                accuracies.append(baseline_result["final_accuracy"])
+                model_names.append(baseline_result["model_class"])
+                training_times.append(baseline_result["training_time"])
+
+        # Check if we have any valid data
+        if not datasets:
+            logger.warning("No valid results found for model complexity analysis")
+            # Create empty plots with message
+            for ax in [ax1, ax2]:
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No valid results available",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                )
+            return
+
+        # Plot 1: Model complexity (estimated by name)
+        model_complexity = {"SimpleModel": 1, "MNISTModel": 2, "CIFAR10Model": 3}
+
+        complexity_scores = [model_complexity.get(name, 2) for name in model_names]
+        dataset_colors = {
+            "mnist": "#FF6B6B",
+            "cifar10": "#4ECDC4",
+            "synthetic": "#45B7D1",
+        }
+
+        for i, (dataset, acc, complexity) in enumerate(
+            zip(datasets, accuracies, complexity_scores)
+        ):
+            ax1.scatter(
+                complexity,
+                acc,
+                label=dataset.upper(),
+                color=dataset_colors.get(dataset, "#666666"),
+                s=150,
+                alpha=0.7,
+            )
+            ax1.annotate(
+                model_names[i],
+                (complexity, acc),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=9,
+            )
+
+        ax1.set_title("Model Complexity vs Accuracy", fontweight="bold")
+        ax1.set_xlabel("Model Complexity (Relative)")
+        ax1.set_ylabel("Final Accuracy (%)")
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Plot 2: Training time vs accuracy
+        for i, (dataset, acc, time) in enumerate(
+            zip(datasets, accuracies, training_times)
+        ):
+            ax2.scatter(
+                time,
+                acc,
+                label=dataset.upper(),
+                color=dataset_colors.get(dataset, "#666666"),
+                s=150,
+                alpha=0.7,
+            )
+            ax2.annotate(
+                model_names[i],
+                (time, acc),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=9,
+            )
+
+        ax2.set_title("Training Time vs Accuracy", fontweight="bold")
+        ax2.set_xlabel("Training Time (seconds)")
+        ax2.set_ylabel("Final Accuracy (%)")
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(
+            self.output_dir / "plots" / "model_complexity_analysis.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+
+def list_datasets():
+    """List all available datasets"""
+    dm = DatasetManager()
+
+    print("\n🔍 AVAILABLE DATASETS FOR SECURE FL BENCHMARK")
+    print("=" * 60)
+
+    categories = dm.get_dataset_categories()
+    for category, datasets in categories.items():
+        print(f"\n📂 {category}:")
+        for dataset in datasets:
+            if dataset in dm.dataset_configs:
+                config = dm.dataset_configs[dataset]
+                model_name = config["model_class"].__name__
+                description = config["description"]
+                input_shape = config["input_shape"]
+                num_classes = config["num_classes"]
+
+                print(f"  • {dataset:15s} → {model_name:12s} | {description}")
+                print(
+                    f"    {'':<17s}   Shape: {str(input_shape):<12s} | Classes: {num_classes}"
+                )
+
+    print(f"\nTotal: {len(dm.dataset_configs)} datasets available")
+    print(
+        f"Usage: python benchmark.py --datasets {' '.join(list(dm.dataset_configs.keys())[:3])}"
+    )
+
+
+def main():
+    """Main benchmark execution function"""
+    parser = argparse.ArgumentParser(
+        description="Multi-Dataset Benchmark for Secure FL"
+    )
+
+    parser.add_argument(
+        "--list-datasets",
+        action="store_true",
+        help="List all available datasets and exit",
+    )
+
+    parser.add_argument(
+        "--datasets",
+        nargs="+",
+        choices=[
+            "mnist",
+            "fashion_mnist",
+            "cifar10",
+            "cifar100",
+            "synthetic",
+            "synthetic_large",
+            "synthetic_small",
+            "text_classification",
+            "medical",
+            "financial",
+        ],
+        default=["mnist", "cifar10", "synthetic"],
+        help="Datasets to benchmark",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="results/multi_dataset_benchmark",
+        help="Output directory for results",
+    )
+
+    parser.add_argument(
+        "--quick", action="store_true", help="Run quick benchmark (fewer rounds)"
+    )
+
+    parser.add_argument(
+        "--configs",
+        type=str,
+        nargs="+",
+        choices=[
+            "baseline_iid",
+            "baseline_non_iid",
+            "zkp_high_rigor",
+            "zkp_medium_rigor",
+            "zkp_low_rigor",
+            "scaled_up",
+            "quick_test",
+            "performance_focused",
+        ],
+        help="Specific configs to run",
+    )
+
+    parser.add_argument(
+        "--list-configs",
+        action="store_true",
+        help="List all available configurations and exit",
+    )
+
+    args = parser.parse_args()
+
+    # Handle listing requests
+    if args.list_datasets:
+        list_datasets()
+        return
+
+    if args.list_configs:
+        runner = MultiDatasetBenchmarkRunner()
+        configs = runner.get_default_benchmark_configs()
+
+        print("\n⚙️  AVAILABLE BENCHMARK CONFIGURATIONS")
+        print("=" * 60)
+
+        for config in configs:
+            name = config["name"]
+            desc = config.get("description", "No description")
+            clients = config["num_clients"]
+            rounds = config["num_rounds"]
+            zkp = "✓" if config["enable_zkp"] else "✗"
+            rigor = config.get("proof_rigor", "N/A")
+            iid = "IID" if config["iid"] else "Non-IID"
+
+            print(f"  • {name:18s} | {desc}")
+            print(
+                f"    {'':20s} Clients: {clients}, Rounds: {rounds}, ZKP: {zkp}, Rigor: {rigor}, Data: {iid}"
+            )
+            print()
+
+        print(f"Total: {len(configs)} configurations available")
+        print(
+            f"Usage: python benchmark.py --configs {' '.join([c['name'] for c in configs[:3]])}"
+        )
+        return
+
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Initialize benchmark runner
+    runner = MultiDatasetBenchmarkRunner(args.output_dir)
+
+    # Get configurations
+    if args.configs:
+        all_configs = runner.get_default_benchmark_configs()
+        configs = [c for c in all_configs if c["name"] in args.configs]
+    else:
+        configs = runner.get_default_benchmark_configs()
+
+    # Modify for quick run
+    if args.quick:
+        for config in configs:
+            config["num_rounds"] = min(3, config["num_rounds"])
+            config["local_epochs"] = min(2, config["local_epochs"])
+
+    # Run benchmark
+    logger.info("Starting Multi-Dataset Secure FL Benchmark")
+    logger.info(f"Datasets: {args.datasets}")
+    logger.info(f"Output: {args.output_dir}")
+
+    try:
+        results = runner.run_comprehensive_benchmark(args.datasets, configs)
+
+        # Print summary
+        print("\n" + "=" * 80)
+        print("BENCHMARK SUMMARY")
+        print("=" * 80)
+
+        for dataset, configs in results.items():
+            print(f"\n{dataset.upper()} Dataset:")
+            for config_name, result in configs.items():
+                if "error" not in result:
+                    final_acc = result.get("final_accuracy", 0)
+                    training_time = result.get("training_time", 0)
+                    print(
+                        f"  {config_name:20s}: {final_acc:6.2f}% ({training_time:5.1f}s)"
+                    )
+                else:
+                    print(f"  {config_name:20s}: ERROR - {result['error']}")
+
+        print(f"\nDetailed results and plots saved to: {args.output_dir}")
+
+    except Exception as e:
+        logger.error(f"Benchmark failed: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()

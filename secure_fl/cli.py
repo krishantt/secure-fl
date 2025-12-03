@@ -317,130 +317,6 @@ def client(
 
 @main.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), help="Experiment configuration file"
-)
-@click.option(
-    "--num-clients", "-n", default=3, type=int, help="Number of federated clients"
-)
-@click.option("--rounds", "-r", default=10, type=int, help="Training rounds")
-@click.option(
-    "--dataset",
-    type=click.Choice(["mnist", "cifar10", "medmnist", "synthetic"]),
-    default="synthetic",
-    help="Dataset for experiment",
-)
-@click.option(
-    "--enable-zkp/--disable-zkp", default=True, help="Enable/disable ZKP verification"
-)
-@click.option(
-    "--proof-rigor",
-    type=click.Choice(["low", "medium", "high"]),
-    default="medium",
-    help="ZKP rigor level",
-)
-@click.option(
-    "--output-dir",
-    "-o",
-    type=click.Path(),
-    default="./results",
-    help="Output directory for results",
-)
-@click.option(
-    "--visualize/--no-visualize", default=True, help="Generate visualization plots"
-)
-@click.option(
-    "--save-models/--no-save-models", default=False, help="Save trained models"
-)
-def experiment(
-    config: str | None,
-    num_clients: int,
-    rounds: int,
-    dataset: str,
-    enable_zkp: bool,
-    proof_rigor: str,
-    output_dir: str,
-    visualize: bool,
-    save_models: bool,
-):
-    """Run a complete federated learning experiment"""
-
-    try:
-        # Import experiment module
-        import sys
-
-        from .experiments.train_secure_fl import main as experiment_main
-
-        # Prepare arguments for experiment script
-        args = [
-            "--num-clients",
-            str(num_clients),
-            "--rounds",
-            str(rounds),
-            "--dataset",
-            dataset,
-            "--proof-rigor",
-            proof_rigor,
-            "--output-dir",
-            output_dir,
-        ]
-
-        if config:
-            args.extend(["--config", config])
-
-        if not enable_zkp:
-            args.append("--disable-zkp")
-
-        if visualize:
-            args.append("--visualize")
-
-        if save_models:
-            args.append("--save-models")
-
-        # Display experiment info
-        table = Table(title="Experiment Configuration")
-        table.add_column("Parameter", style="cyan")
-        table.add_column("Value", style="green")
-
-        table.add_row("Clients", str(num_clients))
-        table.add_row("Rounds", str(rounds))
-        table.add_row("Dataset", dataset)
-        table.add_row("ZKP Enabled", "✓" if enable_zkp else "✗")
-        table.add_row("Proof Rigor", proof_rigor)
-        table.add_row("Output Dir", output_dir)
-
-        console.print(table)
-
-        # Run experiment
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Running experiment...", total=None)
-
-            # Backup original sys.argv and replace
-            original_argv = sys.argv
-            sys.argv = ["experiment"] + args
-
-            try:
-                experiment_main()
-                progress.update(
-                    task, description="✓ Experiment completed successfully!"
-                )
-            finally:
-                sys.argv = original_argv
-
-        rprint(f"\n[green]✓ Experiment results saved to: {output_dir}[/green]")
-
-    except ImportError as e:
-        raise click.ClickException(f"Missing dependencies: {e}")
-    except Exception as e:
-        logger.error(f"Experiment failed: {e}")
-        raise click.ClickException(f"Experiment error: {e}")
-
-
-@main.command()
-@click.option(
     "--action",
     type=click.Choice(["install", "zkp", "check", "clean", "full"]),
     default="check",
@@ -524,43 +400,6 @@ def setup(action: str, force: bool, skip_zkp: bool):
 
 
 @main.command()
-def demo():
-    """Run a quick demonstration of Secure FL"""
-
-    try:
-        from .experiments.demo import run_demo
-
-        rprint("[bold]🎬 Running Secure FL Demo[/bold]")
-        rprint(
-            "[dim]This will run a small federated learning experiment with 3 clients[/dim]\n"
-        )
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Preparing demo...", total=None)
-
-            success = run_demo()
-
-            if success:
-                progress.update(task, description="✓ Demo completed successfully!")
-                rprint(
-                    "\n[green]✓ Demo finished! Check ./demo_results/ for outputs[/green]"
-                )
-            else:
-                progress.update(task, description="✗ Demo failed")
-                rprint("\n[red]✗ Demo encountered errors[/red]")
-
-    except ImportError as e:
-        raise click.ClickException(f"Demo dependencies missing: {e}")
-    except Exception as e:
-        logger.error(f"Demo failed: {e}")
-        raise click.ClickException(f"Demo error: {e}")
-
-
-@main.command()
 def info():
     """Display system information and component status"""
 
@@ -577,11 +416,6 @@ def server_command():
 def client_command():
     """Entry point for secure-fl-client command"""
     main(["client"] + sys.argv[1:])
-
-
-def experiment_command():
-    """Entry point for secure-fl-experiment command"""
-    main(["experiment"] + sys.argv[1:])
 
 
 def setup_command():

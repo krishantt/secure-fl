@@ -1,0 +1,207 @@
+# Secure FL Experiments Configuration
+# Example configuration file for running federated learning experiments
+
+# Experiment metadata
+experiment:
+  name: "secure_fl_multi_dataset_evaluation"
+  description: "Multi-dataset evaluation of secure federated learning"
+  version: "1.0"
+  output_dir: "results/experiments"
+  save_models: true
+
+# Server configuration
+server:
+  host: "localhost"
+  port: 8080
+  num_rounds: 10
+  min_fit_clients: 2
+  min_evaluate_clients: 2
+  fraction_fit: 1.0
+  fraction_evaluate: 1.0
+
+# Client configuration
+clients:
+  num_clients: 3
+  local_epochs: 3
+  batch_size: 32
+  learning_rate: 0.01
+  device: "cpu"  # or "cuda" if available
+
+# Dataset configuration
+datasets:
+  # MNIST configuration
+  mnist:
+    model: "mnist"
+    data_dir: "./data/mnist"
+    input_shape: [1, 28, 28]
+    num_classes: 10
+    normalize: true
+    augmentation: false
+
+  # CIFAR-10 configuration
+  cifar10:
+    model: "cifar10"
+    data_dir: "./data/cifar10"
+    input_shape: [3, 32, 32]
+    num_classes: 10
+    normalize: true
+    augmentation: true
+
+  # Synthetic data configuration
+  synthetic:
+    model: "simple"
+    samples_per_client: 200
+    input_dim: 784
+    num_classes: 10
+    noise_level: 0.1
+
+# Data distribution
+data_distribution:
+  type: "non_iid"  # "iid" or "non_iid"
+  alpha: 0.5  # Dirichlet distribution parameter for non-IID
+  min_samples_per_client: 50
+  val_split: 0.2
+
+# Federated learning algorithm
+aggregation:
+  algorithm: "fedjscm"  # FedJSCM momentum-based aggregation
+  momentum: 0.9
+  learning_rate: 0.01
+  weight_decay: 0.0
+  adaptive_momentum: false
+
+# Zero-knowledge proof configuration
+zkp:
+  enable_zkp: true
+  proof_rigor: "medium"  # "low", "medium", "high"
+
+  # Client-side zk-STARK configuration
+  client_proof:
+    quantization_bits: 8
+    max_trace_length: 1024
+    circuit_size: 500
+
+  # Server-side zk-SNARK configuration
+  server_proof:
+    circuit_constraints: 1000
+    proving_key_path: "./proofs/server/proving_key.json"
+    verification_key_path: "./proofs/server/verification_key.json"
+
+  # Blockchain verification (optional)
+  blockchain_verification: false
+  contract_address: ""  # Ethereum contract address if using blockchain
+
+# Stability monitoring
+stability:
+  window_size: 10
+  stability_threshold_high: 0.9
+  stability_threshold_medium: 0.7
+  convergence_patience: 5
+  min_rounds_for_adjustment: 3
+
+# Performance monitoring
+monitoring:
+  log_level: "INFO"
+  metrics_frequency: 1  # Log metrics every N rounds
+  save_checkpoints: true
+  checkpoint_frequency: 5
+
+  # Resource monitoring
+  monitor_memory: true
+  monitor_cpu: true
+  monitor_gpu: false
+
+  # Communication tracking
+  track_communication: true
+  measure_proof_times: true
+
+# Benchmark configurations
+benchmark:
+  configurations:
+    - name: "baseline_iid"
+      zkp_enabled: false
+      data_distribution: "iid"
+      num_rounds: 5
+
+    - name: "baseline_non_iid"
+      zkp_enabled: false
+      data_distribution: "non_iid"
+      num_rounds: 5
+
+    - name: "secure_medium_rigor"
+      zkp_enabled: true
+      proof_rigor: "medium"
+      data_distribution: "non_iid"
+      num_rounds: 5
+
+    - name: "secure_high_rigor"
+      zkp_enabled: true
+      proof_rigor: "high"
+      data_distribution: "non_iid"
+      num_rounds: 5
+
+    - name: "scaled_experiment"
+      zkp_enabled: true
+      proof_rigor: "medium"
+      data_distribution: "non_iid"
+      num_clients: 5
+      num_rounds: 8
+
+# Visualization settings
+visualization:
+  generate_plots: true
+  plot_formats: ["png", "pdf"]
+  dpi: 300
+  style: "seaborn-v0_8"
+
+  # Plot types to generate
+  plots:
+    accuracy_convergence: true
+    loss_convergence: true
+    communication_overhead: true
+    proof_time_analysis: true
+    model_comparison: true
+    stability_metrics: true
+
+# Random seed for reproducibility
+random_seed: 42
+
+# Hardware configuration
+hardware:
+  use_gpu: false
+  gpu_device: 0
+  num_workers: 4
+  pin_memory: true
+
+# Security settings
+security:
+  secure_aggregation: false  # Additional secure aggregation on top of ZKP
+  differential_privacy: false
+  noise_multiplier: 0.1  # If using differential privacy
+  max_grad_norm: 1.0  # Gradient clipping
+
+# Advanced settings
+advanced:
+  # Model quantization
+  quantize_model: true
+  quantization_bits: 8
+
+  # Communication compression
+  compress_communications: false
+  compression_ratio: 0.1
+
+  # Fault tolerance
+  client_timeout: 300  # seconds
+  max_retries: 3
+  handle_stragglers: true
+
+  # Debugging
+  debug_mode: false
+  save_intermediate_states: false
+  verbose_logging: false
+
+# Environment variables (optional)
+environment:
+  CUDA_VISIBLE_DEVICES: "0"
+  PYTHONHASHSEED: "42"
+  OMP_NUM_THREADS: "4"

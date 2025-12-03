@@ -138,6 +138,23 @@ pip install -e .
 secure-fl setup full
 ```
 
+### Research and Development
+
+For research purposes, the project includes a comprehensive experiments directory with multi-dataset benchmarking:
+
+```bash
+# Run multi-dataset benchmark (development only)
+cd secure-fl
+python experiments/benchmark.py --datasets mnist cifar10 synthetic
+
+# Quick benchmark
+python experiments/benchmark.py --quick --configs baseline_iid
+
+# See experiments/README.md for full documentation
+```
+
+**Note:** The `experiments/` directory is excluded from package distribution and contains standalone research scripts.
+
 ### Basic Usage
 
 #### Command Line Interface

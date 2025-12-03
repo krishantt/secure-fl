@@ -160,6 +160,7 @@ lint = "ruff check ."
 format = "ruff format ."
 type-check = "mypy secure_fl/"
 lint-fix = "ruff check --fix ."
+precommit = {composite=["format", "lint-fix"]}
 
 
 # Setup and installation scripts
@@ -277,7 +278,6 @@ includes = [
     "secure_fl/",
     "proofs/",
     "blockchain/",
-    "experiments/",
     "docs/",
     "k8s/",
     "infra/",
@@ -294,6 +294,8 @@ excludes = [
     "**/circuit_js/",
     "**/.venv/",
     "**/node_modules/",
+    "experiments/",
+    "**/experiments/",
 ]
 
 [dependency-groups]
