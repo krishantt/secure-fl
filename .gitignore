@@ -3,4 +3,4 @@ __pycache__
 .pdm-python
 dist/
 .venv/
-demo_results/
+results/
