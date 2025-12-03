@@ -34,14 +34,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
 
 try:
-    from pydantic import BaseModel
+    from pydantic import BaseModel, Field, root_validator, validator
     from pydantic import BaseSettings as PydanticBaseSettings
-    from pydantic import Field, root_validator, validator
 
     PYDANTIC_AVAILABLE = True
 except ImportError:
@@ -106,12 +105,12 @@ class ServerConfig:
 
     # SSL/TLS configuration
     ssl_enabled: bool = False
-    ssl_cert_path: Optional[str] = None
-    ssl_key_path: Optional[str] = None
+    ssl_cert_path: str | None = None
+    ssl_key_path: str | None = None
 
     # Authentication
     auth_enabled: bool = False
-    jwt_secret: Optional[str] = None
+    jwt_secret: str | None = None
     jwt_expiration: int = 3600
 
     # Rate limiting
@@ -123,7 +122,7 @@ class ServerConfig:
 class ClientConfig:
     """Client configuration settings"""
 
-    client_id: Optional[str] = None
+    client_id: str | None = None
     server_address: str = "localhost:8080"
     local_epochs: int = 1
     batch_size: int = 32
@@ -134,7 +133,7 @@ class ClientConfig:
     retry_delay: float = 1.0
 
     # Data configuration
-    data_path: Optional[str] = None
+    data_path: str | None = None
     dataset_name: str = "synthetic"
     validation_split: float = 0.1
 
@@ -156,20 +155,20 @@ class ZKPConfig:
     proof_timeout: int = 120
 
     # Client-side zk-STARK configuration
-    cairo_path: Optional[str] = None
+    cairo_path: str | None = None
     cairo_compile_timeout: int = 60
     max_trace_length: int = 1024
 
     # Server-side zk-SNARK configuration
-    circom_path: Optional[str] = None
-    snarkjs_path: Optional[str] = None
+    circom_path: str | None = None
+    snarkjs_path: str | None = None
     circuit_size: int = 1000
-    trusted_setup_path: Optional[str] = None
+    trusted_setup_path: str | None = None
 
     # Blockchain configuration
     blockchain_network: str = "ethereum"
-    contract_address: Optional[str] = None
-    private_key: Optional[str] = None
+    contract_address: str | None = None
+    private_key: str | None = None
     gas_limit: int = 2000000
 
 
@@ -214,18 +213,18 @@ class SecurityConfig:
     """Security and privacy configuration"""
 
     enable_tls: bool = False
-    tls_cert_path: Optional[str] = None
-    tls_key_path: Optional[str] = None
+    tls_cert_path: str | None = None
+    tls_key_path: str | None = None
 
     # Authentication
     enable_auth: bool = False
     auth_method: str = "jwt"  # jwt, oauth, api_key
-    jwt_secret_key: Optional[str] = None
+    jwt_secret_key: str | None = None
 
     # Input validation
     max_model_size_mb: float = 100.0
     max_batch_size: int = 1000
-    allowed_file_types: List[str] = field(
+    allowed_file_types: list[str] = field(
         default_factory=lambda: [".pt", ".pth", ".pkl"]
     )
 
@@ -240,7 +239,7 @@ class DatabaseConfig:
     """Database configuration for metrics and logs"""
 
     enabled: bool = False
-    database_url: Optional[str] = None
+    database_url: str | None = None
     driver: str = "sqlite"  # sqlite, postgresql, mysql
 
     # Connection settings
@@ -263,7 +262,7 @@ class MonitoringConfig:
     # Logging configuration
     log_level: LogLevel = LogLevel.INFO
     log_format: str = "json"  # json, text
-    log_file: Optional[str] = None
+    log_file: str | None = None
     log_rotation: bool = True
     log_max_size: str = "10MB"
     log_backup_count: int = 5
@@ -276,20 +275,20 @@ class MonitoringConfig:
     # Distributed tracing
     tracing_enabled: bool = False
     tracing_service_name: str = "secure-fl"
-    jaeger_endpoint: Optional[str] = None
+    jaeger_endpoint: str | None = None
 
 
 @dataclass
 class ExperimentConfig:
     """Experiment and research configuration"""
 
-    experiment_name: Optional[str] = None
+    experiment_name: str | None = None
     results_dir: str = "results"
     save_checkpoints: bool = True
     checkpoint_interval: int = 5
 
     # Reproducibility
-    random_seed: Optional[int] = 42
+    random_seed: int | None = 42
     deterministic: bool = False
 
     # Benchmarking
@@ -377,10 +376,10 @@ class SecureFlConfig:
 class ConfigManager:
     """Configuration manager for loading and managing settings"""
 
-    def __init__(self, env: Optional[str] = None, config_dir: Optional[Path] = None):
+    def __init__(self, env: str | None = None, config_dir: Path | None = None):
         self.env = Environment(env) if env else self._detect_environment()
         self.config_dir = config_dir or self._get_default_config_dir()
-        self._config_cache: Optional[SecureFlConfig] = None
+        self._config_cache: SecureFlConfig | None = None
 
     def _detect_environment(self) -> Environment:
         """Detect current environment from environment variables"""
@@ -444,16 +443,16 @@ class ConfigManager:
 
         return config
 
-    def _load_yaml_config(self, config_path: Path) -> Dict[str, Any]:
+    def _load_yaml_config(self, config_path: Path) -> dict[str, Any]:
         """Load configuration from YAML file"""
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             logger.error(f"Failed to load config from {config_path}: {e}")
             return {}
 
-    def _load_env_overrides(self) -> Dict[str, Any]:
+    def _load_env_overrides(self) -> dict[str, Any]:
         """Load configuration overrides from environment variables"""
         overrides = {}
         prefix = "SECURE_FL_"
@@ -499,8 +498,8 @@ class ConfigManager:
         return value
 
     def _deep_merge(
-        self, base: Dict[str, Any], override: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, base: dict[str, Any], override: dict[str, Any]
+    ) -> dict[str, Any]:
         """Deep merge two dictionaries"""
         result = base.copy()
 
@@ -516,7 +515,7 @@ class ConfigManager:
 
         return result
 
-    def _dict_to_config(self, config_dict: Dict[str, Any]) -> SecureFlConfig:
+    def _dict_to_config(self, config_dict: dict[str, Any]) -> SecureFlConfig:
         """Convert dictionary to configuration object"""
         # Create configuration with defaults
         config = SecureFlConfig()
@@ -559,7 +558,7 @@ class ConfigManager:
 
         return config
 
-    def save_config(self, config: SecureFlConfig, path: Optional[Path] = None) -> None:
+    def save_config(self, config: SecureFlConfig, path: Path | None = None) -> None:
         """Save configuration to file"""
         if path is None:
             path = self.config_dir / f"{self.env.value}.yaml"
@@ -572,7 +571,7 @@ class ConfigManager:
 
         logger.info(f"Configuration saved to {path}")
 
-    def _config_to_dict(self, config: SecureFlConfig) -> Dict[str, Any]:
+    def _config_to_dict(self, config: SecureFlConfig) -> dict[str, Any]:
         """Convert configuration object to dictionary"""
         result = {
             "environment": config.environment.value,
@@ -608,12 +607,12 @@ class ConfigManager:
 
 
 # Global configuration manager instance
-_config_manager: Optional[ConfigManager] = None
-_config: Optional[SecureFlConfig] = None
+_config_manager: ConfigManager | None = None
+_config: SecureFlConfig | None = None
 
 
 @lru_cache(maxsize=1)
-def get_config_manager(env: Optional[str] = None) -> ConfigManager:
+def get_config_manager(env: str | None = None) -> ConfigManager:
     """Get or create global configuration manager"""
     global _config_manager
     if _config_manager is None or (env and _config_manager.env.value != env):
@@ -621,7 +620,7 @@ def get_config_manager(env: Optional[str] = None) -> ConfigManager:
     return _config_manager
 
 
-def get_config(env: Optional[str] = None, reload: bool = False) -> SecureFlConfig:
+def get_config(env: str | None = None, reload: bool = False) -> SecureFlConfig:
     """Get current configuration"""
     global _config
 

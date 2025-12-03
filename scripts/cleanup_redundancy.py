@@ -1,4 +1,3 @@
-from secure_fl.models import SimpleModel
 
 #!/usr/bin/env python3
 """
@@ -17,10 +16,8 @@ Options:
 
 import argparse
 import ast
-import os
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 
 class CodeCleanup:
@@ -41,7 +38,7 @@ class CodeCleanup:
             prefix = "DRY RUN: " if self.dry_run else ""
             print(f"[{level.upper()}] {prefix}{message}")
 
-    def find_duplicate_model_definitions(self) -> Dict[str, List[Path]]:
+    def find_duplicate_model_definitions(self) -> dict[str, list[Path]]:
         """Find duplicate model class definitions across files"""
         model_definitions = {}
 
@@ -66,7 +63,7 @@ class CodeCleanup:
                 continue
 
             try:
-                with open(py_file, "r", encoding="utf-8") as f:
+                with open(py_file, encoding="utf-8") as f:
                     content = f.read()
 
                 for pattern in model_patterns:
@@ -85,12 +82,12 @@ class CodeCleanup:
 
     def extract_inline_model_definitions(
         self, file_path: Path
-    ) -> List[Tuple[str, str, int, int]]:
+    ) -> list[tuple[str, str, int, int]]:
         """Extract inline model definitions from a file"""
         models = []
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
                 lines = content.split("\n")
 
@@ -162,7 +159,7 @@ class CodeCleanup:
     def update_imports_in_file(self, file_path: Path) -> bool:
         """Update imports in a file to use centralized models"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             original_content = content
@@ -216,7 +213,7 @@ class CodeCleanup:
     def remove_duplicate_functions(self, file_path: Path) -> bool:
         """Remove duplicate utility functions"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             original_content = content
@@ -258,7 +255,7 @@ class CodeCleanup:
     def cleanup_unused_imports(self, file_path: Path) -> bool:
         """Remove unused imports from a file"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Parse AST to find actual usage
@@ -345,7 +342,7 @@ class CodeCleanup:
                 continue
 
             try:
-                with open(py_file, "r", encoding="utf-8") as f:
+                with open(py_file, encoding="utf-8") as f:
                     content = f.read()
 
                 for pattern in constant_patterns:
@@ -371,7 +368,7 @@ class CodeCleanup:
     def fix_inconsistent_formatting(self, file_path: Path) -> bool:
         """Fix inconsistent code formatting"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             original_content = content

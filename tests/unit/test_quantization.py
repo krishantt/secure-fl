@@ -7,8 +7,6 @@ in the secure_fl.quantization module.
 
 import numpy as np
 import pytest
-import torch
-import torch.nn as nn
 
 from secure_fl.quantization import (
     FixedPointQuantizer,

@@ -8,7 +8,6 @@ the Secure FL framework capabilities.
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -27,7 +26,7 @@ def create_federated_datasets(
     num_classes: int = 10,
     iid: bool = False,
     val_split: float = 0.2,
-) -> List[Tuple[DataLoader, DataLoader]]:
+) -> list[tuple[DataLoader, DataLoader]]:
     """
     Create synthetic federated datasets for demo purposes.
 
@@ -91,10 +90,10 @@ def create_federated_datasets(
 
 def simulate_federated_round(
     global_model: nn.Module,
-    client_datasets: List[Tuple[DataLoader, DataLoader]],
+    client_datasets: list[tuple[DataLoader, DataLoader]],
     local_epochs: int = 3,
     learning_rate: float = 0.01,
-) -> Tuple[nn.Module, Dict[str, float]]:
+) -> tuple[nn.Module, dict[str, float]]:
     """
     Simulate one round of federated learning.
 
@@ -272,7 +271,7 @@ def run_quick_demo() -> bool:
         with open(metrics_path, "w") as f:
             f.write("Secure FL Demo Results\n")
             f.write("=" * 30 + "\n\n")
-            f.write(f"Configuration:\n")
+            f.write("Configuration:\n")
             f.write(f"  Clients: {num_clients}\n")
             f.write(f"  Rounds: {num_rounds}\n")
             f.write(f"  Local epochs: {local_epochs}\n\n")

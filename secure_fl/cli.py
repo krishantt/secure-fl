@@ -5,29 +5,18 @@ This module provides command-line interfaces for running the Secure FL framework
 including server, client, experiment, and setup commands.
 """
 
-import asyncio
 import logging
-import os
 import sys
-from pathlib import Path
-from typing import List, Optional
 
 import click
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from secure_fl.client import create_client, start_client
-
 # Import centralized models
 from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel
-from secure_fl.server import SecureFlowerServer, create_server_strategy
-from secure_fl.setup import SecureFLSetup
 
 # Setup rich console and logging
 console = Console()
@@ -100,7 +89,7 @@ def main(verbose: bool, quiet: bool):
     help="Model type to use",
 )
 def server(
-    config: Optional[str],
+    config: str | None,
     host: str,
     port: int,
     rounds: int,
@@ -124,7 +113,7 @@ def server(
         if config:
             import yaml
 
-            with open(config, "r") as f:
+            with open(config) as f:
                 cfg = yaml.safe_load(f)
         else:
             cfg = get_default_config()
@@ -234,8 +223,8 @@ def client(
     server_address: str,
     client_id: str,
     dataset: str,
-    data_path: Optional[str],
-    partition: Optional[int],
+    data_path: str | None,
+    partition: int | None,
     enable_zkp: bool,
     epochs: int,
     batch_size: int,
@@ -344,7 +333,7 @@ def client(
     "--save-models/--no-save-models", default=False, help="Save trained models"
 )
 def experiment(
-    config: Optional[str],
+    config: str | None,
     num_clients: int,
     rounds: int,
     dataset: str,

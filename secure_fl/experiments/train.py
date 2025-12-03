@@ -7,7 +7,6 @@ that matches the PDM script expectations.
 
 import argparse
 import sys
-from pathlib import Path
 
 # Import the main training function
 from .train_secure_fl import main as train_secure_fl_main

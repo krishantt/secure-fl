@@ -13,10 +13,9 @@ Key features:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
-import torch
 from flwr.common import NDArrays
 
 logging.basicConfig(level=logging.INFO)
@@ -119,7 +118,7 @@ class FixedPointQuantizer:
         )
 
     def calibrate(
-        self, parameters: NDArrays, layer_names: Optional[List[str]] = None
+        self, parameters: NDArrays, layer_names: list[str] | None = None
     ) -> None:
         """
         Calibrate quantization parameters based on data statistics
@@ -145,8 +144,8 @@ class FixedPointQuantizer:
         logger.info(f"Calibrated quantization for {len(parameters)} layers")
 
     def quantize(
-        self, parameters: NDArrays, layer_names: Optional[List[str]] = None
-    ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+        self, parameters: NDArrays, layer_names: list[str] | None = None
+    ) -> tuple[list[np.ndarray], dict[str, Any]]:
         """
         Quantize parameters to fixed-point representation
 
@@ -191,7 +190,7 @@ class FixedPointQuantizer:
         return quantized_params, metadata
 
     def dequantize(
-        self, quantized_params: List[np.ndarray], metadata: Dict[str, Any]
+        self, quantized_params: list[np.ndarray], metadata: dict[str, Any]
     ) -> NDArrays:
         """
         Dequantize parameters back to floating-point
@@ -232,7 +231,7 @@ class FixedPointQuantizer:
 
         return dequantized_params
 
-    def _compute_per_tensor_params(self, param: np.ndarray) -> Tuple[float, float]:
+    def _compute_per_tensor_params(self, param: np.ndarray) -> tuple[float, float]:
         """Compute per-tensor quantization parameters"""
         if self.config.symmetric:
             # Symmetric quantization around zero
@@ -260,7 +259,7 @@ class FixedPointQuantizer:
 
     def _compute_per_channel_params(
         self, param: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Compute per-channel quantization parameters for conv/linear layers"""
         if len(param.shape) == 2:  # Linear layer (out_features, in_features)
             axis = 0
@@ -294,8 +293,8 @@ class FixedPointQuantizer:
     def _quantize_array(
         self,
         param: np.ndarray,
-        scale: Union[float, np.ndarray],
-        zero_point: Union[float, np.ndarray],
+        scale: float | np.ndarray,
+        zero_point: float | np.ndarray,
     ) -> np.ndarray:
         """Quantize a single parameter array"""
 
@@ -331,8 +330,8 @@ class FixedPointQuantizer:
     def _dequantize_array(
         self,
         quantized: np.ndarray,
-        scale: Union[float, np.ndarray],
-        zero_point: Union[float, np.ndarray],
+        scale: float | np.ndarray,
+        zero_point: float | np.ndarray,
     ) -> np.ndarray:
         """Dequantize a single parameter array"""
 
@@ -371,9 +370,9 @@ class GradientAwareQuantizer(FixedPointQuantizer):
     def quantize(
         self,
         parameters: NDArrays,
-        layer_names: Optional[List[str]] = None,
-        gradients: Optional[NDArrays] = None,
-    ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+        layer_names: list[str] | None = None,
+        gradients: NDArrays | None = None,
+    ) -> tuple[list[np.ndarray], dict[str, Any]]:
         """
         Quantize parameters with optional gradient awareness
 
@@ -404,7 +403,7 @@ class GradientAwareQuantizer(FixedPointQuantizer):
         return quantized_params, metadata
 
     def update_gradients(
-        self, gradients: NDArrays, layer_names: Optional[List[str]] = None
+        self, gradients: NDArrays, layer_names: list[str] | None = None
     ):
         """Update gradient history for gradient-aware quantization"""
         if not self.config.gradient_aware:
@@ -432,7 +431,7 @@ class GradientAwareQuantizer(FixedPointQuantizer):
 
     def _compute_per_tensor_params(
         self, param: np.ndarray, layer_name: str = None
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Compute gradient-aware per-tensor quantization parameters"""
         if not self.config.gradient_aware or layer_name not in self.gradient_weights:
             return super()._compute_per_tensor_params(param)
@@ -466,7 +465,7 @@ class GradientAwareQuantizer(FixedPointQuantizer):
 
 def quantize_parameters(
     parameters: NDArrays, config: QuantizationConfig
-) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+) -> tuple[list[np.ndarray], dict[str, Any]]:
     """
     Convenience function for parameter quantization
 
@@ -482,8 +481,8 @@ def quantize_parameters(
 
 
 def dequantize_parameters(
-    quantized_params: List[np.ndarray],
-    metadata: Dict[str, Any],
+    quantized_params: list[np.ndarray],
+    metadata: dict[str, Any],
     config: QuantizationConfig,
 ) -> NDArrays:
     """
@@ -503,7 +502,7 @@ def dequantize_parameters(
 
 def compute_quantization_error(
     original: NDArrays, dequantized: NDArrays
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compute quantization error metrics
 

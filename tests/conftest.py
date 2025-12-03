@@ -10,20 +10,17 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.utils.data import TensorDataset
 
 from secure_fl.quantization import QuantizationConfig
 
 # Import secure_fl components
-from secure_fl.utils import validate_parameters
-
 # Import test configuration
 from tests import TEST_CONFIG, check_optional_dependencies
 
@@ -116,7 +113,6 @@ def test_data_dir(temp_dir):
 # ==================== Model Fixtures ====================
 
 # Model moved to secure_fl.models
-from secure_fl.models import SimpleModel
 
 
 class SimpleTestModel(nn.Module):
@@ -377,7 +373,7 @@ def quantization_bits(request):
 
 
 def assert_parameters_equal(
-    params1: List[np.ndarray], params2: List[np.ndarray], rtol: float = 1e-5
+    params1: list[np.ndarray], params2: list[np.ndarray], rtol: float = 1e-5
 ):
     """Assert that two parameter lists are equal"""
     assert len(params1) == len(params2), "Parameter lists have different lengths"
@@ -389,7 +385,7 @@ def assert_parameters_equal(
         assert np.allclose(p1, p2, rtol=rtol), f"Parameter {i} values don't match"
 
 
-def create_mock_fl_result(success: bool = True, metrics: Optional[Dict] = None):
+def create_mock_fl_result(success: bool = True, metrics: dict | None = None):
     """Create a mock FL training result"""
     default_metrics = {"train_loss": 1.0, "train_accuracy": 0.8, "num_examples": 100}
 

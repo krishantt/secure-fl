@@ -8,8 +8,6 @@ class and related aggregation functionality.
 
 import numpy as np
 import pytest
-import torch
-import torch.nn as nn
 
 from secure_fl.aggregation import FedJSCMAggregator
 

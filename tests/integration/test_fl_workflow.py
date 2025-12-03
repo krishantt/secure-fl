@@ -5,29 +5,19 @@ This module contains integration tests that verify the complete federated learni
 workflow, including server-client interactions, aggregation, and ZKP integration.
 """
 
-import asyncio
-import multiprocessing as mp
-import tempfile
 import time
-from pathlib import Path
-from typing import List, Tuple
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import TensorDataset
 
-from secure_fl.aggregation import FedJSCMAggregator
-from secure_fl.client import SecureFlowerClient, create_client
+from secure_fl.client import create_client
 from secure_fl.models import MNISTModel, SimpleModel
 from secure_fl.server import (
-    SecureFlowerServer,
-    SecureFlowerStrategy,
     create_server_strategy,
 )
-from secure_fl.stability_monitor import StabilityMonitor
 from secure_fl.utils import parameters_to_ndarrays, torch_to_ndarrays
 
 

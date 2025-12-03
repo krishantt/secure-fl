@@ -10,8 +10,7 @@ This module implements the main FL server that:
 
 import logging
 import time
-from collections import OrderedDict
-from typing import Dict, List, Optional, Tuple, Union, override
+from typing import override
 
 import flwr as fl
 import numpy as np
@@ -36,7 +35,7 @@ class SecureFlowerStrategy(Strategy):
 
     def __init__(
         self,
-        initial_parameters: Optional[Parameters] = None,
+        initial_parameters: Parameters | None = None,
         momentum: float = 0.9,
         learning_rate: float = 0.01,
         min_available_clients: int = 2,
@@ -78,7 +77,7 @@ class SecureFlowerStrategy(Strategy):
 
         logger.info(f"Initialized SecureFlowerStrategy with ZKP={enable_zkp}")
 
-    def initialize_parameters(self, client_manager) -> Optional[Parameters]:
+    def initialize_parameters(self, client_manager) -> Parameters | None:
         """Initialize global model parameters"""
         if self.initial_parameters:
             self.current_global_params = parameters_to_ndarrays(self.initial_parameters)
@@ -86,7 +85,7 @@ class SecureFlowerStrategy(Strategy):
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager
-    ) -> List[Tuple[ClientProxy, Dict]]:
+    ) -> list[tuple[ClientProxy, dict]]:
         """Configure clients for training round"""
         self.current_round = server_round
 
@@ -112,9 +111,9 @@ class SecureFlowerStrategy(Strategy):
     def aggregate_fit(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, FitRes]],
-        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
-    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, FitRes]],
+        failures: list[tuple[ClientProxy, FitRes] | BaseException],
+    ) -> tuple[Parameters | None, dict[str, Scalar]]:
         """Aggregate client updates with ZKP verification"""
 
         if not results:
@@ -212,7 +211,7 @@ class SecureFlowerStrategy(Strategy):
 
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager
-    ) -> List[Tuple[ClientProxy, Dict]]:
+    ) -> list[tuple[ClientProxy, dict]]:
         """Configure clients for evaluation"""
         if not self.fraction_evaluate:
             return []
@@ -232,9 +231,9 @@ class SecureFlowerStrategy(Strategy):
     def aggregate_evaluate(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, EvaluateRes]],
-        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]],
-    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, EvaluateRes]],
+        failures: list[tuple[ClientProxy, EvaluateRes] | BaseException],
+    ) -> tuple[float | None, dict[str, Scalar]]:
         """Aggregate evaluation results"""
 
         if not results:
@@ -274,7 +273,7 @@ class SecureFlowerStrategy(Strategy):
     @override
     def evaluate(
         self, server_round: int, parameters: Parameters
-    ) -> Optional[tuple[float, dict[str, Scalar]]]:
+    ) -> tuple[float, dict[str, Scalar]] | None:
         return super().evaluate(server_round, parameters)
 
     def _verify_client_proof(self, client: ClientProxy, fit_res: FitRes) -> bool:
@@ -293,10 +292,10 @@ class SecureFlowerStrategy(Strategy):
 
     def _generate_server_proof(
         self,
-        client_updates: List[NDArrays],
-        client_weights: List[float],
+        client_updates: list[NDArrays],
+        client_weights: list[float],
         aggregated_params: NDArrays,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Generate zk-SNARK proof for server aggregation"""
         if not self.proof_manager:
             return None
@@ -363,7 +362,7 @@ class SecureFlowerServer:
         host: str = "localhost",
         port: int = 8080,
         num_rounds: int = 10,
-        config: Optional[Dict] = None,
+        config: dict | None = None,
     ):
         self.strategy = strategy
         self.host = host
@@ -386,7 +385,7 @@ class SecureFlowerServer:
 
         logger.info("FL training completed")
 
-    def get_training_history(self) -> List[Dict]:
+    def get_training_history(self) -> list[dict]:
         """Get training history and metrics"""
         return self.strategy.training_metrics
 

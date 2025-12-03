@@ -10,8 +10,7 @@ This module provides common utility functions for:
 
 import hashlib
 import logging
-import struct
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -141,7 +140,7 @@ def compute_parameter_diff(params1: NDArrays, params2: NDArrays) -> float:
     return np.sqrt(diff_norm)
 
 
-def validate_parameters(parameters: Optional[NDArrays]) -> bool:
+def validate_parameters(parameters: NDArrays | None) -> bool:
     """Validate parameter arrays.
 
     Args:
@@ -211,7 +210,7 @@ def deserialize_parameters(data: bytes) -> NDArrays:
 
 
 def aggregate_weighted_average(
-    client_updates: List[NDArrays], client_weights: List[float]
+    client_updates: list[NDArrays], client_weights: list[float]
 ) -> NDArrays:
     """Compute weighted average of client parameter updates.
 
@@ -243,7 +242,7 @@ def aggregate_weighted_average(
     return aggregated
 
 
-def get_parameter_stats(parameters: NDArrays) -> Dict[str, Any]:
+def get_parameter_stats(parameters: NDArrays) -> dict[str, Any]:
     """Get statistics about parameters.
 
     Args:

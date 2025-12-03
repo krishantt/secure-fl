@@ -14,30 +14,21 @@ These tests simulate realistic federated learning scenarios and ensure
 the system works correctly in production-like environments.
 """
 
-import asyncio
-import multiprocessing as mp
-import os
 import tempfile
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import TensorDataset
 
-from secure_fl.aggregation import FedJSCMAggregator
 from secure_fl.client import SecureFlowerClient, create_client
 from secure_fl.models import MNISTModel, SimpleModel
 from secure_fl.monitoring import HealthChecker, MetricsCollector
-from secure_fl.server import SecureFlowerServer, create_server_strategy
+from secure_fl.server import create_server_strategy
 from secure_fl.utils import (
-    compute_parameter_norm,
-    parameters_to_ndarrays,
     torch_to_ndarrays,
 )
 
@@ -168,7 +159,7 @@ class TestCompleteTrainingWorkflow:
         assert final_loss < initial_loss, "Loss should improve from initial value"
         assert final_loss < 2.0, f"Final loss too high: {final_loss}"
 
-        print(f"\n=== Training Complete ===")
+        print("\n=== Training Complete ===")
         print(f"Initial Loss: {initial_loss:.4f}")
         print(f"Final Loss: {final_loss:.4f}")
         print(f"Final Accuracy: {final_accuracy:.4f}")
@@ -585,7 +576,7 @@ class TestCompleteTrainingWorkflow:
         avg_round_time = np.mean(round_times)
         max_memory_increase = max(memory_usage)
 
-        print(f"\n=== Performance Summary ===")
+        print("\n=== Performance Summary ===")
         print(f"Average round time: {avg_round_time:.2f}s")
         print(f"Max memory increase: {max_memory_increase:.1f}%")
 
@@ -597,7 +588,7 @@ class TestCompleteTrainingWorkflow:
 
     def _create_heterogeneous_datasets(
         self, num_clients: int, samples_per_client: int, input_dim: int = 20
-    ) -> List[TensorDataset]:
+    ) -> list[TensorDataset]:
         """Create heterogeneous datasets for different clients"""
         datasets = []
 
@@ -629,7 +620,7 @@ class TestCompleteTrainingWorkflow:
 
     def _create_mnist_like_datasets(
         self, num_clients: int, samples_per_client: int
-    ) -> List[TensorDataset]:
+    ) -> list[TensorDataset]:
         """Create MNIST-like datasets for testing"""
         datasets = []
 
@@ -648,9 +639,9 @@ class TestCompleteTrainingWorkflow:
     def _simulate_client_training(
         self,
         client: SecureFlowerClient,
-        global_params: List[np.ndarray],
+        global_params: list[np.ndarray],
         local_epochs: int,
-    ) -> Dict:
+    ) -> dict:
         """Simulate client training and return results"""
         try:
             # Load global parameters into client model
@@ -703,7 +694,7 @@ class TestCompleteTrainingWorkflow:
         except Exception as e:
             pytest.fail(f"Client training simulation failed: {e}")
 
-    def _validate_parameters(self, parameters: List[np.ndarray]) -> bool:
+    def _validate_parameters(self, parameters: list[np.ndarray]) -> bool:
         """Validate parameter integrity"""
         if not parameters:
             return False

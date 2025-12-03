@@ -13,29 +13,22 @@ Usage:
 import argparse
 import json
 import logging
-import multiprocessing as mp
 
 # Import our secure FL components
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import yaml
-from torch.utils.data import DataLoader, TensorDataset, random_split
+from torch.utils.data import TensorDataset
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from secure_fl.client import create_client, start_client
-from secure_fl.quantization import compute_quantization_error
-from secure_fl.server import SecureFlowerServer, create_server_strategy
-from secure_fl.utils import get_parameter_stats
 
 # Set up logging
 logging.basicConfig(
@@ -69,7 +62,7 @@ class SimpleNN(nn.Module):
 class SecureFL_Experiment:
     """Main experiment class for secure federated learning"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.results = {
             "training_history": [],
@@ -99,7 +92,7 @@ class SecureFL_Experiment:
         y = torch.randint(0, num_classes, (num_samples,))
         return TensorDataset(X, y)
 
-    def run_experiment(self) -> Dict[str, Any]:
+    def run_experiment(self) -> dict[str, Any]:
         """Run the complete secure FL experiment"""
         start_time = time.time()
 
@@ -164,8 +157,8 @@ class SecureFL_Experiment:
             raise
 
     def _simulate_round(
-        self, model: nn.Module, client_datasets: List, round_num: int
-    ) -> Dict[str, float]:
+        self, model: nn.Module, client_datasets: list, round_num: int
+    ) -> dict[str, float]:
         """Simulate one federated learning round"""
         # Simple simulation - in a real implementation this would involve
         # actual client training, proof generation, and secure aggregation
@@ -186,7 +179,7 @@ class SecureFL_Experiment:
         logger.info(f"Results saved to {results_path}")
 
 
-def get_default_config() -> Dict[str, Any]:
+def get_default_config() -> dict[str, Any]:
     """Get default experiment configuration"""
     return {
         "num_clients": 5,
@@ -222,7 +215,7 @@ def main():
 
     # Load config
     if args.config and Path(args.config).exists():
-        with open(args.config, "r") as f:
+        with open(args.config) as f:
             config = yaml.safe_load(f)
     else:
         config = get_default_config()

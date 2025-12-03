@@ -6,13 +6,11 @@ for the Secure FL framework with dual ZKP verification.
 """
 
 import logging
-import os
 import platform
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +32,7 @@ class SecureFLSetup:
             f"Secure FL Setup - System: {self.system}, Python: {self.python_version}, Arch: {self.arch}"
         )
 
-    def check_system_requirements(self) -> Dict[str, bool]:
+    def check_system_requirements(self) -> dict[str, bool]:
         """Check system requirements and return status"""
         checks = {}
 
@@ -99,7 +97,7 @@ class SecureFLSetup:
         self._print_system_check(checks)
         return checks
 
-    def _print_system_check(self, checks: Dict[str, bool]) -> None:
+    def _print_system_check(self, checks: dict[str, bool]) -> None:
         """Print formatted system check results"""
         print("\n🔍 System Requirements Check:")
         print("=" * 50)
@@ -148,9 +146,9 @@ class SecureFLSetup:
                 devices = checks.get("cuda_devices", 0)
                 print(f"  CUDA: ✓ ({devices} device(s))")
             else:
-                print(f"  CUDA: ⚠ (Not available)")
+                print("  CUDA: ⚠ (Not available)")
         else:
-            print(f"  CUDA: ? (PyTorch not installed)")
+            print("  CUDA: ? (PyTorch not installed)")
 
     def _check_command_exists(self, command: str) -> bool:
         """Check if a command exists in PATH"""
@@ -165,7 +163,7 @@ class SecureFLSetup:
             return False
 
     def install_python_deps(
-        self, dev: bool = False, extras: Optional[List[str]] = None
+        self, dev: bool = False, extras: list[str] | None = None
     ) -> bool:
         """Install Python dependencies"""
         logger.info("Installing Python dependencies...")
@@ -491,7 +489,7 @@ monitoring:
             logger.error(f"Demo failed: {e}")
             return False
 
-    def get_installation_status(self) -> Dict[str, str]:
+    def get_installation_status(self) -> dict[str, str]:
         """Get current installation status"""
         status = {}
 

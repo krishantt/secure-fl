@@ -31,22 +31,18 @@ Usage:
     metrics_collector.record_training_round(round_num, loss, accuracy)
 """
 
-import asyncio
 import logging
 import os
-import platform
 import socket
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
-from urllib.parse import urlparse
+from typing import Any
 
 import psutil
-import requests
 import torch
 
 try:
@@ -111,9 +107,9 @@ class HealthCheckResult:
     message: str
     timestamp: datetime
     response_time_ms: float
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
             "component": self.component,
@@ -139,12 +135,12 @@ class SystemMetrics:
     disk_total_gb: float
     network_bytes_sent: int
     network_bytes_recv: int
-    gpu_usage_percent: Optional[float] = None
-    gpu_memory_used_gb: Optional[float] = None
-    gpu_memory_total_gb: Optional[float] = None
+    gpu_usage_percent: float | None = None
+    gpu_memory_used_gb: float | None = None
+    gpu_memory_total_gb: float | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
             "cpu_usage_percent": self.cpu_usage_percent,
@@ -169,10 +165,10 @@ class HealthChecker:
     def __init__(self, check_interval: int = 30, timeout: int = 10):
         self.check_interval = check_interval
         self.timeout = timeout
-        self.checks: Dict[str, Callable[[], HealthCheckResult]] = {}
-        self.last_results: Dict[str, HealthCheckResult] = {}
+        self.checks: dict[str, Callable[[], HealthCheckResult]] = {}
+        self.last_results: dict[str, HealthCheckResult] = {}
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def register_check(
         self, name: str, check_func: Callable[[], HealthCheckResult]
@@ -376,7 +372,7 @@ class HealthChecker:
         )
 
     def check_network_connectivity(
-        self, targets: Optional[List[str]] = None
+        self, targets: list[str] | None = None
     ) -> HealthCheckResult:
         """Check network connectivity to specified targets"""
         start_time = time.time()
@@ -428,7 +424,7 @@ class HealthChecker:
             details=connectivity_results,
         )
 
-    def check_disk_space(self, paths: Optional[List[str]] = None) -> HealthCheckResult:
+    def check_disk_space(self, paths: list[str] | None = None) -> HealthCheckResult:
         """Check disk space for specified paths"""
         start_time = time.time()
 
@@ -479,7 +475,7 @@ class HealthChecker:
             details=disk_info,
         )
 
-    def check_all(self) -> Dict[str, HealthCheckResult]:
+    def check_all(self) -> dict[str, HealthCheckResult]:
         """Run all registered health checks"""
         results = {}
 
@@ -580,7 +576,7 @@ class MetricsCollector:
             self._prometheus_server_started = False
 
         # Internal metrics storage
-        self.metrics_history: Dict[str, List[Dict[str, Any]]] = {}
+        self.metrics_history: dict[str, list[dict[str, Any]]] = {}
         self._metrics_lock = threading.Lock()
 
     def _setup_prometheus_metrics(self) -> None:
@@ -781,7 +777,7 @@ class MetricsCollector:
         proof_type: str,
         duration_seconds: float,
         success: bool,
-        proof_size_bytes: Optional[int] = None,
+        proof_size_bytes: int | None = None,
     ) -> None:
         """Record ZKP proof generation metrics"""
         metrics = {
@@ -847,7 +843,7 @@ class MetricsCollector:
         # Store in history
         self._store_metric("health_checks", result.to_dict())
 
-    def _store_metric(self, metric_type: str, data: Dict[str, Any]) -> None:
+    def _store_metric(self, metric_type: str, data: dict[str, Any]) -> None:
         """Store metric in internal history"""
         with self._metrics_lock:
             if metric_type not in self.metrics_history:
@@ -861,7 +857,7 @@ class MetricsCollector:
                     -1000:
                 ]
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Get summary of collected metrics"""
         with self._metrics_lock:
             summary = {}
@@ -891,7 +887,7 @@ class TracingManager:
     """Distributed tracing management"""
 
     def __init__(
-        self, service_name: str = "secure-fl", jaeger_endpoint: Optional[str] = None
+        self, service_name: str = "secure-fl", jaeger_endpoint: str | None = None
     ):
         self.service_name = service_name
         self.jaeger_endpoint = jaeger_endpoint
@@ -950,10 +946,10 @@ class TracingManager:
 
 
 def setup_monitoring(
-    health_checker: Optional[HealthChecker] = None,
-    metrics_collector: Optional[MetricsCollector] = None,
+    health_checker: HealthChecker | None = None,
+    metrics_collector: MetricsCollector | None = None,
     enable_tracing: bool = False,
-    jaeger_endpoint: Optional[str] = None,
+    jaeger_endpoint: str | None = None,
 ) -> tuple:
     """Setup complete monitoring infrastructure"""
 

@@ -7,13 +7,11 @@ in the secure_fl.utils module.
 
 import hashlib
 import pickle
-from typing import List
 
 import numpy as np
 import pytest
 import torch
-import torch.nn as nn
-from flwr.common import NDArrays, Parameters
+from flwr.common import Parameters
 
 from secure_fl.utils import (
     aggregate_weighted_average,

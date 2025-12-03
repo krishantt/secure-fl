@@ -9,10 +9,9 @@ avoid oscillations common in heterogeneous federated learning setups.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
-import torch
 from flwr.common import NDArrays
 
 logging.basicConfig(level=logging.INFO)
@@ -67,8 +66,8 @@ class FedJSCMAggregator:
         self.momentum_decay = momentum_decay
 
         # Server state
-        self.server_momentum: Optional[NDArrays] = None
-        self.global_params: Optional[NDArrays] = None
+        self.server_momentum: NDArrays | None = None
+        self.global_params: NDArrays | None = None
         self.round_count = 0
 
         # Statistics for adaptive momentum
@@ -84,11 +83,11 @@ class FedJSCMAggregator:
 
     def aggregate(
         self,
-        client_updates: List[NDArrays],
-        client_weights: List[float],
+        client_updates: list[NDArrays],
+        client_weights: list[float],
         server_round: int,
-        global_params: Optional[NDArrays] = None,
-        stability_score: Optional[float] = None,
+        global_params: NDArrays | None = None,
+        stability_score: float | None = None,
     ) -> NDArrays:
         """
         Aggregate client updates using FedJSCM algorithm
@@ -233,7 +232,7 @@ class FedJSCMAggregator:
         return [np.zeros_like(param) for param in reference_params]
 
     def _weighted_average(
-        self, client_updates: List[NDArrays], client_weights: List[float]
+        self, client_updates: list[NDArrays], client_weights: list[float]
     ) -> NDArrays:
         """Compute weighted average of client parameters"""
         if not client_updates:
@@ -314,7 +313,7 @@ class FedJSCMAggregator:
         return adaptive_coeff
 
     def _update_adaptive_statistics(
-        self, client_updates: List[NDArrays], aggregated_update: NDArrays
+        self, client_updates: list[NDArrays], aggregated_update: NDArrays
     ):
         """Update statistics for adaptive momentum"""
         # Compute gradient variance across clients
@@ -340,7 +339,7 @@ class FedJSCMAggregator:
             total_norm += np.sum(layer_params**2)
         return np.sqrt(total_norm)
 
-    def get_momentum_state(self) -> Dict[str, Any]:
+    def get_momentum_state(self) -> dict[str, Any]:
         """Get current momentum state for debugging/monitoring"""
         if self.server_momentum is None:
             return {

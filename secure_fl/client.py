@@ -10,20 +10,18 @@ This module implements FL clients that:
 
 import logging
 import time
-from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import flwr as fl
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from flwr.common import NDArrays, Parameters
+from flwr.common import NDArrays
 from torch.utils.data import DataLoader
 
 from .proof_manager import ClientProofManager
-from .quantization import dequantize_parameters, quantize_parameters
-from .utils import ndarrays_to_parameters, parameters_to_ndarrays
+from .quantization import quantize_parameters
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +37,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
         client_id: str,
         model: nn.Module,
         train_loader: DataLoader,
-        val_loader: Optional[DataLoader] = None,
+        val_loader: DataLoader | None = None,
         device: str = "cpu",
         enable_zkp: bool = True,
         proof_rigor: str = "high",
@@ -85,7 +83,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
         logger.info(f"Client {client_id} initialized with ZKP={enable_zkp}")
 
-    def get_parameters(self, config: Dict[str, Any]) -> NDArrays:
+    def get_parameters(self, config: dict[str, Any]) -> NDArrays:
         """Get model parameters (only learnable parameters)"""
         return [param.detach().cpu().numpy() for param in self.model.parameters()]
 
@@ -103,8 +101,8 @@ class SecureFlowerClient(fl.client.NumPyClient):
             param.data = torch.tensor(array)
 
     def fit(
-        self, parameters: NDArrays, config: Dict[str, Any]
-    ) -> Tuple[NDArrays, int, Dict[str, Any]]:
+        self, parameters: NDArrays, config: dict[str, Any]
+    ) -> tuple[NDArrays, int, dict[str, Any]]:
         """
         Train model locally and generate ZKP proof
         """
@@ -177,8 +175,8 @@ class SecureFlowerClient(fl.client.NumPyClient):
         return updated_params, num_examples, metrics
 
     def evaluate(
-        self, parameters: NDArrays, config: Dict[str, Any]
-    ) -> Tuple[float, int, Dict[str, Any]]:
+        self, parameters: NDArrays, config: dict[str, Any]
+    ) -> tuple[float, int, dict[str, Any]]:
         """Evaluate model on validation data"""
         if self.val_loader is None:
             return 0.0, 0, {}
@@ -195,7 +193,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
         return float(loss), num_examples, metrics
 
-    def _train_local_model(self) -> Dict[str, float]:
+    def _train_local_model(self) -> dict[str, float]:
         """Perform local SGD training"""
         self.model.train()
         optimizer = optim.SGD(
@@ -260,7 +258,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
         return metrics
 
-    def _evaluate_model(self, data_loader: DataLoader) -> Tuple[float, float]:
+    def _evaluate_model(self, data_loader: DataLoader) -> tuple[float, float]:
         """Evaluate model on given data loader"""
         self.model.eval()
         criterion = nn.CrossEntropyLoss()
@@ -349,8 +347,8 @@ class SecureFlowerClient(fl.client.NumPyClient):
         initial_params: NDArrays,
         updated_params: NDArrays,
         param_delta: NDArrays,
-        training_metrics: Dict[str, Any],
-    ) -> Optional[str]:
+        training_metrics: dict[str, Any],
+    ) -> str | None:
         """Generate zk-STARK proof of correct training"""
         if not self.proof_manager:
             return None
@@ -395,7 +393,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
             logger.error(f"Client {self.client_id} proof generation failed: {e}")
             return None
 
-    def get_client_info(self) -> Dict[str, Any]:
+    def get_client_info(self) -> dict[str, Any]:
         """Get client information and statistics"""
         return {
             "client_id": self.client_id,
@@ -470,12 +468,9 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
 
 # Example usage and testing
 if __name__ == "__main__":
-    import torch.nn.functional as F
-    from torch.utils.data import TensorDataset
 
     # Simple test model
     # Model moved to secure_fl.models
-    from secure_fl.models import SimpleModel
 
     config = {"server_round": 1, "local_epochs": 2}
 

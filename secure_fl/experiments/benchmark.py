@@ -10,14 +10,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 from secure_fl.experiments.demo import create_federated_datasets
 from secure_fl.models import SimpleModel
@@ -42,7 +41,7 @@ class BenchmarkRunner:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.results = {}
 
-    def run_benchmark_suite(self, configs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def run_benchmark_suite(self, configs: list[dict[str, Any]]) -> dict[str, Any]:
         """Run complete benchmark suite across multiple configurations"""
         logger.info(f"Running benchmark suite with {len(configs)} configurations")
 
@@ -69,7 +68,7 @@ class BenchmarkRunner:
 
         return all_results
 
-    def run_single_benchmark(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def run_single_benchmark(self, config: dict[str, Any]) -> dict[str, Any]:
         """Run benchmark for a single configuration"""
 
         # Extract config parameters
@@ -156,11 +155,11 @@ class BenchmarkRunner:
     def _benchmark_round(
         self,
         global_model: nn.Module,
-        client_datasets: List[Tuple[DataLoader, DataLoader]],
+        client_datasets: list[tuple[DataLoader, DataLoader]],
         local_epochs: int,
         learning_rate: float,
         enable_zkp: bool,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Benchmark a single federated learning round"""
 
         round_start = time.time()
@@ -255,7 +254,7 @@ class BenchmarkRunner:
             "memory_mb": memory_usage,
         }
 
-    def _calculate_convergence_rounds(self, accuracy_history: List[float]) -> int:
+    def _calculate_convergence_rounds(self, accuracy_history: list[float]) -> int:
         """Calculate number of rounds to reach convergence (stability)"""
         if len(accuracy_history) < 3:
             return len(accuracy_history)
@@ -269,7 +268,7 @@ class BenchmarkRunner:
 
         return len(accuracy_history)
 
-    def save_results(self, results: Dict[str, Any]):
+    def save_results(self, results: dict[str, Any]):
         """Save benchmark results to JSON file"""
         output_file = self.output_dir / "benchmark_results.json"
 
@@ -294,7 +293,7 @@ class BenchmarkRunner:
 
         logger.info(f"Benchmark results saved to {output_file}")
 
-    def generate_plots(self, results: Dict[str, Any]):
+    def generate_plots(self, results: dict[str, Any]):
         """Generate visualization plots for benchmark results"""
 
         # Set up plotting style
@@ -372,7 +371,7 @@ class BenchmarkRunner:
         logger.info(f"Benchmark plots saved to {plot_path}")
 
 
-def get_default_benchmark_configs() -> List[Dict[str, Any]]:
+def get_default_benchmark_configs() -> list[dict[str, Any]]:
     """Get default benchmark configurations"""
     return [
         {
@@ -438,7 +437,7 @@ def main():
 
     # Load configurations
     if args.config and Path(args.config).exists():
-        with open(args.config, "r") as f:
+        with open(args.config) as f:
             configs = json.load(f)
     else:
         configs = get_default_benchmark_configs()

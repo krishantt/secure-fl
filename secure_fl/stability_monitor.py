@@ -19,7 +19,7 @@ Based on these metrics, it provides recommendations for proof rigor levels:
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from flwr.common import NDArrays
@@ -83,7 +83,7 @@ class StabilityMonitor:
 
         # State tracking
         self.round_count = 0
-        self.previous_parameters: Optional[NDArrays] = None
+        self.previous_parameters: NDArrays | None = None
         self.convergence_counter = 0
         self.last_stability_score = 0.0
         self.rigor_history = deque(maxlen=20)
@@ -101,7 +101,7 @@ class StabilityMonitor:
         self,
         parameters: NDArrays,
         round_num: int,
-        metrics: Optional[Dict[str, Any]] = None,
+        metrics: dict[str, Any] | None = None,
     ) -> StabilityMetrics:
         """
         Update stability monitor with new round data
@@ -367,7 +367,7 @@ class StabilityMonitor:
             loss_variance = np.var(recent_losses)
             self.adaptive_thresholds["loss_variance_threshold"] = loss_variance
 
-    def get_monitor_state(self) -> Dict[str, Any]:
+    def get_monitor_state(self) -> dict[str, Any]:
         """Get current state of the monitor for debugging/logging"""
         return {
             "round_count": self.round_count,

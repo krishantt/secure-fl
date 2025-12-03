@@ -20,9 +20,8 @@ import logging
 import os
 import subprocess
 import tempfile
-import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from flwr.common import NDArrays
@@ -45,16 +44,16 @@ class ProofManagerBase(ABC):
         pass
 
     @abstractmethod
-    def generate_proof(self, inputs: Dict[str, Any]) -> Optional[str]:
+    def generate_proof(self, inputs: dict[str, Any]) -> str | None:
         """Generate a proof for given inputs"""
         pass
 
     @abstractmethod
-    def verify_proof(self, proof: str, public_inputs: Dict[str, Any]) -> bool:
+    def verify_proof(self, proof: str, public_inputs: dict[str, Any]) -> bool:
         """Verify a proof"""
         pass
 
-    def _hash_inputs(self, inputs: Dict[str, Any]) -> str:
+    def _hash_inputs(self, inputs: dict[str, Any]) -> str:
         """Create hash of inputs for caching"""
         input_str = json.dumps(inputs, sort_keys=True, default=str)
         return hashlib.sha256(input_str.encode()).hexdigest()
@@ -119,7 +118,7 @@ class ClientProofManager(ProofManagerBase):
             logger.error(f"Client proof setup failed: {e}")
             return False
 
-    def generate_training_proof(self, proof_inputs: Dict[str, Any]) -> Optional[str]:
+    def generate_training_proof(self, proof_inputs: dict[str, Any]) -> str | None:
         """
         Generate zk-STARK proof for training correctness
 
@@ -142,7 +141,7 @@ class ClientProofManager(ProofManagerBase):
         """
         return self.generate_proof(proof_inputs)
 
-    def generate_proof(self, inputs: Dict[str, Any]) -> Optional[str]:
+    def generate_proof(self, inputs: dict[str, Any]) -> str | None:
         """Generate zk-STARK proof using Cairo"""
         if not self.setup_complete:
             logger.warning("Proof setup not complete, attempting setup...")
@@ -177,7 +176,7 @@ class ClientProofManager(ProofManagerBase):
             logger.error(f"Proof generation failed: {e}")
             return None
 
-    def verify_proof(self, proof: str, public_inputs: Dict[str, Any]) -> bool:
+    def verify_proof(self, proof: str, public_inputs: dict[str, Any]) -> bool:
         """Verify zk-STARK proof"""
         if not self.setup_complete:
             return False
@@ -384,8 +383,8 @@ func verify_delta_norm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         logger.debug(f"Created circuit template: {circuit_file}")
 
     def _prepare_circuit_inputs(
-        self, inputs: Dict[str, Any], circuit_name: str
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], circuit_name: str
+    ) -> dict[str, Any]:
         """Prepare inputs for Cairo circuit"""
         circuit_inputs = {}
 
@@ -434,13 +433,13 @@ func verify_delta_norm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return circuit_inputs
 
     def _prepare_verification_inputs(
-        self, inputs: Dict[str, Any], circuit_name: str
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], circuit_name: str
+    ) -> dict[str, Any]:
         """Prepare public inputs for verification"""
         # Similar to circuit inputs but only public values
         return self._prepare_circuit_inputs(inputs, circuit_name)
 
-    def _params_to_field_elements(self, params: NDArrays) -> List[List[int]]:
+    def _params_to_field_elements(self, params: NDArrays) -> list[list[int]]:
         """Convert parameter arrays to Cairo field elements"""
         field_params = []
 
@@ -466,8 +465,8 @@ func verify_delta_norm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return quantized % self.field_prime
 
     def _generate_stark_proof(
-        self, circuit_name: str, inputs: Dict[str, Any]
-    ) -> Optional[str]:
+        self, circuit_name: str, inputs: dict[str, Any]
+    ) -> str | None:
         """Generate STARK proof using Cairo prover"""
         try:
             # Create temporary files for inputs and proof
@@ -525,7 +524,7 @@ with open("{proof_file_path}", "w") as f:
 
             if result.returncode == 0:
                 # Read generated proof
-                with open(proof_file_path, "r") as f:
+                with open(proof_file_path) as f:
                     proof_data = f.read()
 
                 # Cleanup
@@ -542,7 +541,7 @@ with open("{proof_file_path}", "w") as f:
             return None
 
     def _verify_stark_proof(
-        self, circuit_name: str, proof: str, public_inputs: Dict[str, Any]
+        self, circuit_name: str, proof: str, public_inputs: dict[str, Any]
     ) -> bool:
         """Verify STARK proof"""
         try:
@@ -626,12 +625,12 @@ class ServerProofManager(ProofManagerBase):
 
     def generate_server_proof(
         self,
-        client_updates: List[NDArrays],
-        client_weights: List[float],
+        client_updates: list[NDArrays],
+        client_weights: list[float],
         aggregated_params: NDArrays,
         momentum: NDArrays,
         momentum_coeff: float,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Generate zk-SNARK proof for server aggregation"""
 
         inputs = {
@@ -644,7 +643,7 @@ class ServerProofManager(ProofManagerBase):
 
         return self.generate_proof(inputs)
 
-    def generate_proof(self, inputs: Dict[str, Any]) -> Optional[str]:
+    def generate_proof(self, inputs: dict[str, Any]) -> str | None:
         """Generate zk-SNARK proof using Circom/SnarkJS"""
         if not self.setup_complete:
             logger.warning("Proof setup not complete, attempting setup...")
@@ -667,7 +666,7 @@ class ServerProofManager(ProofManagerBase):
             logger.error(f"Server proof generation failed: {e}")
             return None
 
-    def verify_proof(self, proof: str, public_inputs: Dict[str, Any]) -> bool:
+    def verify_proof(self, proof: str, public_inputs: dict[str, Any]) -> bool:
         """Verify zk-SNARK proof"""
         if not self.setup_complete:
             return False
@@ -767,7 +766,7 @@ component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
 
         logger.debug(f"Created aggregation circuit: {circuit_path}")
 
-    def _prepare_snark_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def _prepare_snark_inputs(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Prepare inputs for Circom circuit"""
         circuit_inputs = {}
 
@@ -802,7 +801,7 @@ component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
 
         return circuit_inputs
 
-    def _format_public_inputs(self, public_inputs: Dict[str, Any]) -> List[str]:
+    def _format_public_inputs(self, public_inputs: dict[str, Any]) -> list[str]:
         """Format public inputs for verification"""
         # Extract public inputs and convert to string format expected by snarkjs
         formatted = []
@@ -815,7 +814,7 @@ component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
 
         return formatted
 
-    def _generate_snark_proof(self, inputs: Dict[str, Any]) -> Optional[str]:
+    def _generate_snark_proof(self, inputs: dict[str, Any]) -> str | None:
         """Generate SNARK proof"""
         try:
             # Mock proof generation - real implementation would use snarkjs
@@ -835,7 +834,7 @@ component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
             return None
 
     def _verify_snark_proof(
-        self, proof_data: Dict[str, Any], public_inputs: List[str]
+        self, proof_data: dict[str, Any], public_inputs: list[str]
     ) -> bool:
         """Verify SNARK proof"""
         try:

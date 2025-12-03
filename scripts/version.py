@@ -13,9 +13,7 @@ Usage:
 """
 
 import argparse
-import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add the project root to Python path
@@ -37,9 +35,9 @@ def show_version():
     print_version_info()
 
     info = get_build_info()
-    print(f"\nDetailed Information:")
+    print("\nDetailed Information:")
     print(f"  Full Version: {info['version']}")
-    print(f"  Build Environment: Development")
+    print("  Build Environment: Development")
     print(f"  Build Timestamp: {info['build_timestamp']}")
     print(f"  Build Increment: {info['build_increment']}")
 
@@ -51,7 +49,7 @@ def increment_version():
 
     new_version = get_version()
 
-    print(f"Version incremented for publishing:")
+    print("Version incremented for publishing:")
     print(f"  Old: {old_version}")
     print(f"  New: {new_version}")
     print(f"  Build Increment: {new_increment}")
@@ -73,7 +71,7 @@ def set_version(increment_number):
 
     new_version = get_version()
 
-    print(f"Version updated:")
+    print("Version updated:")
     print(f"  Old: {old_version}")
     print(f"  New: {new_version}")
     print(f"  Build Increment: {increment_num}")

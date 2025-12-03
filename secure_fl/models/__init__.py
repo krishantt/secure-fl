@@ -39,7 +39,7 @@ class SimpleModel(nn.Module):
     def __init__(
         self,
         input_dim: int = 784,
-        hidden_dims: List[int] = [128, 64],
+        hidden_dims: list[int] = [128, 64],
         output_dim: int = 10,
         dropout_rate: float = 0.1,
         activation: str = "relu",
@@ -128,7 +128,7 @@ class MNISTModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dims: List[int] = [128, 64],
+        hidden_dims: list[int] = [128, 64],
         output_dim: int = 10,
         dropout_rate: float = 0.2,
         use_batch_norm: bool = True,
@@ -409,12 +409,12 @@ class FlexibleMLP(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        hidden_dims: List[int],
+        hidden_dims: list[int],
         output_dim: int,
         activation: str = "relu",
         dropout_rate: float = 0.0,
         use_batch_norm: bool = False,
-        final_activation: Optional[str] = None,
+        final_activation: str | None = None,
     ):
         """
         Initialize FlexibleMLP.

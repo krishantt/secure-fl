@@ -93,7 +93,7 @@ def print_version_info():
     print(f"Secure FL Version: {info['version']}")
     print(f"Build Date: {info['build_date']} {info['build_time']}")
     print(f"Build Increment: {info['build_increment']}")
-    print(f"Build Type: Development")
+    print("Build Type: Development")
 
 
 def increment_build_number():
