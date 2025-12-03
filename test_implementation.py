@@ -67,7 +67,7 @@ def test_basic_imports():
         )
 
         logger.info("✓ All core modules imported successfully")
-        return True
+        assert True  # Test passed
     except ImportError as e:
         logger.error(f"✗ Import error: {e}")
         return False
@@ -98,7 +98,7 @@ def test_utils():
         assert validate_parameters(params)
 
         logger.info("✓ Utility functions working correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Utility test failed: {e}")
@@ -133,7 +133,7 @@ def test_quantization():
             assert orig.shape == deq.shape
 
         logger.info("✓ Quantization working correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Quantization test failed: {e}")
@@ -173,7 +173,7 @@ def test_aggregation():
         assert momentum_state["initialized"] == True
 
         logger.info("✓ FedJSCM aggregation working correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Aggregation test failed: {e}")
@@ -209,7 +209,7 @@ def test_stability_monitor():
         assert monitor.get_stability_score() >= 0
 
         logger.info("✓ Stability monitor working correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Stability monitor test failed: {e}")
@@ -233,7 +233,7 @@ def test_proof_managers():
         # Cairo and Circom to be properly installed
 
         logger.info("✓ Proof managers initialized correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Proof manager test failed: {e}")
@@ -256,7 +256,7 @@ def test_server_strategy():
         assert isinstance(strategy, SecureFlowerStrategy)
 
         logger.info("✓ Server strategy created correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Server strategy test failed: {e}")
@@ -288,7 +288,7 @@ def test_client_creation():
         assert client.client_id == "test_client"
 
         logger.info("✓ Client created correctly")
-        return True
+        assert True  # Test passed
 
     except Exception as e:
         logger.error(f"✗ Client creation test failed: {e}")

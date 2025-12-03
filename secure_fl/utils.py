@@ -84,6 +84,9 @@ def ndarrays_to_torch(model: torch.nn.Module, ndarrays: NDArrays) -> None:
         )
 
     for param, array in zip(params, ndarrays):
+        # Make array writable to avoid PyTorch warning
+        if not array.flags.writeable:
+            array = array.copy()
         param.data = torch.from_numpy(array)
 
 
@@ -259,6 +262,6 @@ def get_parameter_stats(parameters: NDArrays) -> Dict[str, Any]:
         "std": float(np.std(all_values)),
         "min": float(np.min(all_values)),
         "max": float(np.max(all_values)),
-        "total_params": int(np.sum(param.size for param in parameters)),
+        "total_params": int(sum(param.size for param in parameters)),
         "shape_info": [param.shape for param in parameters],
     }
