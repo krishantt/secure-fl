@@ -10,9 +10,11 @@ Server-side: zk-SNARK (Groth16) proofs for verifying correct aggregation
 The proof managers handle:
 1. Circuit compilation and setup
 2. Proof generation with parameter inputs
-3. Proof verification
-4. Integration with Cairo (zk-STARKs) and Circom (zk-SNARKs)
-"""
+3. Proof verification """
+
+from .utils import compute_hash, compute_parameter_norm, parameters_to_ndarrays
+from flwr.common import Parameters, NDArrays
+
 
 import hashlib
 import json
@@ -24,7 +26,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
-from flwr.common import NDArrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,515 +59,96 @@ class ProofManagerBase(ABC):
         input_str = json.dumps(inputs, sort_keys=True, default=str)
         return hashlib.sha256(input_str.encode()).hexdigest()
 
-
 class ClientProofManager(ProofManagerBase):
-    """
-    Client-side proof manager using zk-STARKs (Cairo)
 
-    Generates proofs for:
-    1. Correct SGD training steps
-    2. Valid data usage
-    3. Proper parameter updates
-    """
-
-    def __init__(
-        self,
-        cairo_path: str = "cairo-compile",
-        stark_prover_path: str = "cairo-prove",
-        stark_verifier_path: str = "cairo-verify",
-    ):
+    def __init__(self, max_update_norm: float | None = None):
         super().__init__()
-        self.cairo_path = cairo_path
-        self.stark_prover_path = stark_prover_path
-        self.stark_verifier_path = stark_verifier_path
+        # Optional: global bound on ||Δw||_2 per round
+        self.max_update_norm = max_update_norm
 
-        # Circuit templates directory
-        self.circuit_dir = os.path.join(
-            os.path.dirname(__file__), "..", "proofs", "client"
+        logger.info(
+            f"ClientProofManager initialized (max_update_norm={self.max_update_norm})"
         )
 
-        # Proof parameters
-        self.field_prime = 2**251 + 17 * 2**192 + 1  # Cairo prime
-
-        logger.info("ClientProofManager initialized")
-
     def setup(self) -> bool:
-        """Setup Cairo circuits and compilation"""
-        try:
-            # Check if Cairo tools are available
-            result = subprocess.run(
-                [self.cairo_path, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode != 0:
-                logger.error("Cairo compiler not found. Please install Cairo.")
-                return False
-
-            # Compile circuits
-            success = self._compile_circuits()
-            if success:
-                self.setup_complete = True
-                logger.info("Client proof setup completed")
-            else:
-                logger.error("Failed to setup client circuits")
-
-            return success
-
-        except Exception as e:
-            logger.error(f"Client proof setup failed: {e}")
-            return False
+        """Nothing to setup for this phase."""
+        self.setup_complete = True
+        return True
 
     def generate_training_proof(self, proof_inputs: dict[str, Any]) -> str | None:
         """
-        Generate zk-STARK proof for training correctness
+        Entry point used by SecureFlowerClient.
 
-        Args:
-            proof_inputs: Dictionary containing:
-                - client_id: Client identifier
-                - round: Training round number
-                - data_commitment: Hash commitment to training data
-                - initial_params: Parameters before training
-                - updated_params: Parameters after training
-                - param_delta: Parameter update (delta)
-                - learning_rate: Learning rate used
-                - local_epochs: Number of local epochs
-                - rigor_level: Proof rigor ('high', 'medium', 'low')
-                - batch_losses: Batch loss history (for high rigor)
-                - gradient_norms: Gradient norms (for high rigor)
-
-        Returns:
-            Proof string or None if generation fails
+        Expected keys in proof_inputs:
+          - client_id (str)
+          - round (int)
+          - data_commitment (str)
+          - initial_params (NDArrays)
+          - updated_params (NDArrays)
+          - param_delta (NDArrays)
+          - learning_rate (float)
+          - local_epochs (int)
+          - rigor_level (str)
+          - OPTIONAL: batch_losses, gradient_norms, total_samples
         """
         return self.generate_proof(proof_inputs)
 
     def generate_proof(self, inputs: dict[str, Any]) -> str | None:
-        """Generate zk-STARK proof using Cairo"""
-        if not self.setup_complete:
-            logger.warning("Proof setup not complete, attempting setup...")
-            if not self.setup():
-                return None
-
+        """Build a JSON proof object we can verify server-side."""
         try:
-            rigor_level = inputs.get("rigor_level", "medium")
+            initial_params = inputs["initial_params"]
+            updated_params = inputs["updated_params"]
+            param_delta = inputs["param_delta"]
 
-            # Select circuit based on rigor level
-            if rigor_level == "high":
-                circuit_name = "sgd_full_trace"
-            elif rigor_level == "medium":
-                circuit_name = "sgd_single_step"
-            else:  # low rigor
-                circuit_name = "sgd_delta_proof"
+            # Basic hashes (use same serializer as the rest of the code)
+            initial_hash = compute_hash(initial_params)
+            updated_hash = compute_hash(updated_params)
+            delta_hash = compute_hash(param_delta)
 
-            # Prepare circuit inputs
-            circuit_inputs = self._prepare_circuit_inputs(inputs, circuit_name)
+            # Norms
+            delta_norm_l2 = compute_parameter_norm(param_delta, norm_type="l2")
 
-            # Generate proof
-            proof = self._generate_stark_proof(circuit_name, circuit_inputs)
+            # If user configured a max norm, include it
+            max_norm = self.max_update_norm
 
-            if proof:
-                logger.debug(
-                    f"Generated {rigor_level} rigor proof for client {inputs.get('client_id', 'unknown')}"
-                )
+            proof_obj = {
+                "type": "client_training_proof",
+                "version": 1,
+                "client_id": inputs.get("client_id"),
+                "round": int(inputs.get("round", 0)),
+                "data_commitment": inputs.get("data_commitment"),
+                "initial_hash": initial_hash,
+                "updated_hash": updated_hash,
+                "delta_hash": delta_hash,
+                "delta_norm_l2": delta_norm_l2,
+                "max_delta_norm_l2": max_norm,
+                "learning_rate": float(inputs.get("learning_rate", 0.0)),
+                "local_epochs": int(inputs.get("local_epochs", 0)),
+                "rigor_level": inputs.get("rigor_level", "medium"),
+                # Optional detailed metrics
+                "total_samples": int(inputs.get("total_samples", 0)),
+                "batch_losses": inputs.get("batch_losses", []),
+                "gradient_norms": inputs.get("gradient_norms", []),
+            }
 
-            return proof
+            # Cache by hash if you want (not required now)
+            proof_key = self._hash_inputs(proof_obj)
+            self.proof_cache[proof_key] = proof_obj
+
+            return json.dumps(proof_obj)
 
         except Exception as e:
-            logger.error(f"Proof generation failed: {e}")
+            logger.error(f"Client proof generation failed: {e}")
             return None
 
     def verify_proof(self, proof: str, public_inputs: dict[str, Any]) -> bool:
-        """Verify zk-STARK proof"""
-        if not self.setup_complete:
-            return False
-
-        try:
-            # Extract proof components
-            proof_data = json.loads(proof)
-            circuit_name = proof_data.get("circuit")
-            stark_proof = proof_data.get("proof")
-
-            if not circuit_name or not stark_proof:
-                return False
-
-            # Prepare public inputs for verification
-            verification_inputs = self._prepare_verification_inputs(
-                public_inputs, circuit_name
-            )
-
-            # Verify proof
-            return self._verify_stark_proof(
-                circuit_name, stark_proof, verification_inputs
-            )
-
-        except Exception as e:
-            logger.error(f"Proof verification failed: {e}")
-            return False
-
-    def _compile_circuits(self) -> bool:
-        """Compile Cairo circuits for different rigor levels"""
-        circuits_to_compile = [
-            "sgd_full_trace.cairo",
-            "sgd_single_step.cairo",
-            "sgd_delta_proof.cairo",
-        ]
-
-        try:
-            os.makedirs(self.circuit_dir, exist_ok=True)
-
-            for circuit_file in circuits_to_compile:
-                circuit_path = os.path.join(self.circuit_dir, circuit_file)
-
-                # Create circuit if it doesn't exist
-                if not os.path.exists(circuit_path):
-                    self._create_circuit_template(circuit_file)
-
-                # Compile circuit
-                compiled_path = circuit_path.replace(".cairo", "_compiled.json")
-                result = subprocess.run(
-                    [self.cairo_path, "--output", compiled_path, circuit_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-
-                if result.returncode != 0:
-                    logger.error(f"Failed to compile {circuit_file}: {result.stderr}")
-                    return False
-
-                logger.debug(f"Compiled {circuit_file}")
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Circuit compilation failed: {e}")
-            return False
-
-    def _create_circuit_template(self, circuit_file: str):
-        """Create Cairo circuit template"""
-        circuit_path = os.path.join(self.circuit_dir, circuit_file)
-
-        if circuit_file == "sgd_full_trace.cairo":
-            circuit_code = """
-%lang starknet
-
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_nn_le, assert_not_zero
-from starkware.cairo.common.hash import hash2
-
-// High rigor: Full SGD trace verification
-// Verifies complete training trajectory with all intermediate steps
-
-struct TrainingState {
-    params: felt*,  // Model parameters
-    gradients: felt*,  // Gradients at each step
-    loss: felt,  // Training loss
-    learning_rate: felt,
-}
-
-@storage_var
-func data_commitment() -> (hash: felt) {
-}
-
-@storage_var
-func client_id() -> (id: felt) {
-}
-
-@external
-func verify_full_sgd_trace{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    initial_state: TrainingState,
-    final_state: TrainingState,
-    num_steps: felt,
-    step_proofs: felt*
-) {
-    alloc_locals;
-
-    // Verify data commitment
-    let (committed_data) = data_commitment.read();
-    assert_not_zero(committed_data);
-
-    // Verify SGD steps
-    _verify_sgd_steps(initial_state, final_state, num_steps, step_proofs);
-
-    return ();
-}
-
-func _verify_sgd_steps{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    initial_state: TrainingState,
-    final_state: TrainingState,
-    num_steps: felt,
-    step_proofs: felt*
-) {
-    if (num_steps == 0) {
-        return ();
-    }
-
-    // Verify single SGD step: w_new = w_old - lr * grad
-    // This is a simplified version - actual implementation would be more complex
-
-    let expected_update = initial_state.learning_rate * initial_state.gradients[0];
-    let actual_update = final_state.params[0] - initial_state.params[0];
-
-    // In a real circuit, we'd verify this mathematically
-    // For now, we just check the structure exists
-    assert_nn_le(0, num_steps);
-
-    return ();
-}
-"""
-
-        elif circuit_file == "sgd_single_step.cairo":
-            circuit_code = """
-%lang starknet
-
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_nn_le
-
-// Medium rigor: Single SGD step verification
-// Verifies one complete training epoch
-
-@external
-func verify_sgd_step{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    params_before: felt*,
-    params_after: felt*,
-    learning_rate: felt,
-    gradient_commitment: felt,
-    data_size: felt
-) {
-    alloc_locals;
-
-    // Verify parameter update is consistent with SGD
-    // w_new = w_old - lr * gradient
-
-    // Simplified verification - real implementation would compute gradients
-    assert_nn_le(0, learning_rate);
-    assert_nn_le(0, data_size);
-
-    return ();
-}
-"""
-
-        else:  # sgd_delta_proof.cairo
-            circuit_code = """
-%lang starknet
-
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_nn_le
-
-// Low rigor: Parameter delta verification
-// Just verifies parameter update magnitude is reasonable
-
-@external
-func verify_delta_norm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    param_delta: felt*,
-    delta_norm: felt,
-    max_norm: felt,
-    data_commitment: felt
-) {
-    alloc_locals;
-
-    // Verify delta norm is within reasonable bounds
-    assert_nn_le(delta_norm, max_norm);
-    assert_nn_le(0, delta_norm);
-
-    // Verify data commitment exists
-    assert_nn_le(0, data_commitment);
-
-    return ();
-}
-"""
-
-        with open(circuit_path, "w") as f:
-            f.write(circuit_code)
-
-        logger.debug(f"Created circuit template: {circuit_file}")
-
-    def _prepare_circuit_inputs(
-        self, inputs: dict[str, Any], circuit_name: str
-    ) -> dict[str, Any]:
-        """Prepare inputs for Cairo circuit"""
-        circuit_inputs = {}
-
-        # Convert parameters to field elements
-        if "initial_params" in inputs:
-            circuit_inputs["initial_params"] = self._params_to_field_elements(
-                inputs["initial_params"]
-            )
-
-        if "updated_params" in inputs:
-            circuit_inputs["updated_params"] = self._params_to_field_elements(
-                inputs["updated_params"]
-            )
-
-        if "param_delta" in inputs:
-            circuit_inputs["param_delta"] = self._params_to_field_elements(
-                inputs["param_delta"]
-            )
-
-        # Convert scalar values
-        circuit_inputs["learning_rate"] = self._scalar_to_field_element(
-            inputs.get("learning_rate", 0.01)
-        )
-
-        circuit_inputs["client_id"] = (
-            hash(str(inputs.get("client_id", "unknown"))) % self.field_prime
-        )
-
-        # Data commitment
-        data_commitment = inputs.get("data_commitment", "")
-        circuit_inputs["data_commitment"] = int(
-            hashlib.sha256(data_commitment.encode()).hexdigest()[:8], 16
-        )
-
-        # Circuit-specific inputs
-        if circuit_name == "sgd_full_trace":
-            circuit_inputs["batch_losses"] = [
-                self._scalar_to_field_element(loss)
-                for loss in inputs.get("batch_losses", [])
-            ]
-            circuit_inputs["gradient_norms"] = [
-                self._scalar_to_field_element(norm)
-                for norm in inputs.get("gradient_norms", [])
-            ]
-
-        return circuit_inputs
-
-    def _prepare_verification_inputs(
-        self, inputs: dict[str, Any], circuit_name: str
-    ) -> dict[str, Any]:
-        """Prepare public inputs for verification"""
-        # Similar to circuit inputs but only public values
-        return self._prepare_circuit_inputs(inputs, circuit_name)
-
-    def _params_to_field_elements(self, params: NDArrays) -> list[list[int]]:
-        """Convert parameter arrays to Cairo field elements"""
-        field_params = []
-
-        for param_array in params:
-            # Quantize and convert to integers
-            quantized = (param_array * 1000).astype(int)  # Simple quantization
-
-            # Convert to field elements
-            field_array = []
-            for val in quantized.flatten():
-                # Ensure value is in field
-                field_val = int(val) % self.field_prime
-                field_array.append(field_val)
-
-            field_params.append(field_array)
-
-        return field_params
-
-    def _scalar_to_field_element(self, value: float) -> int:
-        """Convert scalar to field element"""
-        # Simple conversion - real implementation would be more sophisticated
-        quantized = int(value * 10000)  # Fixed point with 4 decimal places
-        return quantized % self.field_prime
-
-    def _generate_stark_proof(
-        self, circuit_name: str, inputs: dict[str, Any]
-    ) -> str | None:
-        """Generate STARK proof using Cairo prover"""
-        try:
-            # Create temporary files for inputs and proof
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as input_file:
-                json.dump(inputs, input_file, indent=2)
-                input_file_path = input_file.name
-
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as proof_file:
-                proof_file_path = proof_file.name
-
-            # Get compiled circuit path
-            circuit_path = os.path.join(
-                self.circuit_dir, f"{circuit_name}_compiled.json"
-            )
-
-            # Run Cairo prover (simplified - real implementation would be different)
-            result = subprocess.run(
-                [
-                    "python",
-                    "-c",
-                    f"""
-import json
-import time
-import hashlib
-
-# Mock STARK proof generation
-with open("{input_file_path}", "r") as f:
-    inputs = json.load(f)
-
-# Generate mock proof
-proof = {{
-    "circuit": "{circuit_name}",
-    "proof": {{
-        "commitment": hashlib.sha256(str(inputs).encode()).hexdigest(),
-        "trace_length": 1024,
-        "merkle_root": hashlib.sha256(b"mock_trace").hexdigest(),
-        "fri_proof": "mock_fri_proof_data",
-        "timestamp": int(time.time())
-    }},
-    "public_inputs": inputs.get("data_commitment", 0)
-}}
-
-with open("{proof_file_path}", "w") as f:
-    json.dump(proof, f, indent=2)
-""",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-
-            if result.returncode == 0:
-                # Read generated proof
-                with open(proof_file_path) as f:
-                    proof_data = f.read()
-
-                # Cleanup
-                os.unlink(input_file_path)
-                os.unlink(proof_file_path)
-
-                return proof_data
-            else:
-                logger.error(f"Proof generation failed: {result.stderr}")
-                return None
-
-        except Exception as e:
-            logger.error(f"STARK proof generation failed: {e}")
-            return None
-
-    def _verify_stark_proof(
-        self, circuit_name: str, proof: str, public_inputs: dict[str, Any]
-    ) -> bool:
-        """Verify STARK proof"""
-        try:
-            # Mock verification - real implementation would use Cairo verifier
-            proof_data = json.loads(proof) if isinstance(proof, str) else proof
-
-            # Basic validation
-            required_fields = ["commitment", "trace_length", "merkle_root"]
-            for field in required_fields:
-                if field not in proof_data:
-                    return False
-
-            # Check trace length is reasonable
-            trace_length = proof_data.get("trace_length", 0)
-            if trace_length < 64 or trace_length > 2**20:
-                return False
-
-            # Mock verification always passes for now
-            # Real implementation would verify the mathematical proof
-            logger.debug(f"Verified STARK proof for circuit {circuit_name}")
-            return True
-
-        except Exception as e:
-            logger.error(f"STARK proof verification failed: {e}")
-            return False
+        """
+        Not used on the client side; verification is done on the server.
+
+        Implemented only to satisfy the base class API.
+        """
+        logger.warning("ClientProofManager.verify_proof called unexpectedly")
+        return False
 
 
 class ServerProofManager(ProofManagerBase):
@@ -711,6 +293,85 @@ class ServerProofManager(ProofManagerBase):
             logger.error(f"SNARK circuit setup failed: {e}")
             return False
 
+    def verify_client_proof(
+        self,
+        proof: str,
+        updated_parameters: Parameters | NDArrays,
+        old_global_params: NDArrays,
+    ) -> bool:
+        try:
+            # Parse proof JSON
+                proof_obj = json.loads(proof) if isinstance(proof, str) else proof
+
+                if proof_obj.get("type") != "client_training_proof":
+                    logger.warning("Unknown proof type")
+                    return False
+
+                # Convert Parameters -> NDArrays if needed
+                if isinstance(updated_parameters, list):
+                    new_params = updated_parameters
+                else:
+                    new_params = parameters_to_ndarrays(updated_parameters)
+
+                # Recompute hashes
+                recomputed_updated_hash = compute_hash(new_params)
+
+                if recomputed_updated_hash != proof_obj.get("updated_hash"):
+                    logger.warning("Updated hash mismatch in client proof")
+                    return False
+
+                # Compute delta from server's view: Δw = w_new - w_old
+                if len(old_global_params) != len(new_params):
+                    logger.warning("Parameter length mismatch for client proof")
+                    return False
+
+                delta = []
+                for old_layer, new_layer in zip(old_global_params, new_params):
+                    if old_layer.shape != new_layer.shape:
+                        logger.warning("Parameter shape mismatch for client proof")
+                        return False
+                    delta.append(new_layer - old_layer)
+
+                # Check delta hash and norm
+                recomputed_delta_hash = compute_hash(delta)
+                recomputed_delta_norm = compute_parameter_norm(delta, norm_type="l2")
+
+                if recomputed_delta_hash != proof_obj.get("delta_hash"):
+                    logger.warning("Delta hash mismatch in client proof")
+                    return False
+
+                claimed_delta_norm = float(proof_obj.get("delta_norm_l2", -1.0))
+                if claimed_delta_norm < 0:
+                    logger.warning("Client proof missing delta_norm_l2")
+                    return False
+
+                # They must agree within a small numeric tolerance
+                if abs(claimed_delta_norm - recomputed_delta_norm) > 1e-4:
+                    logger.warning(
+                        f"Delta norm mismatch: claimed={claimed_delta_norm}, "
+                        f"recomputed={recomputed_delta_norm}"
+                    )
+                    return False
+
+                # Optional bound check (can be None)
+                max_norm = proof_obj.get("max_delta_norm_l2", None)
+                if max_norm is not None:
+                    max_norm = float(max_norm)
+                    if recomputed_delta_norm > max_norm:
+                        logger.warning(
+                            f"Client delta norm {recomputed_delta_norm:.6f} "
+                            f"exceeds bound {max_norm:.6f}"
+                        )
+                        return False
+
+                return True
+
+        except Exception as e:
+            logger.error(f"Client proof verification failed: {e}")
+            return False
+    
+    
+    
     def _create_aggregation_circuit(self, circuit_path: str):
         """Create Circom aggregation circuit"""
         circuit_code = """

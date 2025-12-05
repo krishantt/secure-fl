@@ -349,12 +349,11 @@ class SecureFlowerClient(fl.client.NumPyClient):
         param_delta: NDArrays,
         training_metrics: dict[str, Any],
     ) -> str | None:
-        """Generate zk-STARK proof of correct training"""
+        """Generate proof of correct training"""
         if not self.proof_manager:
             return None
 
         try:
-            # Prepare proof inputs based on rigor level
             proof_inputs = {
                 "client_id": self.client_id,
                 "round": self.round_count,
@@ -365,6 +364,10 @@ class SecureFlowerClient(fl.client.NumPyClient):
                 "learning_rate": self.learning_rate,
                 "local_epochs": self.local_epochs,
                 "rigor_level": self.proof_rigor,
+                # Optional, used only for logging/analysis
+                "batch_losses": training_metrics.get("batch_losses", []),
+                "gradient_norms": training_metrics.get("gradient_norms", []),
+                "total_samples": training_metrics.get("total_samples", 0),
             }
 
             # Add detailed training info for high rigor
@@ -382,8 +385,8 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
             if proof:
                 logger.debug(
-                    f"Client {self.client_id} generated {self.proof_rigor} rigor proof"
-                )
+                    f"Client {self.client_id} generated training proof "
+                    f"(round={self.round_count}, rigor={self.proof_rigor})"                )
             else:
                 logger.warning(f"Client {self.client_id} failed to generate proof")
 

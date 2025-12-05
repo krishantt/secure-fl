@@ -277,7 +277,7 @@ class SecureFlowerStrategy(Strategy):
         return super().evaluate(server_round, parameters)
 
     def _verify_client_proof(self, client: ClientProxy, fit_res: FitRes) -> bool:
-        """Verify client's zk-STARK proof"""
+        """Verify client's proof against the current global parameters."""
         if not self.proof_manager:
             return True
 
@@ -285,10 +285,27 @@ class SecureFlowerStrategy(Strategy):
         client_proof = fit_res.metrics.get("zkp_proof")
         if not client_proof:
             logger.warning(f"No ZKP proof from client {client.cid}")
+            # If ZKP is enabled, treat missing proof as failure
             return not self.enable_zkp  # Allow if ZKP disabled
 
-        # Verify zk-STARK proof
-        return self.proof_manager.verify_client_proof(client_proof, fit_res.parameters)
+        if self.current_global_params is None:
+            logger.error("No current_global_params available for proof verification")
+            return False
+
+        try:
+            ok = self.proof_manager.verify_client_proof(
+                proof=client_proof,
+                updated_parameters=fit_res.parameters,
+                old_global_params=self.current_global_params,
+            )
+
+            if not ok:
+                logger.warning(f"Client {client.cid} failed proof verification")
+            return ok
+
+        except Exception as e:
+            logger.error(f"Error verifying proof for client {client.cid}: {e}")
+            return False
 
     def _generate_server_proof(
         self,
