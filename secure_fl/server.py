@@ -19,6 +19,7 @@ from flwr.common import EvaluateRes, FitRes, NDArrays, Parameters, Scalar
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import Strategy
 
+
 from .aggregation import FedJSCMAggregator
 from .proof_manager import ServerProofManager
 from .stability_monitor import StabilityMonitor
@@ -290,13 +291,15 @@ class SecureFlowerStrategy(Strategy):
 
         if self.current_global_params is None:
             logger.error("No current_global_params available for proof verification")
-            return False
+            return not self.enable_zkp
 
         try:
+            updated_params=fit_res.parameters
+            old_global_params=self.current_global_params
             ok = self.proof_manager.verify_client_proof(
-                proof=client_proof,
-                updated_parameters=fit_res.parameters,
-                old_global_params=self.current_global_params,
+                client_proof,
+                updated_parameters=updated_parameters,
+                old_global_params=old_global_params,
             )
 
             if not ok:
@@ -305,7 +308,7 @@ class SecureFlowerStrategy(Strategy):
 
         except Exception as e:
             logger.error(f"Error verifying proof for client {client.cid}: {e}")
-            return False
+            return not self.enable_zkp
 
     def _generate_server_proof(
         self,
