@@ -294,11 +294,11 @@ class SecureFlowerStrategy(Strategy):
             return not self.enable_zkp
 
         try:
-            updated_params=fit_res.parameters
+            updated_params=parameters_to_ndarrays(fit_res.parameters)
             old_global_params=self.current_global_params
             ok = self.proof_manager.verify_client_proof(
                 client_proof,
-                updated_parameters=updated_parameters,
+                updated_parameters=updated_params,
                 old_global_params=old_global_params,
             )
 
