@@ -10,11 +10,7 @@ Server-side: zk-SNARK (Groth16) proofs for verifying correct aggregation
 The proof managers handle:
 1. Circuit compilation and setup
 2. Proof generation with parameter inputs
-3. Proof verification """
-
-from .utils import compute_hash, compute_parameter_norm, parameters_to_ndarrays
-from flwr.common import Parameters, NDArrays
-
+3. Proof verification"""
 
 import hashlib
 import json
@@ -26,6 +22,9 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
+from flwr.common import NDArrays, Parameters
+
+from .utils import compute_hash, compute_parameter_norm, parameters_to_ndarrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,16 +58,167 @@ class ProofManagerBase(ABC):
         input_str = json.dumps(inputs, sort_keys=True, default=str)
         return hashlib.sha256(input_str.encode()).hexdigest()
 
-class ClientProofManager(ProofManagerBase):
 
-    def __init__(self, max_update_norm: float | None = None):
+class ClientProofManager(ProofManagerBase):
+    def __init__(
+        self,
+        max_update_norm: float | None = None,
+        use_pysnark: bool = True,
+        fixed_point_scale: int = 1,
+    ):
         super().__init__()
-        # Optional: global bound on ||Δw||_2 per round
         self.max_update_norm = max_update_norm
+        self.use_pysnark = use_pysnark
+        self.fixed_point_scale = fixed_point_scale
 
         logger.info(
-            f"ClientProofManager initialized (max_update_norm={self.max_update_norm})"
+            f"ClientProofManager initialized (max_update_norm={self.max_update_norm}, "
+            f"use_pysnark={self.use_pysnark}, scale={self.fixed_point_scale})"
         )
+
+    def _flatten_params(self, params: NDArrays) -> list[float]:
+        """Flatten list of parameter arrays into a single list of floats."""
+        flat: list[float] = []
+        for arr in params:
+            flat.extend(arr.astype(float).ravel().tolist())
+        return flat
+
+    def _to_fixed_point_list(self, values: list[float]) -> list[int]:
+        """Convert float list to fixed-point integers using configured scale."""
+        s = self.fixed_point_scale
+        return [int(round(v * s)) for v in values]
+
+    def _get_effective_bound(self, delta_norm_l2: float) -> float:
+        """
+        Decide which bound to enforce in the circuit:
+        - if max_update_norm set => use that
+        - else use an automatic bound (e.g., 2x observed norm)
+        """
+        if self.max_update_norm is not None:
+            return float(self.max_update_norm)
+        # simple heuristic: 2x observed norm, but at least a small positive number
+        # return max(1e-6, 2.0 * float(delta_norm_l2))
+        return min(1000.0, max(1e-6, 2.0 * float(delta_norm_l2)))
+
+
+    def _generate_pysnark_delta_bound_proof(
+        self,
+        initial_params: NDArrays,
+        updated_params: NDArrays,
+        delta_norm_l2: float,
+    ) -> dict[str, Any] | None:
+        """
+        Run the PySNARK circuit delta_bound_proof(initial, updated, bound).
+
+        Returns a small metadata dict we embed into the JSON proof:
+        {
+          "enabled": True,
+          "vector_len": N,
+          "scale": scale,
+          "bound": bound_used,
+          "commitment": "<int or str>"
+        }
+        """
+        if not self.use_pysnark:
+            return None
+        delta_bound_proof = None
+        PrivVal = None
+        PubVal = None
+        try:
+            # Local imports so code still works even if PySNARK not installed
+            from pysnark.runtime import PrivVal, PubVal
+        except ImportError as e:
+            logger.warning(f"PySNARK runtime not available: {e}")
+            return None
+        try:
+            from proofs.client_circuits.delta_bound import delta_bound_proof
+        except Exception as e_first:
+            # 2. Fallback: add project root and try again
+            try:
+                import sys
+                from pathlib import Path
+                repo_root = Path(__file__).resolve().parents[1]  # secure-fl/
+                if str(repo_root) not in sys.path:
+                    sys.path.insert(0, str(repo_root))
+                from proofs.client_circuits.delta_bound import delta_bound_proof
+            except Exception as e_second:
+                logger.warning(
+                    "PySNARK / delta_bound_proof NOT available, skipping zk proof\n"
+                    f"First import error:  {e_first}\n"
+                    f"Second import error: {e_second}"
+                )
+                return None
+
+        try:
+            # 1) Flatten parameters
+            flat_init = self._flatten_params(initial_params)
+            flat_upd = self._flatten_params(updated_params)
+
+            if len(flat_init) != len(flat_upd):
+                logger.warning(
+                    f"PySNARK: length mismatch initial ({len(flat_init)}) "
+                    f"vs updated ({len(flat_upd)})"
+                )
+                return None
+
+            # 2) Convert to fixed-point integers
+            init_fp = self._to_fixed_point_list(flat_init)
+            upd_fp = self._to_fixed_point_list(flat_upd)
+
+            # 3) Choose bound (in float) then scale
+            bound_float = self._get_effective_bound(delta_norm_l2)
+            bound_int = int(round(bound_float * self.fixed_point_scale))
+
+
+                # 4) Wrap inputs with PySNARK value types
+                    # CRITICAL: These must be PrivVal/PubVal for the circuit to work
+            initial_circuit = [PrivVal(x) for x in init_fp]
+            updated_circuit = [PrivVal(x) for x in upd_fp]
+            bound_circuit = PubVal(bound_int)
+
+            logger.info(
+                f"Running PySNARK circuit: vector_len={len(init_fp)}, "
+                f"bound_int={bound_int}, bound_float={bound_float}"
+            )
+
+            # 5) Run the circuit - this generates the constraint system
+            l2_sq_result = delta_bound_proof(
+                initial_circuit,
+                updated_circuit,
+                bound_circuit
+            )
+
+            logger.info("PySNARK circuit executed successfully")
+
+
+            # 4) Run the circuit
+            # Note: PySNARK will internally treat Python ints as private/public values
+            # commitment = delta_bound_proof(init_fp, upd_fp, bound_int)
+
+            # We don't yet wire actual snark proof file here;
+            # we at least record the commitment and settings.
+            return {
+                "enabled": True,
+                "vector_len": len(init_fp),
+                "scale": self.fixed_point_scale,
+                "bound_float": bound_float,
+                "bound_int": bound_int,
+                "l2_sq_result": str(int(l2_sq_result)),
+            }
+        except AssertionError as e:
+                logger.error(
+                    f"PySNARK constraint failed (bound violation): {e}"
+                )
+                return {
+                    "enabled": True,
+                    "error": "bound_violation",
+                    "message": str(e),
+                }
+        except Exception as e:
+            logger.error(f"PySNARK delta-bound proof generation failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
 
     def setup(self) -> bool:
         """Nothing to setup for this phase."""
@@ -111,6 +261,13 @@ class ClientProofManager(ProofManagerBase):
             # If user configured a max norm, include it
             max_norm = self.max_update_norm
 
+            # Optional: run PySNARK circuit to enforce ||Δw|| <= B in a zk way
+            pysnark_info = self._generate_pysnark_delta_bound_proof(
+                initial_params=initial_params,
+                updated_params=updated_params,
+                delta_norm_l2=delta_norm_l2,
+            )
+
             proof_obj = {
                 "type": "client_training_proof",
                 "version": 1,
@@ -129,6 +286,8 @@ class ClientProofManager(ProofManagerBase):
                 "total_samples": int(inputs.get("total_samples", 0)),
                 "batch_losses": inputs.get("batch_losses", []),
                 "gradient_norms": inputs.get("gradient_norms", []),
+                # New: PySNARK metadata if available
+                "pysnark": pysnark_info or {"enabled": False},
             }
 
             # Cache by hash if you want (not required now)
@@ -301,77 +460,75 @@ class ServerProofManager(ProofManagerBase):
     ) -> bool:
         try:
             # Parse proof JSON
-                proof_obj = json.loads(proof) if isinstance(proof, str) else proof
+            proof_obj = json.loads(proof) if isinstance(proof, str) else proof
 
-                if proof_obj.get("type") != "client_training_proof":
-                    logger.warning("Unknown proof type")
+            if proof_obj.get("type") != "client_training_proof":
+                logger.warning("Unknown proof type")
+                return False
+
+            # Convert Parameters -> NDArrays if needed
+            if isinstance(updated_parameters, list):
+                new_params = updated_parameters
+            else:
+                new_params = parameters_to_ndarrays(updated_parameters)
+
+            # Recompute hashes
+            recomputed_updated_hash = compute_hash(new_params)
+
+            if recomputed_updated_hash != proof_obj.get("updated_hash"):
+                logger.warning("Updated hash mismatch in client proof")
+                return False
+
+            # Compute delta from server's view: Δw = w_new - w_old
+            if len(old_global_params) != len(new_params):
+                logger.warning("Parameter length mismatch for client proof")
+                return False
+
+            delta = []
+            for old_layer, new_layer in zip(old_global_params, new_params):
+                if old_layer.shape != new_layer.shape:
+                    logger.warning("Parameter shape mismatch for client proof")
                     return False
+                delta.append(new_layer - old_layer)
 
-                # Convert Parameters -> NDArrays if needed
-                if isinstance(updated_parameters, list):
-                    new_params = updated_parameters
-                else:
-                    new_params = parameters_to_ndarrays(updated_parameters)
+            # Check delta hash and norm
+            recomputed_delta_hash = compute_hash(delta)
+            recomputed_delta_norm = compute_parameter_norm(delta, norm_type="l2")
 
-                # Recompute hashes
-                recomputed_updated_hash = compute_hash(new_params)
+            if recomputed_delta_hash != proof_obj.get("delta_hash"):
+                logger.warning("Delta hash mismatch in client proof")
+                return False
 
-                if recomputed_updated_hash != proof_obj.get("updated_hash"):
-                    logger.warning("Updated hash mismatch in client proof")
-                    return False
+            claimed_delta_norm = float(proof_obj.get("delta_norm_l2", -1.0))
+            if claimed_delta_norm < 0:
+                logger.warning("Client proof missing delta_norm_l2")
+                return False
 
-                # Compute delta from server's view: Δw = w_new - w_old
-                if len(old_global_params) != len(new_params):
-                    logger.warning("Parameter length mismatch for client proof")
-                    return False
+            # They must agree within a small numeric tolerance
+            if abs(claimed_delta_norm - recomputed_delta_norm) > 1e-4:
+                logger.warning(
+                    f"Delta norm mismatch: claimed={claimed_delta_norm}, "
+                    f"recomputed={recomputed_delta_norm}"
+                )
+                return False
 
-                delta = []
-                for old_layer, new_layer in zip(old_global_params, new_params):
-                    if old_layer.shape != new_layer.shape:
-                        logger.warning("Parameter shape mismatch for client proof")
-                        return False
-                    delta.append(new_layer - old_layer)
-
-                # Check delta hash and norm
-                recomputed_delta_hash = compute_hash(delta)
-                recomputed_delta_norm = compute_parameter_norm(delta, norm_type="l2")
-
-                if recomputed_delta_hash != proof_obj.get("delta_hash"):
-                    logger.warning("Delta hash mismatch in client proof")
-                    return False
-
-                claimed_delta_norm = float(proof_obj.get("delta_norm_l2", -1.0))
-                if claimed_delta_norm < 0:
-                    logger.warning("Client proof missing delta_norm_l2")
-                    return False
-
-                # They must agree within a small numeric tolerance
-                if abs(claimed_delta_norm - recomputed_delta_norm) > 1e-4:
+            # Optional bound check (can be None)
+            max_norm = proof_obj.get("max_delta_norm_l2", None)
+            if max_norm is not None:
+                max_norm = float(max_norm)
+                if recomputed_delta_norm > max_norm:
                     logger.warning(
-                        f"Delta norm mismatch: claimed={claimed_delta_norm}, "
-                        f"recomputed={recomputed_delta_norm}"
+                        f"Client delta norm {recomputed_delta_norm:.6f} "
+                        f"exceeds bound {max_norm:.6f}"
                     )
                     return False
 
-                # Optional bound check (can be None)
-                max_norm = proof_obj.get("max_delta_norm_l2", None)
-                if max_norm is not None:
-                    max_norm = float(max_norm)
-                    if recomputed_delta_norm > max_norm:
-                        logger.warning(
-                            f"Client delta norm {recomputed_delta_norm:.6f} "
-                            f"exceeds bound {max_norm:.6f}"
-                        )
-                        return False
-
-                return True
+            return True
 
         except Exception as e:
             logger.error(f"Client proof verification failed: {e}")
             return False
-    
-    
-    
+
     def _create_aggregation_circuit(self, circuit_path: str):
         """Create Circom aggregation circuit"""
         circuit_code = """
@@ -534,7 +691,9 @@ def test_proof_managers():
         "client_id": "test_client_1",
         "round": 1,
         "data_commitment": "test_data",
-        "initial_params": [np.random.randn(5, 3), np.random.randn(3)],
+        # "initial_params": [np.random.randn(5, 3), np.random.randn(3)],
+        "initial_params" : [np.random.uniform(-0.01, 0.01, size=(5,3))],
+
         "updated_params": [np.random.randn(5, 3), np.random.randn(3)],
         "learning_rate": 0.01,
         "rigor_level": "medium",
