@@ -19,7 +19,8 @@ import torch.nn as nn
 import torch.optim as optim
 from flwr.common import NDArrays
 from torch.utils.data import DataLoader
-
+from .utils import torch_to_ndarrays, ndarrays_to_torch
+import time
 from .proof_manager import ClientProofManager
 from .quantization import quantize_parameters
 
@@ -349,12 +350,11 @@ class SecureFlowerClient(fl.client.NumPyClient):
         param_delta: NDArrays,
         training_metrics: dict[str, Any],
     ) -> str | None:
-        """Generate zk-STARK proof of correct training"""
+        """Generate proof of correct training"""
         if not self.proof_manager:
             return None
 
         try:
-            # Prepare proof inputs based on rigor level
             proof_inputs = {
                 "client_id": self.client_id,
                 "round": self.round_count,
@@ -365,30 +365,18 @@ class SecureFlowerClient(fl.client.NumPyClient):
                 "learning_rate": self.learning_rate,
                 "local_epochs": self.local_epochs,
                 "rigor_level": self.proof_rigor,
+                "batch_losses": training_metrics.get("batch_losses", []),
+                "gradient_norms": training_metrics.get("gradient_norms", []),
+                "total_samples": training_metrics.get("total_samples", 0),
             }
 
-            # Add detailed training info for high rigor
-            if self.proof_rigor == "high":
-                proof_inputs.update(
-                    {
-                        "batch_losses": training_metrics.get("batch_losses", []),
-                        "gradient_norms": training_metrics.get("gradient_norms", []),
-                        "total_samples": training_metrics.get("total_samples", 0),
-                    }
-                )
-
-            # Generate proof using Cairo circuits
+           
+            # Generate JSON proof object
+            # --------------------------
             proof = self.proof_manager.generate_training_proof(proof_inputs)
-
-            if proof:
-                logger.debug(
-                    f"Client {self.client_id} generated {self.proof_rigor} rigor proof"
-                )
-            else:
-                logger.warning(f"Client {self.client_id} failed to generate proof")
-
             return proof
-
+    
+           
         except Exception as e:
             logger.error(f"Client {self.client_id} proof generation failed: {e}")
             return None
