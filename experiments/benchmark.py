@@ -37,12 +37,14 @@ from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+from secure_fl.client import SecureFlowerClient, create_client
 from secure_fl.models import (
     CIFAR10Model,
     FlexibleMLP,
     MNISTModel,
     SimpleModel,
 )
+from secure_fl.server import SecureFlowerServer, create_server_strategy
 from secure_fl.utils import (
     ndarrays_to_torch,
     torch_to_ndarrays,
@@ -206,6 +208,18 @@ class DatasetManager:
 
         config = self.dataset_configs[dataset_name]
         return config["model_class"](**config["model_kwargs"])
+
+    def get_model_fn(self, dataset_name: str):
+        """Get model function for dataset"""
+        if dataset_name not in self.dataset_configs:
+            raise ValueError(f"Unknown dataset: {dataset_name}")
+
+        config = self.dataset_configs[dataset_name]
+
+        def model_fn():
+            return config["model_class"](**config["model_kwargs"])
+
+        return model_fn
 
     def get_dataset_info(self, dataset_name: str) -> dict[str, Any]:
         """Get dataset configuration information"""
@@ -1542,11 +1556,451 @@ class MultiDatasetBenchmarkRunner:
         ax2.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(
-            self.output_dir / "plots" / "model_complexity_analysis.png",
-            dpi=300,
-            bbox_inches="tight",
+        if hasattr(self, "output_dir") and self.output_dir:
+            plots_dir = self.output_dir / "plots"
+            plots_dir.mkdir(exist_ok=True, parents=True)
+            plt.savefig(
+                plots_dir / "model_complexity_analysis.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
+        plt.close()
+
+    def run_secure_fl_benchmark(
+        self,
+        dataset_name: str,
+        model_name: str,
+        num_clients: int = 3,
+        num_rounds: int = 5,
+        enable_zkp: bool = False,  # Start with False for initial testing
+        proof_rigor: str = "medium",
+        server_host: str = "localhost",
+        server_port: int = 8080,
+    ):
+        """Run benchmark using actual secure-fl server and clients"""
+
+        print(f"🚀 Running Secure-FL benchmark for {dataset_name} with {model_name}")
+        print(f"   Clients: {num_clients}, Rounds: {num_rounds}, ZKP: {enable_zkp}")
+
+        start_time = time.time()
+
+        # Get dataset and model
+        dataset_manager = DatasetManager()
+        federated_data = dataset_manager.load_federated_data(
+            dataset_name, num_clients=num_clients
         )
+
+        # Extract train and test datasets from federated data
+        train_datasets = [client_data[0].dataset for client_data in federated_data]
+        test_datasets = (
+            [client_data[1].dataset for client_data in federated_data]
+            if federated_data[0][1]
+            else None
+        )
+
+        model_fn = dataset_manager.get_model_fn(model_name)
+
+        print(f"✅ Loaded federated data for {num_clients} clients")
+
+        # Create server strategy
+        strategy = create_server_strategy(
+            model_fn=model_fn,
+            momentum=0.9,
+            learning_rate=0.01,
+            enable_zkp=enable_zkp,
+            proof_rigor=proof_rigor,
+            min_available_clients=num_clients,
+            min_fit_clients=num_clients,
+            min_evaluate_clients=num_clients,
+            fraction_fit=1.0,
+            fraction_evaluate=1.0,
+        )
+
+        print(f"✅ Created server strategy with ZKP={enable_zkp}")
+
+        # Create clients using the DataLoaders from federated data
+        clients = []
+        for i in range(num_clients):
+            train_loader, test_loader = federated_data[i]
+            client = create_client(
+                client_id=f"client_{i}",
+                model_fn=model_fn,
+                train_data=train_loader.dataset,
+                val_data=test_loader.dataset if test_loader else None,
+                batch_size=32,
+                enable_zkp=enable_zkp,
+                proof_rigor=proof_rigor,
+                local_epochs=2,
+                learning_rate=0.01,
+                quantize_weights=False,  # Disable quantization to fix dtype errors
+            )
+            clients.append(client)
+
+        print(f"✅ Created {len(clients)} secure FL clients")
+
+        # Simulate federated learning process
+        # Note: This is a simplified simulation for benchmarking
+        # In production, server and clients would run in separate processes
+
+        results = {
+            "dataset": dataset_name,
+            "model": model_name,
+            "num_clients": num_clients,
+            "num_rounds": num_rounds,
+            "enable_zkp": enable_zkp,
+            "proof_rigor": proof_rigor,
+            "rounds": [],
+            "clients_info": [],
+            "total_time": 0,
+        }
+
+        # Simulate FL training rounds
+        print(f"🔄 Starting {num_rounds} federated learning rounds...")
+
+        # Get initial parameters from model
+        initial_model = model_fn()
+        global_params = [
+            param.detach().cpu().numpy() for param in initial_model.parameters()
+        ]
+
+        round_metrics = []
+
+        for round_num in range(1, num_rounds + 1):
+            print(f"  📍 Round {round_num}/{num_rounds}")
+            round_start = time.time()
+
+            # Client training phase
+            client_results = []
+            round_training_times = []
+            round_proof_times = []
+
+            for i, client in enumerate(clients):
+                client_start = time.time()
+
+                # Simulate client fit
+                config = {
+                    "server_round": round_num,
+                    "local_epochs": 2,
+                    "learning_rate": 0.01,
+                    "proof_rigor": proof_rigor,
+                    "enable_zkp": enable_zkp,
+                }
+
+                try:
+                    updated_params, num_examples, client_metrics = client.fit(
+                        global_params, config
+                    )
+
+                    client_time = time.time() - client_start
+                    training_time = client_metrics.get("training_time", client_time)
+                    proof_time = client_metrics.get("proof_time", 0)
+
+                    round_training_times.append(training_time)
+                    round_proof_times.append(proof_time)
+
+                    client_results.append(
+                        {
+                            "client_id": f"client_{i}",
+                            "num_examples": num_examples,
+                            "training_time": training_time,
+                            "proof_time": proof_time,
+                            "train_loss": client_metrics.get("train_loss", 0),
+                            "train_accuracy": client_metrics.get("train_accuracy", 0),
+                        }
+                    )
+
+                    # Update global parameters (simple averaging for simulation)
+                    if i == 0:
+                        global_params = updated_params
+                    else:
+                        # Simple parameter averaging
+                        for j in range(len(global_params)):
+                            global_params[j] = (
+                                global_params[j] * i + updated_params[j]
+                            ) / (i + 1)
+                            # Ensure correct dtype
+                            global_params[j] = global_params[j].astype(np.float32)
+
+                except Exception as e:
+                    print(f"    ❌ Client {i} failed: {e}")
+                    continue
+
+            # Server aggregation phase (simulated)
+            round_time = time.time() - round_start
+
+            # Evaluate global model
+            if federated_data[0][1] is not None:
+                # Use the first client's test loader
+                test_loader = federated_data[0][1]
+                test_model = model_fn()
+
+                # Set global parameters
+                for param, array in zip(test_model.parameters(), global_params):
+                    param.data = torch.tensor(array, dtype=param.dtype)
+
+                test_model.eval()
+                correct = 0
+                total = 0
+
+                with torch.no_grad():
+                    for data, target in test_loader:
+                        output = test_model(data)
+                        pred = output.argmax(dim=1)
+                        correct += pred.eq(target).sum().item()
+                        total += data.size(0)
+
+                global_accuracy = correct / total if total > 0 else 0.0
+            else:
+                global_accuracy = 0.0
+
+            round_metrics.append(
+                {
+                    "round": round_num,
+                    "round_time": round_time,
+                    "avg_training_time": np.mean(round_training_times)
+                    if round_training_times
+                    else 0,
+                    "avg_proof_time": np.mean(round_proof_times)
+                    if round_proof_times
+                    else 0,
+                    "total_proof_time": sum(round_proof_times),
+                    "global_accuracy": global_accuracy,
+                    "num_successful_clients": len(client_results),
+                    "client_results": client_results,
+                }
+            )
+
+            print(
+                f"    ✅ Round {round_num} completed - Accuracy: {global_accuracy:.3f}, Time: {round_time:.2f}s"
+            )
+
+        # Collect final results
+        total_time = time.time() - start_time
+        results["total_time"] = total_time
+        results["rounds"] = round_metrics
+
+        # Get client info
+        for client in clients:
+            results["clients_info"].append(client.get_client_info())
+
+        # Calculate summary metrics
+        final_accuracy = round_metrics[-1]["global_accuracy"] if round_metrics else 0.0
+        total_training_time = sum(
+            r["avg_training_time"] * r["num_successful_clients"] for r in round_metrics
+        )
+        total_proof_time = sum(r["total_proof_time"] for r in round_metrics)
+
+        results["summary"] = {
+            "final_accuracy": final_accuracy,
+            "total_training_time": total_training_time,
+            "total_proof_time": total_proof_time,
+            "zkp_overhead_ratio": total_proof_time / total_training_time
+            if total_training_time > 0
+            else 0,
+            "avg_round_time": np.mean([r["round_time"] for r in round_metrics])
+            if round_metrics
+            else 0,
+        }
+
+        print(f"🎉 Secure-FL benchmark completed!")
+        print(f"   Final accuracy: {final_accuracy:.3f}")
+        print(f"   Total time: {total_time:.2f}s")
+        print(f"   ZKP overhead: {results['summary']['zkp_overhead_ratio']:.2%}")
+
+        return results
+
+    def run_secure_fl_comparison(self, datasets=None, zkp_configs=None):
+        """Run comparison between different ZKP configurations"""
+
+        if datasets is None:
+            datasets = ["mnist", "fashion_mnist"]
+
+        if zkp_configs is None:
+            zkp_configs = [
+                {"enable_zkp": False, "name": "No ZKP"},
+                {"enable_zkp": True, "proof_rigor": "low", "name": "ZKP Low"},
+                {"enable_zkp": True, "proof_rigor": "medium", "name": "ZKP Medium"},
+                {"enable_zkp": True, "proof_rigor": "high", "name": "ZKP High"},
+            ]
+
+        print(
+            f"🔬 Running Secure-FL comparison across {len(datasets)} datasets and {len(zkp_configs)} configurations"
+        )
+
+        all_results = []
+
+        dataset_manager = DatasetManager()
+
+        for dataset in datasets:
+            model_name = dataset  # Assuming dataset name matches model name
+
+            print(f"\n📊 Testing dataset: {dataset}")
+
+            for config in zkp_configs:
+                print(f"  🧪 Configuration: {config['name']}")
+
+                try:
+                    result = self.run_secure_fl_benchmark(
+                        dataset_name=dataset,
+                        model_name=model_name,
+                        num_clients=3,
+                        num_rounds=3,  # Shorter for comparison
+                        enable_zkp=config["enable_zkp"],
+                        proof_rigor=config.get("proof_rigor", "medium"),
+                    )
+
+                    result["config_name"] = config["name"]
+                    all_results.append(result)
+
+                except Exception as e:
+                    print(f"    ❌ Failed: {e}")
+                    continue
+
+        # Save results
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        results_file = self.output_dir / f"secure_fl_comparison_{timestamp}.json"
+
+        with open(results_file, "w") as f:
+            json.dump(all_results, f, indent=2, default=str)
+
+        print(f"\n💾 Results saved to: {results_file}")
+
+        # Generate comparison plots
+        self._plot_secure_fl_comparison(all_results)
+
+        return all_results
+
+    def _plot_secure_fl_comparison(self, results):
+        """Generate comparison plots for secure-FL results"""
+
+        plt.style.use("seaborn-v0_8-darkgrid")
+
+        # Extract data for plotting
+        datasets = list(set(r["dataset"] for r in results))
+        configs = list(set(r["config_name"] for r in results))
+
+        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+
+        # 1. Accuracy comparison
+        ax1 = axes[0, 0]
+        accuracy_data = {}
+        for config in configs:
+            accuracy_data[config] = []
+            for dataset in datasets:
+                dataset_results = [
+                    r
+                    for r in results
+                    if r["dataset"] == dataset and r["config_name"] == config
+                ]
+                if dataset_results:
+                    accuracy_data[config].append(
+                        dataset_results[0]["summary"]["final_accuracy"]
+                    )
+                else:
+                    accuracy_data[config].append(0)
+
+        x = np.arange(len(datasets))
+        width = 0.2
+        for i, (config, accuracies) in enumerate(accuracy_data.items()):
+            ax1.bar(x + i * width, accuracies, width, label=config)
+
+        ax1.set_xlabel("Dataset")
+        ax1.set_ylabel("Final Accuracy")
+        ax1.set_title("Accuracy Comparison Across ZKP Configurations")
+        ax1.set_xticks(x + width * (len(configs) - 1) / 2)
+        ax1.set_xticklabels(datasets)
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # 2. ZKP Overhead
+        ax2 = axes[0, 1]
+        overhead_data = {}
+        for config in configs:
+            overhead_data[config] = []
+            for dataset in datasets:
+                dataset_results = [
+                    r
+                    for r in results
+                    if r["dataset"] == dataset and r["config_name"] == config
+                ]
+                if dataset_results:
+                    overhead_data[config].append(
+                        dataset_results[0]["summary"]["zkp_overhead_ratio"] * 100
+                    )
+                else:
+                    overhead_data[config].append(0)
+
+        for i, (config, overheads) in enumerate(overhead_data.items()):
+            if "ZKP" in config:  # Only show ZKP configs for overhead
+                ax2.bar(x + i * width, overheads, width, label=config)
+
+        ax2.set_xlabel("Dataset")
+        ax2.set_ylabel("ZKP Overhead (%)")
+        ax2.set_title("ZKP Overhead Comparison")
+        ax2.set_xticks(x + width * (len(configs) - 1) / 2)
+        ax2.set_xticklabels(datasets)
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        # 3. Training Time
+        ax3 = axes[1, 0]
+        time_data = {}
+        for config in configs:
+            time_data[config] = []
+            for dataset in datasets:
+                dataset_results = [
+                    r
+                    for r in results
+                    if r["dataset"] == dataset and r["config_name"] == config
+                ]
+                if dataset_results:
+                    time_data[config].append(dataset_results[0]["total_time"])
+                else:
+                    time_data[config].append(0)
+
+        for i, (config, times) in enumerate(time_data.items()):
+            ax3.bar(x + i * width, times, width, label=config)
+
+        ax3.set_xlabel("Dataset")
+        ax3.set_ylabel("Total Time (seconds)")
+        ax3.set_title("Total Training Time Comparison")
+        ax3.set_xticks(x + width * (len(configs) - 1) / 2)
+        ax3.set_xticklabels(datasets)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+
+        # 4. Round-by-round accuracy for one dataset
+        ax4 = axes[1, 1]
+        sample_dataset = None
+        if results and datasets:
+            sample_dataset = datasets[0]
+            for config in configs:
+                config_results = [
+                    r
+                    for r in results
+                    if r["dataset"] == sample_dataset and r["config_name"] == config
+                ]
+                if config_results:
+                    rounds = config_results[0]["rounds"]
+                    accuracies = [r["global_accuracy"] for r in rounds]
+                    round_nums = [r["round"] for r in rounds]
+                    ax4.plot(round_nums, accuracies, marker="o", label=config)
+
+        ax4.set_xlabel("Round")
+        ax4.set_ylabel("Accuracy")
+        ax4.set_title(f"Convergence Comparison ({sample_dataset})")
+        ax4.legend()
+        ax4.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        if hasattr(self, "output_dir") and self.output_dir:
+            plots_dir = self.output_dir / "plots"
+            plots_dir.mkdir(exist_ok=True, parents=True)
+            plt.savefig(
+                plots_dir / "secure_fl_comparison.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
         plt.close()
 
 
@@ -1644,6 +2098,45 @@ def main():
         help="List all available configurations and exit",
     )
 
+    parser.add_argument(
+        "--secure-fl",
+        action="store_true",
+        help="Run secure-fl benchmark with actual server and clients",
+    )
+
+    parser.add_argument(
+        "--secure-fl-comparison",
+        action="store_true",
+        help="Run secure-fl comparison across ZKP configurations",
+    )
+
+    parser.add_argument(
+        "--num-clients",
+        type=int,
+        default=3,
+        help="Number of federated learning clients",
+    )
+
+    parser.add_argument(
+        "--num-rounds",
+        type=int,
+        default=5,
+        help="Number of federated learning rounds",
+    )
+
+    parser.add_argument(
+        "--enable-zkp",
+        action="store_true",
+        help="Enable zero-knowledge proofs",
+    )
+
+    parser.add_argument(
+        "--proof-rigor",
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="ZKP proof rigor level",
+    )
+
     args = parser.parse_args()
 
     # Handle listing requests
@@ -1678,6 +2171,52 @@ def main():
             f"Usage: python benchmark.py --configs {' '.join([c['name'] for c in configs[:3]])}"
         )
         return
+
+    # Handle secure-fl specific runs
+    if args.secure_fl or args.secure_fl_comparison:
+        # Setup logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
+        runner = MultiDatasetBenchmarkRunner(args.output_dir)
+
+        if args.secure_fl:
+            # Run single secure-fl benchmark
+            dataset = args.datasets[0] if args.datasets else "mnist"
+            model_name = dataset  # Assuming dataset name matches model name
+
+            print(f"🚀 Running Secure-FL benchmark for {dataset}")
+
+            result = runner.run_secure_fl_benchmark(
+                dataset_name=dataset,
+                model_name=model_name,
+                num_clients=args.num_clients,
+                num_rounds=args.num_rounds,
+                enable_zkp=args.enable_zkp,
+                proof_rigor=args.proof_rigor,
+            )
+
+            print("\n🎉 Secure-FL benchmark completed successfully!")
+            return
+
+        elif args.secure_fl_comparison:
+            # Run secure-fl comparison
+            datasets = (
+                args.datasets[:2]
+                if len(args.datasets) >= 2
+                else ["mnist", "fashion_mnist"]
+            )
+
+            print(f"🔬 Running Secure-FL comparison for datasets: {datasets}")
+
+            results = runner.run_secure_fl_comparison(datasets=datasets)
+
+            print(
+                f"\n🎉 Secure-FL comparison completed! Tested {len(results)} configurations."
+            )
+            return
 
     # Setup logging
     logging.basicConfig(
