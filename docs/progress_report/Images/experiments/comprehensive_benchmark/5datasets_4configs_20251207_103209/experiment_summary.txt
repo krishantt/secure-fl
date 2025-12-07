@@ -1,0 +1,54 @@
+SECURE FL BENCHMARK EXPERIMENT SUMMARY
+==================================================
+
+Timestamp: 103209
+Total Datasets: 5
+Total Configurations: 4
+
+DATASETS:
+  • mnist           → MNISTModel   | MNIST handwritten digits (28x28 grayscale)
+  • fashion_mnist   → MNISTModel   | Fashion-MNIST clothing items (28x28 grayscale)
+  • synthetic       → SimpleModel  | Synthetic data for basic testing
+  • medical         → FlexibleMLP  | Simulated medical diagnosis (3 disease classes)
+  • financial       → FlexibleMLP  | Simulated financial fraud detection (binary)
+
+CONFIGURATIONS:
+  • baseline_iid       | IID baseline without ZKP
+  • baseline_non_iid   | Non-IID baseline without ZKP
+  • zkp_medium_rigor   | Medium ZKP rigor (~1.2s proof time)
+  • zkp_low_rigor      | Low ZKP rigor (~0.4s proof time)
+
+RESULTS SUMMARY:
+
+MNIST Dataset:
+  baseline_iid        :  92.52% ( 13.6s)
+  baseline_non_iid    :  58.12% ( 12.1s)
+  zkp_medium_rigor    :  59.07% ( 12.1s)
+  zkp_low_rigor       :  62.80% ( 13.1s)
+
+FASHION_MNIST Dataset:
+  baseline_iid        :  76.29% ( 14.5s)
+  baseline_non_iid    :  40.64% ( 12.8s)
+  zkp_medium_rigor    :  49.99% ( 13.0s)
+  zkp_low_rigor       :  50.79% ( 13.1s)
+
+SYNTHETIC Dataset:
+  baseline_iid        :  10.45% (  0.1s)
+  baseline_non_iid    :   7.46% (  0.1s)
+  zkp_medium_rigor    :   8.21% (  0.1s)
+  zkp_low_rigor       :   6.72% (  0.1s)
+
+MEDICAL Dataset:
+  baseline_iid        :  29.85% (  0.2s)
+  baseline_non_iid    :  34.33% (  0.2s)
+  zkp_medium_rigor    :  31.34% (  0.2s)
+  zkp_low_rigor       :  26.12% (  0.2s)
+
+FINANCIAL Dataset:
+  baseline_iid        :  89.51% (  0.1s)
+  baseline_non_iid    :  81.65% (  0.1s)
+  zkp_medium_rigor    :  80.15% (  0.1s)
+  zkp_low_rigor       :  78.65% (  0.1s)
+
+Detailed results available in: raw_data/benchmark_results.json
+Plots and visualizations in: plots/

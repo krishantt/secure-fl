@@ -1,0 +1,187 @@
+{
+  "dataset": "text_classification",
+  "timestamp": "103446",
+  "configurations": [
+    "baseline_non_iid",
+    "zkp_medium_rigor",
+    "zkp_low_rigor"
+  ],
+  "results": {
+    "baseline_non_iid": {
+      "dataset": "text_classification",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "baseline_non_iid",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": false,
+        "iid": false,
+        "description": "Non-IID baseline without ZKP"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 300,
+          "hidden_dims": [
+            256,
+            128,
+            64
+          ],
+          "output_dim": 4,
+          "activation": "gelu",
+          "dropout_rate": 0.3,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          300
+        ],
+        "num_classes": 4,
+        "description": "Simulated text classification (4 sentiment classes)"
+      },
+      "round_accuracies": [
+        29.5,
+        28.0,
+        26.5
+      ],
+      "round_losses": [
+        1.3884919370923723,
+        1.3881324870245797,
+        1.3875340734209334
+      ],
+      "communication_overhead": [
+        466.265625,
+        466.265625,
+        466.265625
+      ],
+      "proof_times": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "training_time": 0.296795129776001,
+      "memory_usage": [],
+      "final_accuracy": 26.5,
+      "convergence_round": 1
+    },
+    "zkp_medium_rigor": {
+      "dataset": "text_classification",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "zkp_medium_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "medium",
+        "iid": false,
+        "description": "Medium ZKP rigor (~1.2s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 300,
+          "hidden_dims": [
+            256,
+            128,
+            64
+          ],
+          "output_dim": 4,
+          "activation": "gelu",
+          "dropout_rate": 0.3,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          300
+        ],
+        "num_classes": 4,
+        "description": "Simulated text classification (4 sentiment classes)"
+      },
+      "round_accuracies": [
+        26.0,
+        28.5,
+        26.0
+      ],
+      "round_losses": [
+        1.3785805361611503,
+        1.3771485601152693,
+        1.376163159097944
+      ],
+      "communication_overhead": [
+        536.2054687499999,
+        536.2054687499999,
+        536.2054687499999
+      ],
+      "proof_times": [
+        0.9688187686737707,
+        1.165592802894365,
+        0.8569091737304154
+      ],
+      "training_time": 0.29883718490600586,
+      "memory_usage": [],
+      "final_accuracy": 26.0,
+      "convergence_round": 2
+    },
+    "zkp_low_rigor": {
+      "dataset": "text_classification",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "zkp_low_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "low",
+        "iid": false,
+        "description": "Low ZKP rigor (~0.4s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 300,
+          "hidden_dims": [
+            256,
+            128,
+            64
+          ],
+          "output_dim": 4,
+          "activation": "gelu",
+          "dropout_rate": 0.3,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          300
+        ],
+        "num_classes": 4,
+        "description": "Simulated text classification (4 sentiment classes)"
+      },
+      "round_accuracies": [
+        26.0,
+        25.5,
+        26.0
+      ],
+      "round_losses": [
+        1.394181558064052,
+        1.3935319185256958,
+        1.3930853945868356
+      ],
+      "communication_overhead": [
+        536.2054687499999,
+        536.2054687499999,
+        536.2054687499999
+      ],
+      "proof_times": [
+        0.4137347665641967,
+        0.4533309165682512,
+        0.28135844501027507
+      ],
+      "training_time": 0.29586005210876465,
+      "memory_usage": [],
+      "final_accuracy": 26.0,
+      "convergence_round": 1
+    }
+  }
+}

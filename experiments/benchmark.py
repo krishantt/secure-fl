@@ -29,6 +29,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import torch
 import torch.nn as nn
 import torchvision
@@ -1212,7 +1213,12 @@ class MultiDatasetBenchmarkRunner:
 
     def _plot_accuracy_comparison(self, results: dict[str, Any]):
         """Plot accuracy comparison across datasets and configs"""
-        fig, axes = plt.subplots(1, len(results), figsize=(5 * len(results), 6))
+        # Set beautiful aesthetic style
+        plt.style.use("default")
+        sns.set_theme()
+        sns.set_palette("husl")
+
+        fig, axes = plt.subplots(1, len(results), figsize=(8 * len(results), 8))
         if len(results) == 1:
             axes = [axes]
 
@@ -1223,12 +1229,16 @@ class MultiDatasetBenchmarkRunner:
             final_accuracies = []
             colors = []
 
+            # Enhanced color scheme
             color_map = {
                 "baseline_iid": "#2E8B57",  # Sea green
                 "baseline_non_iid": "#4682B4",  # Steel blue
                 "zkp_high_rigor": "#DC143C",  # Crimson
                 "zkp_medium_rigor": "#FF8C00",  # Dark orange
+                "zkp_low_rigor": "#32CD32",  # Lime green
                 "scaled_up": "#9932CC",  # Dark orchid
+                "quick_test": "#20B2AA",  # Light sea green
+                "performance_focused": "#696969",  # Dim gray
             }
 
             for config_name, result in configs.items():
@@ -1243,31 +1253,43 @@ class MultiDatasetBenchmarkRunner:
                 color=colors,
                 alpha=0.8,
                 edgecolor="black",
+                linewidth=0.8,
             )
 
-            # Add value labels on bars
+            # Add value labels with better formatting
             for bar, acc in zip(bars, final_accuracies):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
-                    height + 0.5,
+                    height + max(final_accuracies) * 0.02,
                     f"{acc:.1f}%",
                     ha="center",
                     va="bottom",
                     fontweight="bold",
+                    fontsize=11,
                 )
 
             ax.set_title(
-                f"{dataset.upper()} Dataset\nFinal Accuracy Comparison",
+                f"{dataset.upper()} Dataset\nAccuracy Comparison",
                 fontweight="bold",
+                fontsize=16,
+                pad=20,
             )
-            ax.set_ylabel("Accuracy (%)")
+            ax.set_ylabel("Accuracy (%)", fontsize=14, fontweight="bold")
+            ax.set_xlabel("Configuration", fontsize=14, fontweight="bold")
             if final_accuracies:
-                ax.set_ylim(0, max(final_accuracies) * 1.1 + 5)
+                ax.set_ylim(0, max(final_accuracies) * 1.15)
             else:
                 ax.set_ylim(0, 100)
             ax.grid(True, alpha=0.3)
+            ax.tick_params(axis="both", labelsize=11)
 
+        plt.suptitle(
+            "Secure FL Framework - Multi-Configuration Benchmark Results",
+            fontsize=18,
+            fontweight="bold",
+            y=0.95,
+        )
         plt.tight_layout()
         plt.savefig(
             self.output_dir / "plots" / "accuracy_comparison.png",
@@ -1278,7 +1300,15 @@ class MultiDatasetBenchmarkRunner:
 
     def _plot_zkp_overhead(self, results: dict[str, Any]):
         """Plot ZKP overhead analysis"""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        # Set beautiful aesthetic style
+        plt.style.use("default")
+        sns.set_theme()
+        sns.set_palette("husl")
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+        if isinstance(axes, plt.Axes):
+            axes = [axes, axes]
+        ax1, ax2 = axes
 
         # Collect ZKP data
         datasets = []
@@ -1379,6 +1409,12 @@ class MultiDatasetBenchmarkRunner:
             ax2.set_ylim(0, max(overhead_data) * 1.1 + 1)
         ax2.grid(True, alpha=0.3)
 
+        plt.suptitle(
+            "ZKP Performance Analysis - Real Benchmark Data",
+            fontsize=16,
+            fontweight="bold",
+            y=0.95,
+        )
         plt.tight_layout()
         plt.savefig(
             self.output_dir / "plots" / "zkp_overhead_analysis.png",
@@ -1873,7 +1909,10 @@ class MultiDatasetBenchmarkRunner:
     def _plot_secure_fl_comparison(self, results):
         """Generate comparison plots for secure-FL results"""
 
-        plt.style.use("seaborn-v0_8-darkgrid")
+        # Set beautiful aesthetic style
+        plt.style.use("default")
+        sns.set_theme()
+        sns.set_palette("husl")
 
         # Extract data for plotting
         datasets = list(set(r["dataset"] for r in results))

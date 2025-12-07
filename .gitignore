@@ -7,3 +7,83 @@ results/
 _data/
 *.pyc
 tests/pysnark/
+
+
+# ===========================
+# LaTeX build files
+# ===========================
+*.aux
+*.bbl
+*.blg
+*.brf
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex
+*.xdv
+*.run.xml
+*.bcf
+
+# latexmk intermediates
+*.dvi
+*.ps
+*.nav
+*.snm
+*.vrb
+
+# Beamer temp files
+*.nav
+*.snm
+*.vrb
+
+# Logs
+*.log
+*.upa
+*.upb
+
+# glossaries
+*.glg
+*.glo
+*.gls
+*.glsdefs
+
+# minted (syntax highlighting)
+_minted*
+*.pyg
+
+# TikZ externalization outputs
+*.tikz
+*.dpth
+*.md5
+*.auxlock
+
+# ===========================
+# Output PDFs (optional)
+# ===========================
+# Uncomment if you don't want PDFs versioned:
+# *.pdf
+
+# ===========================
+# macOS / editor junk files
+# ===========================
+.DS_Store
+*.swp
+*.swm
+*.swo
+*.swn
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Overleaf auto-backups
+*.bak
+*-blx.bib

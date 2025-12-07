@@ -1,0 +1,453 @@
+{
+  "dataset": "synthetic",
+  "timestamp": "095447",
+  "configurations": [
+    "baseline_iid",
+    "baseline_non_iid",
+    "zkp_high_rigor",
+    "zkp_medium_rigor",
+    "zkp_low_rigor",
+    "scaled_up",
+    "quick_test",
+    "performance_focused"
+  ],
+  "results": {
+    "baseline_iid": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "baseline_iid",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": false,
+        "iid": true,
+        "description": "IID baseline without ZKP"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        12.686567164179104,
+        14.925373134328359,
+        14.925373134328359
+      ],
+      "round_losses": [
+        2.4415874004364015,
+        2.4253829956054687,
+        2.4190279483795165
+      ],
+      "communication_overhead": [
+        427.2890625,
+        427.2890625,
+        427.2890625
+      ],
+      "proof_times": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "training_time": 0.12677335739135742,
+      "memory_usage": [],
+      "final_accuracy": 14.925373134328359,
+      "convergence_round": 2
+    },
+    "baseline_non_iid": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "baseline_non_iid",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": false,
+        "iid": false,
+        "description": "Non-IID baseline without ZKP"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        4.477611940298507,
+        4.477611940298507,
+        6.7164179104477615
+      ],
+      "round_losses": [
+        2.78090353012085,
+        2.407747173309326,
+        2.2319437742233275
+      ],
+      "communication_overhead": [
+        427.2890625,
+        427.2890625,
+        427.2890625
+      ],
+      "proof_times": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "training_time": 0.08259892463684082,
+      "memory_usage": [],
+      "final_accuracy": 6.7164179104477615,
+      "convergence_round": 3
+    },
+    "zkp_high_rigor": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "zkp_high_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "high",
+        "iid": false,
+        "description": "High ZKP rigor (~2.5s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        21.64179104477612,
+        14.925373134328359,
+        12.686567164179104
+      ],
+      "round_losses": [
+        1.9723079681396485,
+        2.0623807668685914,
+        2.0734231948852537
+      ],
+      "communication_overhead": [
+        491.382421875,
+        491.382421875,
+        491.382421875
+      ],
+      "proof_times": [
+        2.287492019007519,
+        2.140803445749416,
+        2.4541818040164842
+      ],
+      "training_time": 0.08394694328308105,
+      "memory_usage": [],
+      "final_accuracy": 12.686567164179104,
+      "convergence_round": 1
+    },
+    "zkp_medium_rigor": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "zkp_medium_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "medium",
+        "iid": false,
+        "description": "Medium ZKP rigor (~1.2s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        8.955223880597014,
+        10.447761194029852,
+        10.447761194029852
+      ],
+      "round_losses": [
+        2.514712905883789,
+        2.324826955795288,
+        2.2573319911956786
+      ],
+      "communication_overhead": [
+        491.382421875,
+        491.382421875,
+        491.382421875
+      ],
+      "proof_times": [
+        1.3919455150082478,
+        0.9020523622534294,
+        1.5163962708077796
+      ],
+      "training_time": 0.08191227912902832,
+      "memory_usage": [],
+      "final_accuracy": 10.447761194029852,
+      "convergence_round": 2
+    },
+    "zkp_low_rigor": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "zkp_low_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "low",
+        "iid": false,
+        "description": "Low ZKP rigor (~0.4s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        10.447761194029852,
+        9.701492537313433,
+        8.955223880597014
+      ],
+      "round_losses": [
+        2.292772102355957,
+        2.1828110218048096,
+        2.1600881576538087
+      ],
+      "communication_overhead": [
+        491.382421875,
+        491.382421875,
+        491.382421875
+      ],
+      "proof_times": [
+        0.39834020346463056,
+        0.39543957908654953,
+        0.49726904569385133
+      ],
+      "training_time": 0.08197402954101562,
+      "memory_usage": [],
+      "final_accuracy": 8.955223880597014,
+      "convergence_round": 1
+    },
+    "scaled_up": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "scaled_up",
+        "num_clients": 5,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "medium",
+        "iid": false,
+        "description": "Larger scale experiment (5 clients, 8 rounds)"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        26.25,
+        13.75,
+        10.0
+      ],
+      "round_losses": [
+        2.1396754582722983,
+        2.340115229288737,
+        2.4595847129821777
+      ],
+      "communication_overhead": [
+        491.382421875,
+        491.382421875,
+        491.382421875
+      ],
+      "proof_times": [
+        1.0743404459964048,
+        1.0043137024102302,
+        1.2918669445628392
+      ],
+      "training_time": 0.08359384536743164,
+      "memory_usage": [],
+      "final_accuracy": 10.0,
+      "convergence_round": 1
+    },
+    "quick_test": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "quick_test",
+        "num_clients": 2,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.02,
+        "enable_zkp": true,
+        "proof_rigor": "low",
+        "iid": true,
+        "description": "Quick test configuration"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        11.0,
+        10.5,
+        10.5
+      ],
+      "round_losses": [
+        2.5129616601126537,
+        2.493482623781477,
+        2.4973628180367604
+      ],
+      "communication_overhead": [
+        491.382421875,
+        491.382421875,
+        491.382421875
+      ],
+      "proof_times": [
+        0.37633356608282476,
+        0.4660409607172595,
+        0.42630799673461545
+      ],
+      "training_time": 0.0801699161529541,
+      "memory_usage": [],
+      "final_accuracy": 10.5,
+      "convergence_round": 1
+    },
+    "performance_focused": {
+      "dataset": "synthetic",
+      "model_class": "SimpleModel",
+      "config": {
+        "name": "performance_focused",
+        "num_clients": 4,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.005,
+        "enable_zkp": false,
+        "iid": false,
+        "description": "Performance-focused without ZKP overhead"
+      },
+      "dataset_info": {
+        "model_class": "SimpleModel",
+        "model_kwargs": {
+          "input_dim": 784,
+          "hidden_dims": [
+            128,
+            64
+          ],
+          "output_dim": 10
+        },
+        "input_shape": [
+          784
+        ],
+        "num_classes": 10,
+        "description": "Synthetic data for basic testing"
+      },
+      "round_accuracies": [
+        18.0,
+        18.0,
+        18.0
+      ],
+      "round_losses": [
+        2.0645254850387573,
+        2.1252846717834473,
+        2.182818293571472
+      ],
+      "communication_overhead": [
+        427.2890625,
+        427.2890625,
+        427.2890625
+      ],
+      "proof_times": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "training_time": 0.08379101753234863,
+      "memory_usage": [],
+      "final_accuracy": 18.0,
+      "convergence_round": 1
+    }
+  }
+}

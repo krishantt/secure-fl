@@ -1,0 +1,36 @@
+SECURE FL BENCHMARK EXPERIMENT SUMMARY
+==================================================
+
+Timestamp: 103446
+Total Datasets: 3
+Total Configurations: 3
+
+DATASETS:
+  • cifar10         → CIFAR10Model | CIFAR-10 natural images (32x32 RGB)
+  • text_classification → FlexibleMLP  | Simulated text classification (4 sentiment classes)
+  • synthetic_large → FlexibleMLP  | Large synthetic dataset with 20 classes
+
+CONFIGURATIONS:
+  • baseline_non_iid   | Non-IID baseline without ZKP
+  • zkp_medium_rigor   | Medium ZKP rigor (~1.2s proof time)
+  • zkp_low_rigor      | Low ZKP rigor (~0.4s proof time)
+
+RESULTS SUMMARY:
+
+CIFAR10 Dataset:
+  baseline_non_iid    :  17.49% (159.8s)
+  zkp_medium_rigor    :  15.57% (161.8s)
+  zkp_low_rigor       :  16.06% (161.5s)
+
+TEXT_CLASSIFICATION Dataset:
+  baseline_non_iid    :  26.50% (  0.3s)
+  zkp_medium_rigor    :  26.00% (  0.3s)
+  zkp_low_rigor       :  26.00% (  0.3s)
+
+SYNTHETIC_LARGE Dataset:
+  baseline_non_iid    :  11.98% (  0.4s)
+  zkp_medium_rigor    :   8.08% (  0.4s)
+  zkp_low_rigor       :   9.58% (  0.4s)
+
+Detailed results available in: raw_data/benchmark_results.json
+Plots and visualizations in: plots/

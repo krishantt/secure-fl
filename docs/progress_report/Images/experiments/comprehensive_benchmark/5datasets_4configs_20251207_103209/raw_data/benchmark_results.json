@@ -1,0 +1,1158 @@
+{
+  "experiment_info": {
+    "timestamp": "103209",
+    "datasets": [
+      "mnist",
+      "fashion_mnist",
+      "synthetic",
+      "medical",
+      "financial"
+    ],
+    "configurations": [
+      "baseline_iid",
+      "baseline_non_iid",
+      "zkp_medium_rigor",
+      "zkp_low_rigor"
+    ],
+    "total_datasets": 5,
+    "total_configs": 4
+  },
+  "results": {
+    "mnist": {
+      "baseline_iid": {
+        "dataset": "mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "baseline_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": true,
+          "description": "IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "MNIST handwritten digits (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          90.18,
+          91.69,
+          92.52
+        ],
+        "round_losses": [
+          0.33243643497221004,
+          0.27962300027854525,
+          0.2584639466988792
+        ],
+        "communication_overhead": [
+          428.7890625,
+          428.7890625,
+          428.7890625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 13.602658748626709,
+        "memory_usage": [],
+        "final_accuracy": 92.52,
+        "convergence_round": 1
+      },
+      "baseline_non_iid": {
+        "dataset": "mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "baseline_non_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": false,
+          "description": "Non-IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "MNIST handwritten digits (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          26.33,
+          48.66,
+          58.12
+        ],
+        "round_losses": [
+          2.0725692723886655,
+          1.626932512076137,
+          1.4553710479325
+        ],
+        "communication_overhead": [
+          428.7890625,
+          428.7890625,
+          428.7890625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 12.054711818695068,
+        "memory_usage": [],
+        "final_accuracy": 58.12,
+        "convergence_round": 3
+      },
+      "zkp_medium_rigor": {
+        "dataset": "mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "zkp_medium_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "medium",
+          "iid": false,
+          "description": "Medium ZKP rigor (~1.2s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "MNIST handwritten digits (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          36.46,
+          51.87,
+          59.07
+        ],
+        "round_losses": [
+          1.9220952130735112,
+          1.5957077014179657,
+          1.480637438381061
+        ],
+        "communication_overhead": [
+          493.10742187499994,
+          493.10742187499994,
+          493.10742187499994
+        ],
+        "proof_times": [
+          1.1734052661556647,
+          1.153515641178594,
+          1.1015144586289523
+        ],
+        "training_time": 12.13106894493103,
+        "memory_usage": [],
+        "final_accuracy": 59.07,
+        "convergence_round": 3
+      },
+      "zkp_low_rigor": {
+        "dataset": "mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "zkp_low_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "low",
+          "iid": false,
+          "description": "Low ZKP rigor (~0.4s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "MNIST handwritten digits (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          41.94,
+          56.63,
+          62.8
+        ],
+        "round_losses": [
+          1.8045520858642774,
+          1.4965105782301662,
+          1.3834819742285025
+        ],
+        "communication_overhead": [
+          493.10742187499994,
+          493.10742187499994,
+          493.10742187499994
+        ],
+        "proof_times": [
+          0.37200382747705696,
+          0.4460513142762147,
+          0.2830213083042123
+        ],
+        "training_time": 13.05102801322937,
+        "memory_usage": [],
+        "final_accuracy": 62.8,
+        "convergence_round": 3
+      }
+    },
+    "fashion_mnist": {
+      "baseline_iid": {
+        "dataset": "fashion_mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "baseline_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": true,
+          "description": "IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              256,
+              128
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "Fashion-MNIST clothing items (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          76.82,
+          77.01,
+          76.29
+        ],
+        "round_losses": [
+          0.625451753695552,
+          0.634693156416043,
+          0.6622212144513481
+        ],
+        "communication_overhead": [
+          921.5390625,
+          921.5390625,
+          921.5390625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 14.480877876281738,
+        "memory_usage": [],
+        "final_accuracy": 76.29,
+        "convergence_round": 1
+      },
+      "baseline_non_iid": {
+        "dataset": "fashion_mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "baseline_non_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": false,
+          "description": "Non-IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              256,
+              128
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "Fashion-MNIST clothing items (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          34.85,
+          40.33,
+          40.64
+        ],
+        "round_losses": [
+          2.215605328258234,
+          2.052766366126819,
+          2.0818198919296265
+        ],
+        "communication_overhead": [
+          921.5390625,
+          921.5390625,
+          921.5390625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 12.824084043502808,
+        "memory_usage": [],
+        "final_accuracy": 40.64,
+        "convergence_round": 2
+      },
+      "zkp_medium_rigor": {
+        "dataset": "fashion_mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "zkp_medium_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "medium",
+          "iid": false,
+          "description": "Medium ZKP rigor (~1.2s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              256,
+              128
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "Fashion-MNIST clothing items (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          32.32,
+          46.39,
+          49.99
+        ],
+        "round_losses": [
+          2.266323576719997,
+          2.0436852926644273,
+          2.0487781862100474
+        ],
+        "communication_overhead": [
+          1059.769921875,
+          1059.769921875,
+          1059.769921875
+        ],
+        "proof_times": [
+          1.2828169877354898,
+          1.2524916650667721,
+          1.1577286377810356
+        ],
+        "training_time": 12.99782395362854,
+        "memory_usage": [],
+        "final_accuracy": 49.99,
+        "convergence_round": 3
+      },
+      "zkp_low_rigor": {
+        "dataset": "fashion_mnist",
+        "model_class": "MNISTModel",
+        "config": {
+          "name": "zkp_low_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "low",
+          "iid": false,
+          "description": "Low ZKP rigor (~0.4s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "MNISTModel",
+          "model_kwargs": {
+            "hidden_dims": [
+              256,
+              128
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            1,
+            28,
+            28
+          ],
+          "num_classes": 10,
+          "description": "Fashion-MNIST clothing items (28x28 grayscale)"
+        },
+        "round_accuracies": [
+          37.84,
+          47.51,
+          50.79
+        ],
+        "round_losses": [
+          1.9305379207903586,
+          1.8959964167195769,
+          1.9896849700437187
+        ],
+        "communication_overhead": [
+          1059.769921875,
+          1059.769921875,
+          1059.769921875
+        ],
+        "proof_times": [
+          0.490602533787515,
+          0.3127757145412157,
+          0.5047010031586336
+        ],
+        "training_time": 13.068072080612183,
+        "memory_usage": [],
+        "final_accuracy": 50.79,
+        "convergence_round": 3
+      }
+    },
+    "synthetic": {
+      "baseline_iid": {
+        "dataset": "synthetic",
+        "model_class": "SimpleModel",
+        "config": {
+          "name": "baseline_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": true,
+          "description": "IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "SimpleModel",
+          "model_kwargs": {
+            "input_dim": 784,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            784
+          ],
+          "num_classes": 10,
+          "description": "Synthetic data for basic testing"
+        },
+        "round_accuracies": [
+          9.701492537313433,
+          9.701492537313433,
+          10.447761194029852
+        ],
+        "round_losses": [
+          2.5631292819976808,
+          2.5332955360412597,
+          2.523020029067993
+        ],
+        "communication_overhead": [
+          427.2890625,
+          427.2890625,
+          427.2890625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.08267498016357422,
+        "memory_usage": [],
+        "final_accuracy": 10.447761194029852,
+        "convergence_round": 3
+      },
+      "baseline_non_iid": {
+        "dataset": "synthetic",
+        "model_class": "SimpleModel",
+        "config": {
+          "name": "baseline_non_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": false,
+          "description": "Non-IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "SimpleModel",
+          "model_kwargs": {
+            "input_dim": 784,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            784
+          ],
+          "num_classes": 10,
+          "description": "Synthetic data for basic testing"
+        },
+        "round_accuracies": [
+          15.671641791044776,
+          8.955223880597014,
+          7.462686567164179
+        ],
+        "round_losses": [
+          2.07599732875824,
+          2.207572269439697,
+          2.262798547744751
+        ],
+        "communication_overhead": [
+          427.2890625,
+          427.2890625,
+          427.2890625
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.08101892471313477,
+        "memory_usage": [],
+        "final_accuracy": 7.462686567164179,
+        "convergence_round": 1
+      },
+      "zkp_medium_rigor": {
+        "dataset": "synthetic",
+        "model_class": "SimpleModel",
+        "config": {
+          "name": "zkp_medium_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "medium",
+          "iid": false,
+          "description": "Medium ZKP rigor (~1.2s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "SimpleModel",
+          "model_kwargs": {
+            "input_dim": 784,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            784
+          ],
+          "num_classes": 10,
+          "description": "Synthetic data for basic testing"
+        },
+        "round_accuracies": [
+          2.985074626865672,
+          5.223880597014926,
+          8.208955223880597
+        ],
+        "round_losses": [
+          2.6589638710021974,
+          2.323239278793335,
+          2.1406827211380004
+        ],
+        "communication_overhead": [
+          491.382421875,
+          491.382421875,
+          491.382421875
+        ],
+        "proof_times": [
+          1.6266940050362757,
+          1.0859061790492093,
+          1.0414900941050034
+        ],
+        "training_time": 0.08071494102478027,
+        "memory_usage": [],
+        "final_accuracy": 8.208955223880597,
+        "convergence_round": 3
+      },
+      "zkp_low_rigor": {
+        "dataset": "synthetic",
+        "model_class": "SimpleModel",
+        "config": {
+          "name": "zkp_low_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "low",
+          "iid": false,
+          "description": "Low ZKP rigor (~0.4s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "SimpleModel",
+          "model_kwargs": {
+            "input_dim": 784,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 10
+          },
+          "input_shape": [
+            784
+          ],
+          "num_classes": 10,
+          "description": "Synthetic data for basic testing"
+        },
+        "round_accuracies": [
+          3.7313432835820897,
+          5.970149253731344,
+          6.7164179104477615
+        ],
+        "round_losses": [
+          2.43670859336853,
+          2.2607430934906008,
+          2.20208420753479
+        ],
+        "communication_overhead": [
+          491.382421875,
+          491.382421875,
+          491.382421875
+        ],
+        "proof_times": [
+          0.41082562241136766,
+          0.32721750277894535,
+          0.39655723604647913
+        ],
+        "training_time": 0.08091592788696289,
+        "memory_usage": [],
+        "final_accuracy": 6.7164179104477615,
+        "convergence_round": 3
+      }
+    },
+    "medical": {
+      "baseline_iid": {
+        "dataset": "medical",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "baseline_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": true,
+          "description": "IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 256,
+            "hidden_dims": [
+              128,
+              64,
+              32
+            ],
+            "output_dim": 3,
+            "activation": "relu",
+            "dropout_rate": 0.4,
+            "use_batch_norm": true
+          },
+          "input_shape": [
+            256
+          ],
+          "num_classes": 3,
+          "description": "Simulated medical diagnosis (3 disease classes)"
+        },
+        "round_accuracies": [
+          30.597014925373134,
+          27.611940298507463,
+          29.850746268656717
+        ],
+        "round_losses": [
+          1.4923204183578491,
+          1.4345503091812133,
+          1.3976306915283203
+        ],
+        "communication_overhead": [
+          171.01171875,
+          171.01171875,
+          171.01171875
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.16878294944763184,
+        "memory_usage": [],
+        "final_accuracy": 29.850746268656717,
+        "convergence_round": 1
+      },
+      "baseline_non_iid": {
+        "dataset": "medical",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "baseline_non_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": false,
+          "description": "Non-IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 256,
+            "hidden_dims": [
+              128,
+              64,
+              32
+            ],
+            "output_dim": 3,
+            "activation": "relu",
+            "dropout_rate": 0.4,
+            "use_batch_norm": true
+          },
+          "input_shape": [
+            256
+          ],
+          "num_classes": 3,
+          "description": "Simulated medical diagnosis (3 disease classes)"
+        },
+        "round_accuracies": [
+          32.83582089552239,
+          32.08955223880597,
+          34.32835820895522
+        ],
+        "round_losses": [
+          1.1500683069229125,
+          1.1145538568496705,
+          1.0884454131126404
+        ],
+        "communication_overhead": [
+          171.01171875,
+          171.01171875,
+          171.01171875
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.17385005950927734,
+        "memory_usage": [],
+        "final_accuracy": 34.32835820895522,
+        "convergence_round": 1
+      },
+      "zkp_medium_rigor": {
+        "dataset": "medical",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "zkp_medium_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "medium",
+          "iid": false,
+          "description": "Medium ZKP rigor (~1.2s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 256,
+            "hidden_dims": [
+              128,
+              64,
+              32
+            ],
+            "output_dim": 3,
+            "activation": "relu",
+            "dropout_rate": 0.4,
+            "use_batch_norm": true
+          },
+          "input_shape": [
+            256
+          ],
+          "num_classes": 3,
+          "description": "Simulated medical diagnosis (3 disease classes)"
+        },
+        "round_accuracies": [
+          32.08955223880597,
+          32.83582089552239,
+          31.34328358208955
+        ],
+        "round_losses": [
+          1.229985523223877,
+          1.2330165147781371,
+          1.2288938522338868
+        ],
+        "communication_overhead": [
+          196.6634765625,
+          196.6634765625,
+          196.6634765625
+        ],
+        "proof_times": [
+          1.5301792521452546,
+          1.4975911068842636,
+          1.1943472450708157
+        ],
+        "training_time": 0.16805815696716309,
+        "memory_usage": [],
+        "final_accuracy": 31.34328358208955,
+        "convergence_round": 1
+      },
+      "zkp_low_rigor": {
+        "dataset": "medical",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "zkp_low_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "low",
+          "iid": false,
+          "description": "Low ZKP rigor (~0.4s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 256,
+            "hidden_dims": [
+              128,
+              64,
+              32
+            ],
+            "output_dim": 3,
+            "activation": "relu",
+            "dropout_rate": 0.4,
+            "use_batch_norm": true
+          },
+          "input_shape": [
+            256
+          ],
+          "num_classes": 3,
+          "description": "Simulated medical diagnosis (3 disease classes)"
+        },
+        "round_accuracies": [
+          15.671641791044776,
+          18.65671641791045,
+          26.119402985074625
+        ],
+        "round_losses": [
+          1.7402949333190918,
+          1.6245105743408204,
+          1.5384148597717284
+        ],
+        "communication_overhead": [
+          196.6634765625,
+          196.6634765625,
+          196.6634765625
+        ],
+        "proof_times": [
+          0.3606263381704048,
+          0.17047058694465322,
+          0.5432950340896171
+        ],
+        "training_time": 0.16861319541931152,
+        "memory_usage": [],
+        "final_accuracy": 26.119402985074625,
+        "convergence_round": 3
+      }
+    },
+    "financial": {
+      "baseline_iid": {
+        "dataset": "financial",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "baseline_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": true,
+          "description": "IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 50,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 2,
+            "activation": "leaky_relu",
+            "dropout_rate": 0.2,
+            "final_activation": "sigmoid"
+          },
+          "input_shape": [
+            50
+          ],
+          "num_classes": 2,
+          "description": "Simulated financial fraud detection (binary)"
+        },
+        "round_accuracies": [
+          89.51310861423221,
+          89.51310861423221,
+          89.51310861423221
+        ],
+        "round_losses": [
+          0.5131741099887424,
+          0.47277240289582145,
+          0.45279701550801593
+        ],
+        "communication_overhead": [
+          58.2578125,
+          58.2578125,
+          58.2578125
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.13955259323120117,
+        "memory_usage": [],
+        "final_accuracy": 89.51310861423221,
+        "convergence_round": 1
+      },
+      "baseline_non_iid": {
+        "dataset": "financial",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "baseline_non_iid",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": false,
+          "iid": false,
+          "description": "Non-IID baseline without ZKP"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 50,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 2,
+            "activation": "leaky_relu",
+            "dropout_rate": 0.2,
+            "final_activation": "sigmoid"
+          },
+          "input_shape": [
+            50
+          ],
+          "num_classes": 2,
+          "description": "Simulated financial fraud detection (binary)"
+        },
+        "round_accuracies": [
+          64.7940074906367,
+          81.64794007490637,
+          81.64794007490637
+        ],
+        "round_losses": [
+          0.6710517406463623,
+          0.6013042794333564,
+          0.5628867414262559
+        ],
+        "communication_overhead": [
+          58.2578125,
+          58.2578125,
+          58.2578125
+        ],
+        "proof_times": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "training_time": 0.13496017456054688,
+        "memory_usage": [],
+        "final_accuracy": 81.64794007490637,
+        "convergence_round": 2
+      },
+      "zkp_medium_rigor": {
+        "dataset": "financial",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "zkp_medium_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "medium",
+          "iid": false,
+          "description": "Medium ZKP rigor (~1.2s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 50,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 2,
+            "activation": "leaky_relu",
+            "dropout_rate": 0.2,
+            "final_activation": "sigmoid"
+          },
+          "input_shape": [
+            50
+          ],
+          "num_classes": 2,
+          "description": "Simulated financial fraud detection (binary)"
+        },
+        "round_accuracies": [
+          79.02621722846442,
+          80.1498127340824,
+          80.1498127340824
+        ],
+        "round_losses": [
+          0.62995711962382,
+          0.587660034497579,
+          0.5609920289781358
+        ],
+        "communication_overhead": [
+          66.996484375,
+          66.996484375,
+          66.996484375
+        ],
+        "proof_times": [
+          1.1648166587000472,
+          1.325308609209722,
+          1.090351080270501
+        ],
+        "training_time": 0.13363099098205566,
+        "memory_usage": [],
+        "final_accuracy": 80.1498127340824,
+        "convergence_round": 1
+      },
+      "zkp_low_rigor": {
+        "dataset": "financial",
+        "model_class": "FlexibleMLP",
+        "config": {
+          "name": "zkp_low_rigor",
+          "num_clients": 3,
+          "num_rounds": 3,
+          "local_epochs": 2,
+          "learning_rate": 0.01,
+          "enable_zkp": true,
+          "proof_rigor": "low",
+          "iid": false,
+          "description": "Low ZKP rigor (~0.4s proof time)"
+        },
+        "dataset_info": {
+          "model_class": "FlexibleMLP",
+          "model_kwargs": {
+            "input_dim": 50,
+            "hidden_dims": [
+              128,
+              64
+            ],
+            "output_dim": 2,
+            "activation": "leaky_relu",
+            "dropout_rate": 0.2,
+            "final_activation": "sigmoid"
+          },
+          "input_shape": [
+            50
+          ],
+          "num_classes": 2,
+          "description": "Simulated financial fraud detection (binary)"
+        },
+        "round_accuracies": [
+          78.65168539325843,
+          78.65168539325843,
+          78.65168539325843
+        ],
+        "round_losses": [
+          0.6082206633355882,
+          0.5742757055494521,
+          0.5579846103986105
+        ],
+        "communication_overhead": [
+          66.996484375,
+          66.996484375,
+          66.996484375
+        ],
+        "proof_times": [
+          0.5347482883889705,
+          0.31014532558715824,
+          0.6285478655656689
+        ],
+        "training_time": 0.1338639259338379,
+        "memory_usage": [],
+        "final_accuracy": 78.65168539325843,
+        "convergence_round": 1
+      }
+    }
+  }
+}

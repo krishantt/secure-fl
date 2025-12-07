@@ -1,0 +1,187 @@
+{
+  "dataset": "synthetic_large",
+  "timestamp": "103446",
+  "configurations": [
+    "baseline_non_iid",
+    "zkp_medium_rigor",
+    "zkp_low_rigor"
+  ],
+  "results": {
+    "baseline_non_iid": {
+      "dataset": "synthetic_large",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "baseline_non_iid",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": false,
+        "iid": false,
+        "description": "Non-IID baseline without ZKP"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 1024,
+          "hidden_dims": [
+            512,
+            256,
+            128
+          ],
+          "output_dim": 20,
+          "activation": "relu",
+          "dropout_rate": 0.2,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          1024
+        ],
+        "num_classes": 20,
+        "description": "Large synthetic dataset with 20 classes"
+      },
+      "round_accuracies": [
+        3.8922155688622753,
+        10.179640718562874,
+        11.976047904191617
+      ],
+      "round_losses": [
+        3.4565862814585366,
+        3.14214821656545,
+        2.983970801035563
+      ],
+      "communication_overhead": [
+        2708.578125,
+        2708.578125,
+        2708.578125
+      ],
+      "proof_times": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "training_time": 0.4177091121673584,
+      "memory_usage": [],
+      "final_accuracy": 11.976047904191617,
+      "convergence_round": 3
+    },
+    "zkp_medium_rigor": {
+      "dataset": "synthetic_large",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "zkp_medium_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "medium",
+        "iid": false,
+        "description": "Medium ZKP rigor (~1.2s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 1024,
+          "hidden_dims": [
+            512,
+            256,
+            128
+          ],
+          "output_dim": 20,
+          "activation": "relu",
+          "dropout_rate": 0.2,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          1024
+        ],
+        "num_classes": 20,
+        "description": "Large synthetic dataset with 20 classes"
+      },
+      "round_accuracies": [
+        7.485029940119761,
+        8.383233532934131,
+        8.083832335329342
+      ],
+      "round_losses": [
+        2.864876468976339,
+        2.7110249996185303,
+        2.648632367451986
+      ],
+      "communication_overhead": [
+        3114.8648437499996,
+        3114.8648437499996,
+        3114.8648437499996
+      ],
+      "proof_times": [
+        1.025092682811569,
+        1.3749153327737804,
+        1.2814313219439657
+      ],
+      "training_time": 0.4111309051513672,
+      "memory_usage": [],
+      "final_accuracy": 8.083832335329342,
+      "convergence_round": 2
+    },
+    "zkp_low_rigor": {
+      "dataset": "synthetic_large",
+      "model_class": "FlexibleMLP",
+      "config": {
+        "name": "zkp_low_rigor",
+        "num_clients": 3,
+        "num_rounds": 3,
+        "local_epochs": 2,
+        "learning_rate": 0.01,
+        "enable_zkp": true,
+        "proof_rigor": "low",
+        "iid": false,
+        "description": "Low ZKP rigor (~0.4s proof time)"
+      },
+      "dataset_info": {
+        "model_class": "FlexibleMLP",
+        "model_kwargs": {
+          "input_dim": 1024,
+          "hidden_dims": [
+            512,
+            256,
+            128
+          ],
+          "output_dim": 20,
+          "activation": "relu",
+          "dropout_rate": 0.2,
+          "use_batch_norm": true
+        },
+        "input_shape": [
+          1024
+        ],
+        "num_classes": 20,
+        "description": "Large synthetic dataset with 20 classes"
+      },
+      "round_accuracies": [
+        8.982035928143713,
+        9.880239520958083,
+        9.580838323353293
+      ],
+      "round_losses": [
+        2.928525686264038,
+        2.813282608985901,
+        2.754082997639974
+      ],
+      "communication_overhead": [
+        3114.8648437499996,
+        3114.8648437499996,
+        3114.8648437499996
+      ],
+      "proof_times": [
+        0.38581887326590253,
+        0.5066374550409677,
+        0.38949206142358594
+      ],
+      "training_time": 0.4120028018951416,
+      "memory_usage": [],
+      "final_accuracy": 9.580838323353293,
+      "convergence_round": 2
+    }
+  }
+}
