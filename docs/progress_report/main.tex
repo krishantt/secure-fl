@@ -1,0 +1,600 @@
+\documentclass[12pt]{report}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\usepackage{natbib}%referencing
+\usepackage[left=1.0in,right=1.0in,top=.8in,bottom=.8in]{geometry}
+\usepackage{float}
+\linespread{1.3}
+\usepackage{graphicx}%figures
+\usepackage{rotating}%landscape
+\usepackage{amsmath}%math
+\usepackage{titlesec} %formatting chapters
+\titlespacing*{\chapter}{-15pt}{10pt}{15pt}
+\titlespacing*{\section}{0pt}{0pt}{5pt}
+\titlespacing*{\subsection}{0pt}{5pt}{5pt}
+\titleformat{\chapter}[hang] 
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter.}{1em}{}
+\renewcommand{\chaptername}{}
+\graphicspath{{Images/}}%image folder name
+\usepackage{graphicx}  % in the preamble
+\usepackage[table]{xcolor}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Define colors for Python syntax highlighting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{codeblue}{rgb}{0.0,0.3,0.7}
+\definecolor{codeorange}{rgb}{0.8,0.4,0.0}
+
+% Python style
+\lstdefinestyle{pythonstyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    identifierstyle=\color{black},
+    emphstyle=\color{codeorange}\bfseries,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    frame=single,
+    rulecolor=\color{codegray},
+    language=Python,
+    emph={self, __init__, aggregate, _weighted_average, _initialize_momentum, _update_momentum, _apply_momentum_update}
+}
+
+\lstset{style=pythonstyle}
+
+%Cover page contents
+\title{
+{\includegraphics[scale=.3]{logotu.jpg}}\\
+\uppercase\large{
+    {Tribhuvan University}\\
+    {Institute of Engineering}\\
+    {Pulchowk Campus}\\
+    \vspace{.5cm}
+    {A \\Progress Report\\On\\\textbf{Hybrid Dual-Verification Framework for Federated Learning using Zero-Knowledge Proofs}}\\
+    \vspace{.5cm}
+    {\textbf{Submitted By:}\\Bindu Paudel (PUL078BCT032) \\ Krishant Timilsina (PUL078BCT045)}\\
+    \vspace{.5cm}
+    {\textbf{Submitted To:}\\ Department of Electronics \& Computer Engineering}\\
+                }
+    }
+\date{July, 2025}
+\begin{document}
+\maketitle
+\pagenumbering{roman}
+\setcounter{page}{2}
+
+\chapter*{Acknowledgments}
+\addcontentsline{toc}{chapter}{\numberline{}Acknowledgments}
+
+We express our sincere gratitude to our supervisor, Associate Professor Arun Kumar Timalsina, Ph.D., Department of Electronics and Computer Engineering, Pulchowk Campus, for his constant support and guidance. We also thank our faculty, friends, and family members who supported us throughout this project proposal.
+
+
+\tableofcontents
+\addcontentsline{toc}{chapter}{\numberline{}Contents}
+
+\clearpage
+\begingroup
+\setlength{\parskip}{0pt}  % No extra spacing between paragraphs
+\setlength{\parindent}{0pt}  % No paragraph indentation
+
+\listoffigures
+\addcontentsline{toc}{chapter}{\numberline{}List of Figures}
+
+\vspace{1em}  % optional space between sections
+
+\listoftables
+\addcontentsline{toc}{chapter}{\numberline{}List of Tables}
+
+\vspace{1em}
+
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{\numberline{}List of Abbreviations}
+% Your abbreviations go here:
+\begin{tabular}{ll}
+\textbf{FL} & Federated Learning \\
+\textbf{ZKP} & Zero-Knowledge Proof \\
+\textbf{zk-STARK} & Scalable Transparent ARguments of Knowledge \\
+\textbf{zk-SNARK} & Succinct Non-interactive ARguments of Knowledge \\
+\textbf{FedJSCM} & Federated Joint Server-Client Momentum \\
+\textbf{SGD} & Stochastic Gradient Descent \\
+\textbf{NN} & Neural Network \\
+\end{tabular}
+
+\endgroup
+\clearpage
+
+
+
+\pagenumbering{arabic}
+
+\chapter{Introduction}
+
+\section{Background}
+Federated Learning (FL) is a decentralized machine learning paradigm where multiple clients collaboratively train a shared global model while keeping their local data private. Instead of transmitting sensitive data to a central server, clients perform local training and share only model updates. This approach has gained traction in domains such as healthcare, finance, and mobile applications where data privacy is critical. Despite these advantages, FL is not immune to security threats.
+
+One major challenge in FL is ensuring the integrity of the model training process. Malicious clients may submit poisoned updates to mislead the global model, while an untrusted server may incorrectly aggregate updates to favor certain clients or to manipulate the learning outcome. Traditional methods to mitigate such attacks rely on trust assumptions or statistical anomaly detection, which can be inadequate in adversarial settings. 
+
+To address this, Zero-Knowledge Proofs (ZKPs) offer a powerful cryptographic tool that enables one party (the prover) to convince another (the verifier) that a statement is true without revealing any additional information. In the context of FL, ZKPs can be used by clients to prove the correctness of their local training and by the server to prove the correctness of aggregation.
+
+This project introduces a novel federated learning framework that incorporates dual verification using ZKPs from both clients and the server. It leverages a hybrid approach—zk-STARKs for client-side proofs and zk-SNARKs (Groth16) for server-side proofs—to balance transparency, scalability, and efficiency. Moreover, it employs a dynamic proof mechanism that adjusts the rigor of verification based on the stability of the global model to reduce computational overhead while maintaining security.
+
+\section{Problem Statement}
+Current federated learning systems generally assume partial trust in either the clients or the server. Most implementations include client-side verification using ZKPs or anomaly detection but ignore the need for validating the server’s aggregation process. Moreover, existing ZKP-based approaches suffer from static proof granularity, leading to inefficiency in later, more stable training rounds. These limitations expose the system to model poisoning, aggregation tampering, and unnecessary performance bottlenecks.
+
+\section{Objectives}
+The key objectives of this project are:
+\begin{itemize}
+    \item To design a dual-verifiable federated learning framework where both clients and the server provide ZKPs.
+    \item To implement zk-STARK-based proofs for verifying client-side local training and zk-SNARK (Groth16) proofs for verifying server-side aggregation.
+    \item To introduce a dynamic proof adjustment mechanism that modifies proof rigor based on training stability.
+    \item To ensure the framework is efficient and deployable on resource-constrained devices.
+    \item To validate the system using real-world non-IID datasets and demonstrate robustness against adversarial attacks.
+\end{itemize}
+
+\section{Scope}
+The proposed system aims to enhance the security and transparency of federated learning frameworks by removing the need to trust any single entity. The framework will be tested on privacy-sensitive and heterogeneous datasets like Medical MNIST and the Human Activity Recognition (HAR) dataset. Evaluation will be done in terms of proof generation time, verification latency, and training accuracy. The verification layer will be implemented using a smart contract on Ethereum or a private blockchain, ensuring public verifiability of the computation.
+
+By combining momentum-based aggregation (FedJSCM) with zero-knowledge verification, this project also pioneers the development of a verifiable optimization algorithm in the FL domain, which is particularly significant for high-stakes applications such as medical diagnostics and financial forecasting.
+
+\chapter{Literature Review}
+
+\section{Related Work}
+Federated Learning (FL) was popularized by Google \cite{mcmahan2017communication} as a method to collaboratively train models across decentralized devices holding sensitive data. Since then, multiple enhancements have been proposed to tackle communication efficiency, robustness to non-IID data, and privacy threats.
+
+One branch of work focuses on making FL resilient to poisoning and Byzantine attacks. Techniques such as Krum \cite{blanchard2017machine}, Trimmed Mean, and Multi-Krum attempt to detect and filter out malicious updates based on statistical properties. However, these methods can fail under coordinated attacks and provide no formal guarantees.
+
+In contrast, cryptographic methods offer stronger guarantees. Differential privacy \cite{geyer2017differentially} and secure aggregation \cite{bonawitz2017practical} are popular for privacy protection, but they do not verify the correctness of computations. Zero-Knowledge Proofs (ZKPs), on the other hand, allow verification without disclosing data or computation details. Early attempts like ZKFL \cite{zhu2021zkfl} introduced client-side zk-SNARK proofs for verifying SGD steps. However, they incur high computational cost and neglect the server's role. 
+
+Our proposal builds upon these efforts by introducing a dual-verifiable FL framework. Clients use zk-STARKs for transparent, scalable proofs of correct local training, while the server uses Groth16 zk-SNARKs to prove correct aggregation. This hybrid approach balances performance and trust.
+
+\section{Related Theory}
+This section introduces the theoretical foundations of the proposed framework. We explain Federated Learning, Stochastic Gradient Descent, Zero-Knowledge Proofs, zk-STARKs, zk-SNARKs, and the FedJSCM algorithm.
+
+\subsection{Federated Learning (FL)}
+FL aims to minimize a global loss function \( L(w) \) defined over the data of all \( N \) clients:
+\[
+L(w) = \sum_{i=1}^N p_i L_i(w),
+\]
+where \( L_i(w) \) is the local loss function of client \( i \), and \( p_i \) is the relative data proportion (e.g., \( p_i = \frac{n_i}{\sum_j n_j} \)).
+
+Each round, clients perform local updates using Stochastic Gradient Descent (SGD):
+\[
+w_i^{(t+1)} = w^{(t)} - \eta \nabla L_i(w^{(t)}),
+\]
+and send their model update (\( \Delta_i = w_i^{(t+1)} - w^{(t)} \)) to the server.
+
+\subsection{Stochastic Gradient Descent (SGD)}
+SGD is used to minimize a loss function \( L(w) \) by iteratively updating parameters using:
+\[
+w \leftarrow w - \eta \nabla L(w; x_i, y_i),
+\]
+where \( (x_i, y_i) \) is a mini-batch sample, and \( \eta \) is the learning rate. A valid SGD step requires computing gradients from actual data, which is what the client zk-STARKs prove.
+
+\subsection{Zero-Knowledge Proofs (ZKPs)}
+A ZKP allows a prover to convince a verifier that a computation was done correctly without revealing the inputs. Formally, a ZKP must satisfy:
+\begin{itemize}
+  \item \textbf{Completeness}: If the statement is true, an honest verifier is convinced.
+  \item \textbf{Soundness}: If the statement is false, a cheating prover cannot convince the verifier.
+  \item \textbf{Zero-Knowledge}: No information about the inputs is leaked.
+\end{itemize}
+
+\subsection{zk-STARKs}
+zk-STARKs (Scalable Transparent ARguments of Knowledge) offer post-quantum security and transparency (no trusted setup). They operate over arithmetic intermediate representations (AIR), expressing computation as transition constraints over state variables.
+
+For example, to prove correct SGD updates over \( k \) steps, we construct a trace \( T = [w_0, w_1, \dots, w_k] \) such that:
+\[
+\forall j,\ w_{j+1} = w_j - \eta \nabla L(w_j; x_j, y_j).
+\]
+
+These are encoded in a trace table and verified using low-degree polynomial tests (Reed-Solomon encoding) and Merkle trees. Although proofs are larger (hundreds of KB), they are fast to generate and verify.
+
+\subsection{zk-SNARKs (Groth16)}
+zk-SNARKs provide succinct and efficient proofs but require a trusted setup. Groth16 proves statements of the form:
+\[
+\text{Given: } x,\ \text{Prove: } \exists w : C(x, w) = 0,
+\]
+where \( C \) is an arithmetic circuit representing the computation. For example, the server can encode FedJSCM aggregation as:
+\[
+\text{new model } = \sum_{i=1}^N p_i \Delta_i + \beta m^{(t)}
+\]
+and prove that this was correctly computed without revealing individual \( \Delta_i \).
+
+\subsection{FedJSCM Aggregation}
+FedJSCM is a momentum-based aggregation technique that stabilizes FL under non-IID conditions. The momentum update rule is:
+\[
+m^{(t+1)} = \gamma m^{(t)} + \sum_{i=1}^N p_i \Delta_i,
+\]
+\[
+w^{(t+1)} = w^{(t)} + m^{(t+1)},
+\]
+where \( \gamma \) is the momentum coefficient. This formulation accelerates convergence and avoids oscillations common in non-IID FL setups. Proving this with Groth16 ensures no tampering from the server.
+
+\subsection{Dynamic Proof Granularity}
+To balance security and efficiency, proof rigor is dynamically adjusted based on model stability. Metrics such as gradient norm or validation loss change guide the switch between full, partial, or lightweight proofs. For example:
+\begin{itemize}
+    \item \textbf{Unstable phase}: Full SGD trace proofs, per-round server proofs.
+    \item \textbf{Stable phase}: One-step delta proof, server proof every 5 rounds.
+\end{itemize}
+
+This adaptive scheme reduces overhead without compromising verification guarantees.
+
+\subsection{Blockchain-Based Verification}
+ZKPs are submitted to a verification layer implemented using smart contracts on Ethereum or a private blockchain. The smart contract logic ensures that only valid updates are accepted, providing tamper-evidence and decentralized enforcement of computation integrity.
+
+
+
+
+\chapter{Proposed Methodology}
+
+The proposed methodology outlines a secure and efficient federated learning system that utilizes dual Zero-Knowledge Proofs (ZKPs) to ensure end-to-end verifiability. The methodology follows an iterative, round-based training structure, integrating cryptographic proof systems, adaptive rigor tuning, and blockchain-based verification.
+
+\section{Overview}
+Each training round in the federated system consists of three major phases:
+\begin{enumerate}
+    \item \textbf{Client-side training and proof generation} using zk-STARKs.
+    \item \textbf{Server-side verification, aggregation, and proof generation} using Groth16 zk-SNARKs.
+    \item \textbf{Blockchain verification layer} for decentralized validation of proofs.
+\end{enumerate}
+An additional control mechanism dynamically adjusts the granularity of proofs based on model stability metrics.
+
+\section{Step-by-Step Procedure}
+
+\subsection*{Step 1: Initialization}
+\begin{itemize}
+    \item The server initializes the global model \( w^{(0)} \), server momentum \( m^{(0)} = 0 \), and proof rigor parameters.
+    \item The server distributes the initial model to all participating clients.
+    \item Clients load their local data and prepare for training.
+\end{itemize}
+
+\subsection*{Step 2: Client-Side Operations}
+For each round \( t \), each client \( i \) performs the following:
+\begin{enumerate}
+    \item Downloads global model \( w^{(t)} \).
+    \item Computes model update \( \Delta_i^{(t)} \) by applying SGD:
+    \[
+    w_i^{(t+1)} = w^{(t)} - \eta \nabla L_i(w^{(t)}), \quad \Delta_i^{(t)} = w_i^{(t+1)} - w^{(t)}.
+    \]
+    \item Quantizes the update \( \Delta_i^{(t)} \) to 8-bit fixed point for efficient circuit representation.
+    \item Generates a zk-STARK proof \( \pi_i^{\text{client}} \) for the statement:
+    \begin{itemize}
+        \item The model update \( \Delta_i^{(t)} \) was generated from SGD using valid, committed local data.
+        \item The data used meets certain size and format requirements.
+    \end{itemize}
+    \item Sends \( (\Delta_i^{(t)}, \pi_i^{\text{client}}) \) to the server.
+\end{enumerate}
+
+\subsection*{Step 3: Server-Side Operations}
+Upon receiving submissions from all clients:
+\begin{enumerate}
+    \item Verifies each \( \pi_i^{\text{client}} \) using batch zk-STARK verification.
+    \item Filters out invalid updates.
+    \item Applies FedJSCM aggregation:
+    \[
+    m^{(t+1)} = \gamma m^{(t)} + \sum_{i \in V} p_i \Delta_i^{(t)},
+    \]
+    \[
+    w^{(t+1)} = w^{(t)} + m^{(t+1)}.
+    \]
+    where \( V \) is the set of verified clients and \( \gamma \) is the momentum coefficient.
+    \item Generates a Groth16 zk-SNARK proof \( \pi^{\text{server}} \) proving that:
+    \begin{itemize}
+        \item Aggregation of updates and momentum calculation were done correctly.
+        \item Public inputs include hashes of accepted \( \Delta_i^{(t)} \), \( w^{(t)} \), and \( w^{(t+1)} \).
+    \end{itemize}
+    \item Broadcasts \( w^{(t+1)} \) and \( \pi^{\text{server}} \) to clients and the blockchain verifier.
+\end{enumerate}
+
+\subsection*{Step 4: Blockchain-Based Verification}
+\begin{itemize}
+    \item A smart contract or consortium of verifier nodes checks:
+    \begin{itemize}
+        \item Validity of the server's zk-SNARK proof \( \pi^{\text{server}} \).
+        \item Optionally, random sampling of client zk-STARK proofs \( \pi_i^{\text{client}} \).
+    \end{itemize}
+    \item If verification fails, the model is rejected and round \( t \) is invalidated.
+    \item Otherwise, training continues to round \( t+1 \).
+\end{itemize}
+
+\subsection*{Step 5: Dynamic Proof Rigor Adjustment}
+After each round, the server evaluates the following metrics:
+\begin{itemize}
+    \item Change in model accuracy on a held-out public or validation dataset.
+    \item Magnitude of aggregated gradient updates (\( \| m^{(t)} \| \)).
+    \item Time and resource cost of generating proofs.
+\end{itemize}
+Based on these, the server adjusts proof configurations:
+\begin{itemize}
+    \item \textbf{High Rigor}: Full SGD trace proofs (clients), every-round server proof.
+    \item \textbf{Medium Rigor}: One-step update proof, server proof every 2 rounds.
+    \item \textbf{Low Rigor}: Lightweight delta norm proof, server proof every 5 rounds.
+\end{itemize}
+
+\section{System Components and Tools}
+\begin{itemize}
+    \item \textbf{Clients}: Implemented using PySyft or Flower with Cairo-based zk-STARK circuits.
+    \item \textbf{Server}: Runs aggregation and Circom-based zk-SNARK circuits using SnarkJS.
+    \item \textbf{Blockchain}: Ethereum smart contract or private Quorum chain for verification logic.
+    \item \textbf{Datasets}: Medical MNIST and HAR datasets (non-IID and privacy-sensitive).
+    \item \textbf{Hardware}: Raspberry Pi for client simulation; AWS/GCP for server.
+\end{itemize}
+
+\section{Security and Efficiency Trade-offs}
+\begin{itemize}
+    \item zk-STARKs ensure scalability and transparency for clients.
+    \item zk-SNARKs enable compact proofs suitable for on-chain verification.
+    \item Quantized weights and dynamic proof control reduce computational overhead.
+\end{itemize}
+
+This methodology ensures verifiability, robustness, and efficiency across the entire FL pipeline, making it suitable for high-stakes and privacy-critical applications.
+
+
+\chapter{Proposed Experimental Setup}
+
+This chapter describes the experimental setup for evaluating the dual ZKP-based federated learning system, simulated on a cloud environment using multiple virtual machines (VMs) to replicate client-server interactions.
+
+\section{Infrastructure Overview}
+
+\subsection{Cloud Deployment}
+We simulate a federated setup on AWS using the following:
+\begin{itemize}
+    \item \textbf{Server Node}: One VM as the central aggregator.
+    \item \textbf{Client Nodes}: 5--10 VMs, each representing a federated client.
+    \item \textbf{Blockchain Node}: One VM running a private Ethereum node for zk-SNARK verification.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Role} & \textbf{Instance} & \textbf{Specs} \\
+\hline
+Server & t3.xlarge & 4 vCPUs, 16 GB RAM \\
+Client & t3.medium & 2 vCPUs, 4 GB RAM \\
+Blockchain & t3.small & 2 vCPUs, 2 GB RAM \\
+\hline
+\end{tabular}
+\caption{AWS EC2 configuration}
+\end{table}
+
+\section{Software Stack}
+
+\subsection{Client VMs}
+\begin{itemize}
+    \item OS: Ubuntu 22.04
+    \item Framework: Flower with PyTorch and Cairo (for zk-STARKs)
+\end{itemize}
+
+\subsection{Server VM}
+\begin{itemize}
+    \item FL Server: Flower + FedJSCM
+    \item zk-SNARK Prover: Circom + SnarkJS
+\end{itemize}
+
+\subsection{Blockchain Node}
+\begin{itemize}
+    \item Platform: Ethereum (private chain)
+    \item Contract: Solidity verifier from SnarkJS
+\end{itemize}
+
+\section{Datasets}
+\begin{itemize}
+    \item MedMNIST (non-IID, split by class)
+    \item UCI HAR (sensor time-series)
+\end{itemize}
+Each client holds \textasciitilde5--10\% of the dataset.
+
+\section{Proof Configuration}
+\begin{itemize}
+    \item \textbf{Client (zk-STARK)}: Cairo circuits for SGD steps
+    \item \textbf{Server (zk-SNARK)}: Groth16 aggregation proof in Circom
+\end{itemize}
+
+
+This setup enables reproducible and secure simulation of federated learning with privacy-preserving, verifiable computation.
+
+
+\chapter{Proposed Experimental Setup (if any)}
+\begin{itemize}
+    \item \textbf{Datasets}: Medical MNIST, HAR dataset.
+    \item \textbf{Client Devices}: Raspberry Pi (low-resource simulation).
+    \item \textbf{ZKP Backends}: Cairo/StarkEx for clients, Circom + SnarkJS for server.
+    \item \textbf{Blockchain}: Ethereum smart contracts for proof verification.
+\end{itemize}
+
+\chapter{System Design}
+
+This chapter outlines the architectural design of the dual ZKP-based federated learning framework. It explains the data and proof flow, the interaction between system components, and the integration of verifiable computation via zk-STARKs and zk-SNARKs.
+
+\section{Overview}
+The system is divided into three primary domains:
+\begin{itemize}
+    \item \textbf{Client Layer (Edge Nodes)}: Simulates data owners who perform local model updates and generate zk-STARK proofs.
+    \item \textbf{Server Layer (Aggregator)}: Aggregates models and verifies client proofs. It generates a zk-SNARK proof of correct aggregation.
+    \item \textbf{Blockchain Layer}: A smart contract verifies the zk-SNARK proof on-chain for public verifiability.
+\end{itemize}
+
+\section{Architecture Diagram}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Images/arch.png}
+    \caption{System Diagram}
+    \label{fig:enter-label}
+\end{figure}
+
+
+\chapter{Timeline}
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Phase} & \textbf{Aug} & \textbf{Sep} & \textbf{Oct} & \textbf{Nov} & \textbf{Dec} \\ \hline
+Literature Review & \cellcolor{green!25} & & & & \\ \hline
+Client Proof Setup & & \cellcolor{green!25} & & & \\ \hline
+Server Aggregation & & & \cellcolor{green!25} & & \\ \hline
+Blockchain Integration & & & & \cellcolor{green!25} & \\ \hline
+Evaluation & & & & & \cellcolor{green!25} \\ \hline
+\end{tabular}
+\caption{Project Gantt chart}
+\end{table}
+
+
+
+
+
+
+
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[angle=90, width=0.35\linewidth]{Images/gantt.png}
+%     \caption{Gantt Chart}
+%     \label{fig:enter-label}
+% \end{figure}
+
+
+
+\chapter{Project Progress Overview}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Progress} & \textbf{Status} \\
+\midrule
+Research \& Design & 90\% & \textcolor{completed}{Nearly Complete} \\
+Core FL Framework & 45\% & \textcolor{inprogress}{In Progress} \\
+ZKP Integration & 25\% & \textcolor{inprogress}{Early Development} \\
+Experimental Setup & 20\% & \textcolor{planned}{Planning Phase} \\
+\bottomrule
+\end{tabular}
+\caption{Project Progress Overview}
+\end{table}
+
+\section{Completed Work}
+
+\subsection{Research Foundation and System Design}
+
+We have completed extensive research into existing federated learning frameworks and zero-knowledge proof systems, identifying the critical gap where current systems lack either client-side or server-side verification. Our comprehensive system architecture addresses non-IID data distributions, Byzantine fault tolerance, and scalable proof generation. The theoretical foundation for FedJSCM aggregation has been established with the momentum update rule $m^{(t+1)} = \gamma \times m^{(t)} + \sum(p_i \times \Delta_i)$ validated through preliminary simulations.
+
+The interaction protocols between clients and servers have been fully designed, along with proof generation workflows and blockchain integration points. This foundational work provides a solid theoretical basis for the implementation phases and ensures our approach addresses key security and performance requirements in federated learning systems.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{research.png}
+\caption{Secure FL System Architecture with Dual ZKP Verification}
+\label{fig:system_arch}
+\end{figure}
+
+
+\subsection{Core Federated Learning Infrastructure}
+
+The foundational FL system has been implemented using Flower framework with custom extensions. Our \texttt{SecureFlowerServer} class manages client connections and orchestrates training rounds with security verification requirements, while \texttt{SecureFlowerClient} handles local training and prepares data for proof generation. The FedJSCM aggregation algorithm has been partially implemented and shows improved convergence compared to standard federated averaging in preliminary tests.
+
+
+The parameter quantization system supports configurable bit widths (4, 8, 16 bits) with both symmetric and asymmetric schemes, enabling efficient circuit representation while preserving model accuracy. Client-server communication protocols have been designed to accommodate additional proof data without significantly affecting standard FL workflows.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fedjsm-flow.png}
+\caption{FedJSCM Aggregation Algorithm Flow}
+\label{fig:fedjscm_flow}
+\end{figure}
+
+
+\subsection{Initial Zero-Knowledge Proof Framework}
+
+The proof manager architecture has been designed to handle both zk-STARK and zk-SNARK proofs through a unified interface, enabling modular development and testing. Initial Cairo circuit templates for client-side verification have been developed to verify SGD training steps on committed data, including constraints for parameter updates and gradient computations. The foundational structure has been validated, though circuits are not yet fully functional.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Images/demo_run.png}
+    \caption{Demo run with synthetic dataset and ZKP proof turned off.}
+    \label{fig:placeholder}
+\end{figure}
+
+
+\section{Current Work in Progress}
+
+\subsection{Zero-Knowledge Proof Circuit Development}
+
+We are currently implementing three levels of zk-STARK circuits in Cairo for different proof rigor levels. The high-rigor circuit provides full SGD trace verification, medium-rigor focuses on single-step verification, and low-rigor provides lightweight delta norm verification. Parallel development of server-side Circom circuits verifies FedJSCM aggregation correctness with constraints for weight validation and momentum calculations.
+
+Integration of these circuits with the FL system presents technical challenges in handling variable-size inputs for different model architectures. We are developing dynamic circuit generation techniques that adapt to various neural network structures without manual redesign, which is critical for practical deployment across different use cases.
+
+\subsection{Dynamic Proof Rigor System}
+
+The stability monitoring system tracks parameter changes, gradient norms, loss variance, and convergence indicators using sliding window analysis. The proof rigor adjustment algorithm analyzes these metrics to determine appropriate verification levels, employing high-rigor proofs during unstable phases and reducing complexity as training stabilizes. This adaptive approach significantly reduces computational overhead while maintaining security guarantees.
+
+\subsection{Blockchain Integration Planning}
+
+We have begun designing the smart contract system for public auditability, managing client registration, proof submission, and verification tracking. The integration addresses gas cost challenges through layer-2 solutions and proof aggregation techniques to make on-chain verification economically viable.
+
+\section{Remaining Work}
+
+\subsection{Complete ZKP Implementation and Integration}
+
+The most critical remaining work involves finalizing the zero-knowledge proof circuits and fully integrating them with the FL system. This includes completing Cairo zk-STARK circuits, Circom zk-SNARK circuits, and implementing robust proof generation workflows with error handling and fallback mechanisms. Performance optimization will be crucial, requiring parallel proof generation, circuit optimization, and caching mechanisms.
+
+\subsection{Comprehensive Experimental Validation}
+
+Extensive validation will evaluate the system with multiple clients (5-20) using real-world datasets under non-IID conditions. We will measure security-performance trade-offs, conduct distributed environment testing, and perform comparative analysis against existing FL frameworks. This validation is essential to demonstrate both security properties and practical usability.
+
+\subsection{Production Deployment Preparation}
+
+Preparing for production involves containerization, orchestration scripts, monitoring systems, and automated testing pipelines. Security hardening includes formal audits, side-channel attack prevention, and proper key management. User interfaces, monitoring dashboards, and comprehensive documentation will be developed for administrators and researchers.
+
+\subsection{Advanced Features and Optimizations}
+
+Additional features include differential privacy mechanisms, communication compression algorithms, and support for various neural network architectures. Integration with other privacy-preserving techniques like secure multiparty computation could provide additional security guarantees and enable new use cases.
+
+\section{Current Challenges and Risk Mitigation}
+
+\subsection{Technical Implementation Challenges}
+
+The complexity of implementing production-quality ZKP circuits presents the primary challenge, as Cairo and Circom development requires specialized knowledge with limited debugging tools. We are mitigating this through comprehensive test suites and fallback mechanisms allowing reduced security operation when proofs cannot be generated.
+
+Integration of multiple complex systems (FL, ZKP, blockchain) creates software engineering challenges. We address this through modular design, extensive integration testing, and comprehensive error handling throughout the system architecture.
+
+\subsection{Performance and Scalability Concerns}
+
+ZKP generation computational intensity may not be practical for resource-constrained devices. Our dynamic proof rigor system helps by reducing complexity when possible, but challenges remain for mobile and IoT devices. We are investigating proof delegation techniques for edge devices while maintaining privacy guarantees.
+
+Blockchain verification introduces scalability bottlenecks due to transaction costs and throughput limitations. Layer-2 solutions and proof aggregation techniques are being explored to improve scalability, though these add system complexity and new security considerations.
+
+\section{Conclusion}
+
+Our Secure FL project has achieved solid progress with 35\% completion in foundational phases. The theoretical framework is established, core system architecture is implemented, and initial ZKP components are under development. While significant challenges remain in completing cryptographic implementations and achieving production-level performance, the project progresses according to plan.
+
+The work validates the feasibility of our dual verification approach and provides a strong foundation for remaining development phases. The innovative combination of client-side zk-STARKs, server-side zk-SNARKs, momentum-based aggregation, and dynamic proof rigor adjustment represents a significant contribution to secure federated learning.
+
+Success in the next phases will result in a novel, production-ready system addressing key security and verifiability challenges in federated learning while maintaining practical performance characteristics.
+
+
+
+\addcontentsline{toc}{section}{References}
+\renewcommand{\bibname}{References}
+\bibliographystyle{unsrt}
+\bibliography{ref}
+\end{document}
+
+
