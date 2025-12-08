@@ -431,6 +431,30 @@ class ServerProofManager(ProofManagerBase):
 
             circom_file = circuit_dir / "aggregation.circom"
 
+            # CLEAN ALL OLD BUILD ARTIFACTS to prevent Circom caching issues
+            logger.info("Cleaning old build artifacts...")
+            artifacts_to_clean = [
+                circom_file,  # Old source file
+                circuit_dir / "aggregation.sym",  # Symbol table
+                build_dir / "aggregation.r1cs",  # Constraint system
+                build_dir / "aggregation.wasm",  # WASM witness generator
+                build_dir / "aggregation_js",  # JS directory
+                build_dir / "aggregation.sym",  # Symbol table in build
+                build_dir / "aggregation.zkey",  # Old proving key
+                build_dir / "verification_key.json",  # Old verification key
+            ]
+
+            for artifact in artifacts_to_clean:
+                if artifact.exists():
+                    if artifact.is_dir():
+                        import shutil
+
+                        shutil.rmtree(artifact)
+                        logger.info(f"  Removed directory: {artifact.name}")
+                    else:
+                        artifact.unlink()
+                        logger.info(f"  Removed file: {artifact.name}")
+
             # ALWAYS recreate the circuit file to ensure correct syntax
             self._create_aggregation_circuit(str(circom_file))
 
@@ -439,7 +463,8 @@ class ServerProofManager(ProofManagerBase):
             zkey = build_dir / "aggregation.zkey"
             vkey = build_dir / "verification_key.json"
 
-            # 1. Compile circuit
+            # 1. Compile circuit (Circom will now be forced to read the new file)
+            logger.info("Compiling Circom circuit...")
             subprocess.check_call(
                 [
                     self.circom_path,
@@ -566,74 +591,113 @@ class ServerProofManager(ProofManagerBase):
 
     def _create_aggregation_circuit(self, circuit_path: str):
         """Create a valid Circom 2.0 aggregation circuit"""
-        import textwrap
-        
-        circuit_code = textwrap.dedent("""\
-        pragma circom 2.0.0;
+        # Build circuit code line by line to ensure proper line breaks
+        circuit_lines = [
+            "pragma circom 2.0.0;",
+            "// Federated Learning Aggregation Circuit",
+            "",
+            "template FedJSCMAggregation(n_clients, param_size) {",
+            "    signal input client_deltas[n_clients][param_size];",
+            "    signal input old_momentum[param_size];",
+            "    signal input client_weights[n_clients];",
+            "    signal input momentum_coeff;",
+            "    signal input old_params[param_size];",
+            "",
+            "    signal output new_params[param_size];",
+            "    signal output new_momentum[param_size];",
+            "",
+            "    // Intermediate signals for weighted sum",
+            "    signal weighted_sum[param_size];",
+            "    signal partial_sums[n_clients][param_size];",
+            "",
+            "    var SCALE = 1000000;"
 
-        template FedJSCMAggregation(n_clients, param_size) {
-            signal input client_deltas[n_clients][param_size];
-            signal input old_momentum[param_size];
-            signal input client_weights[n_clients];
-            signal input momentum_coeff;
-            signal input old_params[param_size];
+            "    // Calculate weighted deltas",
 
-            signal output new_params[param_size];
-            signal output new_momentum[param_size];
+            "    for (var i = 0; i < param_size; i++) {",
+            "        for (var j = 0; j < n_clients; j++) {",
+            "            partial_sums[j][i] <== client_weights[j] * client_deltas[j][i] / SCALE;",
+            "        }",
+            "    }",
+            "",
+            "    // Sum the weighted deltas",
+            "    for (var i = 0; i < param_size; i++) {",
+            "        var sum = 0;",
+            "        for (var j = 0; j < n_clients; j++) {",
+            "            sum += partial_sums[j][i];",
+            "        }",
+            "        weighted_sum[i] <== sum;",
+            "    }",
+            "",
+            "    // Compute momentum and new params",
+            "    signal momentum_term[param_size];",
+            "    for (var i = 0; i < param_size; i++) {",
+            "        momentum_term[i] <== momentum_coeff * old_momentum[i] / SCALE;",
+            "        new_momentum[i] <== momentum_term[i] + weighted_sum[i];",
+            "        new_params[i] <== old_params[i] + new_momentum[i];",
+            "    }",
+            "}",
+            "",
+            "component main = FedJSCMAggregation(2, 5);",
+        ]
 
-            var weighted_sum[param_size];
-
-            for (var i = 0; i < param_size; i++) {
-                weighted_sum[i] = 0;
-                for (var j = 0; j < n_clients; j++) {
-                    weighted_sum[i] += client_weights[j] * client_deltas[j][i];
-                }
-            }
-
-            for (var i = 0; i < param_size; i++) {
-                new_momentum[i] <== momentum_coeff * old_momentum[i] + weighted_sum[i];
-                new_params[i] <== old_params[i] + new_momentum[i];
-            }
-        }
-
-        component main = FedJSCMAggregation(2, 10);
-        """)
-        print("=== CIRCUIT CONTENT TO WRITE ===")
-        print(circuit_code)
-        print("=== END CIRCUIT CONTENT ===")
-
+        # Write using standard text mode with explicit line separator
         with open(circuit_path, "w", newline="\n") as f:
-            f.write(circuit_code)
+            f.write("\n".join(circuit_lines) + "\n")
 
-        logger.info(f"✓ Clean Circom circuit written: {circuit_path}")
+        # Verify the file was written correctly
+        with open(circuit_path, "rb") as f:
+            content = f.read()
 
+        if b"pragma circom 2.0.0;\n//" in content:
+            logger.info(f"✓ Circuit written and verified: {circuit_path}")
+        else:
+            raise RuntimeError(
+                f"Circuit file has incorrect format! First 100 bytes: {content[:100]}"
+            )
     def _prepare_snark_inputs(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        """Convert numpy arrays to JSON witness for Circom."""
+        """
+        Convert ALL floating-point model values to fixed-point integers.
+        Circom/SnarkJS only accept integers (BigInts), NOT floats.
+        """
+        SCALE = 10**6
+
+        def fp(x):
+            """Convert float → scaled int"""
+            return int(round(float(x) * SCALE))
+
         client_updates = inputs["client_updates"]
         client_weights = inputs["client_weights"]
         aggregated_params = inputs["aggregated_params"]
-        momentum = inputs["momentum"]
+        old_momentum = inputs["momentum"]
         momentum_coeff = inputs["momentum_coeff"]
 
-        # Flatten only first 10 params (to match circuit)
-        def flatten(vectors):
-            flat = np.concatenate([arr.flatten() for arr in vectors])
-            return flat[:10].tolist()
+        # Each parameter vector has size 5 (per your circuit: FedJSCMAggregation(2,5))
+        param_size = 5
+        n_clients = len(client_updates)
 
+        def flatten(arrs):
+            """Flatten list of NDArrays into a fixed-length (param_size) list."""
+            flat = np.concatenate([a.flatten() for a in arrs]).tolist()
+            # Trim/pad
+            if len(flat) < param_size:
+                flat += [0.0] * (param_size - len(flat))
+            return [fp(v) for v in flat[:param_size]]
+
+        # Build witness JSON
         witness = {
             "client_deltas": [],
-            "client_weights": client_weights,
+            "client_weights": [fp(w) for w in client_weights],
             "old_params": flatten(inputs["old_params"]),
-            "old_momentum": flatten(momentum),
-            "momentum_coeff": float(momentum_coeff),
-            "new_params": flatten(aggregated_params),
-            "new_momentum": flatten(inputs.get("new_momentum", aggregated_params)),
+            "old_momentum": flatten(old_momentum),
+            "momentum_coeff": fp(momentum_coeff),
         }
 
         for update in client_updates:
             witness["client_deltas"].append(flatten(update))
 
         return witness
+
 
     def _format_public_inputs(self, public_inputs: dict[str, Any]) -> list[str]:
         """Format public inputs for verification"""
@@ -649,7 +713,6 @@ class ServerProofManager(ProofManagerBase):
         return formatted
 
     def _generate_snark_proof(self, inputs: dict[str, Any]) -> str | None:
-        """Generate SNARK proof using snarkjs"""
         try:
             circuit_dir = Path(self.circuit_dir)
             build = circuit_dir / "build"
@@ -661,15 +724,18 @@ class ServerProofManager(ProofManagerBase):
 
             # Save input.json
             with open(input_json, "w") as f:
-                json.dump(witness_dict, f)
+                json.dump(inputs, f)
 
-            # 1. Compute witness
+            # 1. Compute witness (CORRECTED PATH)
+            wasm_file = build / "aggregation_js" / "aggregation.wasm"  # ← ADD THIS LINE
             subprocess.check_call(
                 [
                     self.snarkjs_path,
                     "wtns",
                     "calculate",
-                    str(build / "aggregation.wasm"),
+                    str(
+                        wasm_file
+                    ),  # ← CHANGE THIS (was: str(build / "aggregation.wasm"))
                     str(input_json),
                     str(witness_wtns),
                 ]
