@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-prod update-deps test test-fast lint format type-check clean clean-all docker-build docker-demo docker-dev server client demo benchmark setup-zkp docs version
+.PHONY: help install install-dev install-prod update-deps test test-fast lint format type-check clean clean-all docker-build docker-demo docker-dev server client demo benchmark setup-zkp verify-zkp install-rust install-circom install-snarkjs docs version
 
 # Default target
 help: ## Show this help message
@@ -29,6 +29,43 @@ test-fast: ## Run tests quickly (exit on first failure)
 
 test-watch: ## Run tests in watch mode
 	uv run pytest-watch tests/
+
+# ZKP Tools Setup targets
+setup-zkp: install-rust install-circom install-snarkjs verify-zkp ## Setup all ZKP tools (Rust, Circom, SnarkJS)
+
+install-rust: ## Install Rust toolchain
+	@echo "Installing Rust toolchain..."
+	@if command -v rustc >/dev/null 2>&1; then \
+		echo "Rust is already installed: $$(rustc --version)"; \
+	else \
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \
+		echo "Rust installed successfully. Please run: source ~/.cargo/env"; \
+	fi
+
+install-circom: install-rust ## Install Circom (Rust-based) from source
+	@echo "Installing Circom from source..."
+	@if command -v circom >/dev/null 2>&1; then \
+		echo "Circom is already installed: $$(circom --version 2>/dev/null || echo 'version unknown')"; \
+	else \
+		if [ ! -d "/tmp/circom" ]; then \
+			git clone https://github.com/iden3/circom.git /tmp/circom; \
+		fi; \
+		cd /tmp/circom && cargo build --release && cargo install --path circom; \
+		echo "Circom installed successfully"; \
+	fi
+
+install-snarkjs: ## Install SnarkJS via npm
+	@echo "Installing SnarkJS..."
+	@if command -v snarkjs >/dev/null 2>&1; then \
+		echo "SnarkJS is already installed: $$(snarkjs --version 2>/dev/null || echo 'version unknown')"; \
+	else \
+		npm install -g snarkjs; \
+		echo "SnarkJS installed successfully"; \
+	fi
+
+verify-zkp: ## Verify ZKP tools installation
+	@echo "Verifying ZKP tools installation..."
+	uv run python -m secure_fl.setup check
 
 lint: ## Check code with linter
 	uv run ruff check .

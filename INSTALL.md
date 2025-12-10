@@ -7,7 +7,8 @@ This guide provides comprehensive installation instructions for the Secure FL fr
 ### Prerequisites
 
 - **Python 3.8+** (Python 3.9+ recommended)
-- **Node.js 16+** (for ZKP tools)
+- **Node.js 18+** (for ZKP tools)
+- **Rust 1.75+** (for circom compilation)
 - **Git** (for development)
 - **4GB+ RAM** (8GB+ recommended)
 - **2GB+ free disk space**
@@ -18,34 +19,58 @@ This guide provides comprehensive installation instructions for the Secure FL fr
 # Install the package
 pip install secure-fl
 
-# Setup ZKP tools (optional but recommended)
-secure-fl setup zkp
+# Setup ZKP tools (required for full functionality)
+# First install Rust
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+source ~/.cargo/env
+
+# Install circom from source
+git clone https://github.com/iden3/circom.git
+cd circom && cargo build --release && cargo install --path circom
+
+# Install snarkjs
+npm install -g snarkjs
+
+# Verify ZKP tools installation
+uv run python -m secure_fl.setup check
 
 # Run a quick demo
 secure-fl demo
 ```
 
-### Option 2: Install with PDM (For Development)
+### Option 2: Install with UV (For Development)
 
 ```bash
 # Clone the repository
 git clone https://github.com/krishantt/secure-fl.git
 cd secure-fl
 
-# Install PDM if you don't have it
-pip install pdm
+# Install UV if you don't have it
+pip install uv
 
 # Install dependencies
-pdm install
+uv sync --all-extras --dev
 
 # Setup ZKP tools
-pdm run setup-zkp
+# Install Rust
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+source ~/.cargo/env
+
+# Install circom from source
+git clone https://github.com/iden3/circom.git /tmp/circom
+cd /tmp/circom && cargo build --release && cargo install --path circom
+
+# Install snarkjs
+npm install -g snarkjs
+
+# Verify ZKP tools installation
+uv run python -m secure_fl.setup check
 
 # Run tests
-pdm run test
+uv run pytest
 
 # Run demo
-pdm run demo
+uv run python -m secure_fl.cli demo
 ```
 
 ### Option 3: Install from Source

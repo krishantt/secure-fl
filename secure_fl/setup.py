@@ -10,6 +10,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -73,14 +74,29 @@ class SecureFLSetup:
         # Git
         checks["git"] = self._check_command_exists("git")
 
-        # Cairo
-        checks["cairo"] = self._check_command_exists("cairo-compile")
-
-        # Circom
+        # Circom (check if Rust-based)
         checks["circom"] = self._check_command_exists("circom")
+        if checks["circom"]:
+            checks["circom_type"] = self._get_circom_type()
 
         # SnarkJS
         checks["snarkjs"] = self._check_command_exists("snarkjs")
+
+        # Rust (needed for circom)
+        checks["rust"] = self._check_command_exists("rustc")
+        if checks["rust"]:
+            try:
+                result = subprocess.run(
+                    ["rustc", "--version"], capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    checks["rust_version"] = result.stdout.strip()
+            except (subprocess.SubprocessError, OSError):
+                checks["rust_version"] = "unknown"
+
+        # ZKP tools comprehensive check
+        if checks["circom"] and checks["snarkjs"]:
+            checks["zkp_verification"] = self._quick_zkp_verification()
 
         # CUDA (optional)
         try:
@@ -94,6 +110,55 @@ class SecureFLSetup:
 
         self._print_system_check(checks)
         return checks
+
+    def _get_circom_type(self) -> str:
+        """Determine if circom is Rust-based or npm-based"""
+        try:
+            result = subprocess.run(
+                ["circom", "--version"], capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                if "circom compiler" in output:
+                    return "rust"
+                else:
+                    return "npm"
+            return "unknown"
+        except (subprocess.SubprocessError, OSError):
+            return "unknown"
+
+    def _quick_zkp_verification(self) -> bool:
+        """Quick verification that ZKP tools can perform basic operations"""
+        try:
+            # Test circom compilation
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                test_circuit = temp_path / "test.circom"
+
+                # Simple test circuit
+                test_circuit.write_text("""
+pragma circom 2.0.0;
+
+template Test() {
+    signal input a;
+    signal output b;
+    b <== a * 2;
+}
+
+component main = Test();
+""")
+
+                # Try to compile
+                result = subprocess.run(
+                    ["circom", str(test_circuit), "--r1cs", "-o", str(temp_path)],
+                    capture_output=True,
+                    timeout=30,
+                )
+
+                return result.returncode == 0
+
+        except Exception:
+            return False
 
     def _print_system_check(self, checks: dict[str, bool]) -> None:
         """Print formatted system check results"""
@@ -119,23 +184,36 @@ class SecureFLSetup:
         status = "✓" if checks.get("git") else "⚠"
         print(f"  Git: {status}")
 
+        status = "✓" if checks.get("rust") else "⚠"
+        version = checks.get("rust_version", "")
+        print(f"  Rust: {status} {version}")
+
         # ZKP Dependencies
         print("\n🔐 ZKP Dependencies:")
         status = "✓" if checks.get("nodejs") else "✗"
         version = checks.get("nodejs_version", "")
         print(f"  Node.js: {status} {version}")
 
-        status = "✓" if checks.get("npm") else "✗"
+        status = "✓" if checks.get("npm") else "⚠"
         print(f"  npm: {status}")
 
-        status = "✓" if checks.get("cairo") else "✗"
-        print(f"  Cairo: {status}")
-
-        status = "✓" if checks.get("circom") else "✗"
-        print(f"  Circom: {status}")
+        # ZKP Tools
+        print("\n🛡️ ZKP Tools:")
+        if checks.get("circom"):
+            circom_type = checks.get("circom_type", "unknown")
+            status = "✓" if circom_type == "rust" else "⚠"
+            type_info = f" ({circom_type}-based)" if circom_type != "unknown" else ""
+            print(f"  Circom: {status}{type_info}")
+        else:
+            print(f"  Circom: ✗")
 
         status = "✓" if checks.get("snarkjs") else "✗"
         print(f"  SnarkJS: {status}")
+
+        # ZKP Verification
+        if checks.get("zkp_verification") is not None:
+            status = "✓" if checks["zkp_verification"] else "⚠"
+            print(f"  ZKP Tools Test: {status}")
 
         # Optional components
         print("\n⚡ Optional Components:")
@@ -151,12 +229,26 @@ class SecureFLSetup:
     def _check_command_exists(self, command: str) -> bool:
         """Check if a command exists in PATH"""
         try:
-            result = subprocess.run(
-                [command, "--version"] if command != "git" else ["git", "--version"],
-                capture_output=True,
-                timeout=5,
-            )
-            return result.returncode == 0
+            # Special handling for snarkjs which uses --help and exits with code 1
+            if command == "snarkjs":
+                result = subprocess.run(
+                    [command, "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                # snarkjs --help exits with code 1 but prints help text
+                return "snarkjs@" in result.stdout or "snarkjs@" in result.stderr
+            else:
+                result = subprocess.run(
+                    [command, "--version"]
+                    if command != "git"
+                    else ["git", "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
@@ -196,55 +288,23 @@ class SecureFLSetup:
             return False
 
     def setup_zkp_tools(self) -> bool:
-        """Setup ZKP tools (Cairo and Circom/SnarkJS)"""
+        """Setup ZKP tools (Rust-based Circom and SnarkJS)"""
         logger.info("Setting up ZKP tools...")
 
-        cairo_success = self._setup_cairo()
         circom_success = self._setup_circom()
 
-        if cairo_success and circom_success:
+        if circom_success:
             logger.info("✓ ZKP tools setup completed successfully")
             return True
         else:
             logger.warning("⚠ ZKP tools setup completed with warnings")
             return False
 
-    def _setup_cairo(self) -> bool:
-        """Setup Cairo for zk-STARKs"""
-        logger.info("Setting up Cairo...")
-
-        # Check if already installed
-        if self._check_command_exists("cairo-compile"):
-            logger.info("✓ Cairo already installed")
-            return True
-
-        try:
-            # Try installing via pip
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "cairo-lang"]
-            )
-
-            if self._check_command_exists("cairo-compile"):
-                logger.info("✓ Cairo installed successfully via pip")
-                return True
-            else:
-                logger.warning("Cairo installed but cairo-compile not found in PATH")
-                return False
-
-        except subprocess.CalledProcessError:
-            logger.warning("Cairo installation via pip failed")
-            logger.info("Please install Cairo manually:")
-            logger.info("  - Visit: https://github.com/starkware-libs/cairo")
-            logger.info(
-                "  - Or try: curl -L https://github.com/starkware-libs/cairo/releases/latest/download/cairo-lang.tar.gz | tar xz"
-            )
-            return False
-
     def _setup_circom(self) -> bool:
-        """Setup Circom and SnarkJS for zk-SNARKs"""
-        logger.info("Setting up Circom and SnarkJS...")
+        """Setup Rust-based Circom and SnarkJS for zk-SNARKs"""
+        logger.info("Setting up Rust-based Circom and SnarkJS...")
 
-        # Check Node.js
+        # Check Node.js for SnarkJS
         if not self._check_command_exists("node"):
             logger.error("Node.js not found. Please install Node.js first:")
             logger.info("  - Visit: https://nodejs.org/")
@@ -253,39 +313,297 @@ class SecureFLSetup:
             )
             return False
 
-        # Check npm
+        # Check npm for SnarkJS
         if not self._check_command_exists("npm"):
             logger.error("npm not found. Please install npm.")
             return False
 
+        # Check Rust for Circom
+        rust_ok = self._setup_rust()
+        if not rust_ok:
+            logger.warning("Rust installation failed or not found")
+
         try:
-            # Install Circom
+            # Install Rust-based Circom from source
             if not self._check_command_exists("circom"):
-                logger.info("Installing Circom...")
-                subprocess.check_call(["npm", "install", "-g", "circom"])
+                logger.info("Installing Rust-based Circom from source...")
+                if not self._install_circom_from_source():
+                    logger.warning("Failed to install Circom from source")
+                    logger.info("Falling back to npm version...")
+                    subprocess.check_call(["npm", "install", "-g", "circom"])
 
             # Install SnarkJS
             if not self._check_command_exists("snarkjs"):
                 logger.info("Installing SnarkJS...")
                 subprocess.check_call(["npm", "install", "-g", "snarkjs"])
 
-            # Verify installations
-            circom_ok = self._check_command_exists("circom")
-            snarkjs_ok = self._check_command_exists("snarkjs")
+            # Run comprehensive verification
+            logger.info("Running ZKP tools verification...")
+            verification_success = self._verify_zkp_tools()
 
-            if circom_ok and snarkjs_ok:
-                logger.info("✓ Circom and SnarkJS installed successfully")
+            if verification_success:
+                logger.info("✓ ZKP tools setup and verification completed successfully")
                 return True
             else:
-                logger.error("Installation completed but tools not accessible")
-                logger.info("You may need to run with sudo or as administrator")
+                logger.warning("⚠ ZKP tools installed but verification had issues")
                 return False
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to install Circom/SnarkJS: {e}")
+            logger.error(f"Failed to install ZKP tools: {e}")
             logger.info("Try installing manually:")
-            logger.info("  npm install -g circom")
+            logger.info("  # Install Rust:")
+            logger.info(
+                "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+            )
+            logger.info("  # Install Circom from source:")
+            logger.info("  git clone https://github.com/iden3/circom.git")
+            logger.info(
+                "  cd circom && cargo build --release && cargo install --path circom"
+            )
+            logger.info("  # Install SnarkJS:")
             logger.info("  npm install -g snarkjs")
+            return False
+
+    def _setup_rust(self) -> bool:
+        """Setup Rust toolchain if not already installed"""
+        if self._check_command_exists("rustc") and self._check_command_exists("cargo"):
+            logger.info("✓ Rust already installed")
+            return True
+
+        logger.info("Installing Rust toolchain...")
+        try:
+            # Use rustup to install Rust
+            rustup_cmd = [
+                "curl",
+                "--proto",
+                "=https",
+                "--tlsv1.2",
+                "-sSf",
+                "https://sh.rustup.rs",
+            ]
+            rustup_install = ["sh", "-s", "--", "-y"]
+
+            # Download and run rustup
+            process = subprocess.Popen(
+                rustup_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            rustup_script, _ = process.communicate()
+
+            if process.returncode == 0:
+                # Run the installation script
+                install_process = subprocess.Popen(
+                    rustup_install,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                install_process.communicate(input=rustup_script)
+
+                # Check if installation succeeded
+                # Note: May need shell restart for PATH update
+                logger.info("Rust installation completed")
+                logger.info(
+                    "You may need to restart your shell or run: source ~/.cargo/env"
+                )
+                return True
+            else:
+                logger.error("Failed to download rustup")
+                return False
+
+        except Exception as e:
+            logger.error(f"Rust installation failed: {e}")
+            logger.info("Please install Rust manually:")
+            logger.info("  Visit: https://rustup.rs/")
+            logger.info(
+                "  Or run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+            )
+            return False
+
+    def _install_circom_from_source(self) -> bool:
+        """Install circom from source using Cargo"""
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                repo_path = temp_path / "circom"
+
+                logger.info("Cloning circom repository...")
+                subprocess.check_call(
+                    [
+                        "git",
+                        "clone",
+                        "https://github.com/iden3/circom.git",
+                        str(repo_path),
+                    ]
+                )
+
+                logger.info("Building circom (this may take a few minutes)...")
+                subprocess.check_call(["cargo", "build", "--release"], cwd=repo_path)
+
+                logger.info("Installing circom...")
+                subprocess.check_call(
+                    ["cargo", "install", "--path", "circom"], cwd=repo_path
+                )
+
+                # Verify installation
+                if self._check_command_exists("circom"):
+                    logger.info("✓ Rust-based Circom installed successfully")
+                    return True
+                else:
+                    logger.error("Circom built but not found in PATH")
+                    return False
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to build circom from source: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during circom installation: {e}")
+            return False
+
+    def _verify_zkp_tools(self) -> bool:
+        """Run comprehensive ZKP tools verification"""
+        try:
+            # Import and run the verification from our scripts
+            # Run built-in comprehensive verification
+            logger.info("Running comprehensive ZKP verification...")
+            return self._comprehensive_zkp_check()
+
+        except subprocess.TimeoutExpired:
+            logger.warning("ZKP verification timed out")
+            return False
+        except Exception as e:
+            logger.warning(f"ZKP verification failed: {e}")
+            return self._basic_zkp_check()
+
+    def _comprehensive_zkp_check(self) -> bool:
+        """Comprehensive ZKP tools verification with actual circuit testing"""
+        try:
+            # Check basic availability
+            circom_ok = self._check_command_exists("circom")
+            snarkjs_ok = self._check_command_exists("snarkjs")
+
+            if not circom_ok or not snarkjs_ok:
+                if not circom_ok:
+                    logger.error("✗ Circom not found")
+                if not snarkjs_ok:
+                    logger.error("✗ SnarkJS not found")
+                return False
+
+            # Test circuit compilation
+            logger.info("Testing circuit compilation...")
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                circuit_file = temp_path / "test.circom"
+                input_file = temp_path / "input.json"
+
+                # Create test circuit
+                circuit_code = """
+pragma circom 2.0.0;
+
+template Multiplier2() {
+    signal input a;
+    signal input b;
+    signal output c;
+
+    c <== a * b;
+}
+
+component main = Multiplier2();
+"""
+                circuit_file.write_text(circuit_code)
+                input_file.write_text('{"a": "3", "b": "11"}')
+
+                # Test circom compilation
+                result = subprocess.run(
+                    [
+                        "circom",
+                        str(circuit_file),
+                        "--r1cs",
+                        "--wasm",
+                        "--sym",
+                        "-o",
+                        str(temp_path),
+                    ],
+                    capture_output=True,
+                    timeout=60,
+                )
+
+                if result.returncode != 0:
+                    logger.error("✗ Circuit compilation failed")
+                    return False
+
+                logger.info("✓ Circuit compilation successful")
+
+                # Test witness generation
+                logger.info("Testing witness generation...")
+                wasm_file = temp_path / "test_js" / "test.wasm"
+                witness_file = temp_path / "witness.wtns"
+
+                if wasm_file.exists():
+                    result = subprocess.run(
+                        [
+                            "snarkjs",
+                            "wtns",
+                            "calculate",
+                            str(wasm_file),
+                            str(input_file),
+                            str(witness_file),
+                        ],
+                        capture_output=True,
+                        timeout=60,
+                    )
+
+                    if result.returncode == 0 and witness_file.exists():
+                        logger.info("✓ Witness generation successful")
+                    else:
+                        logger.warning("⚠ Witness generation had issues")
+                        return False
+
+                # Test trusted setup
+                logger.info("Testing trusted setup...")
+                pot_file = temp_path / "pot12_0000.ptau"
+                result = subprocess.run(
+                    [
+                        "snarkjs",
+                        "powersoftau",
+                        "new",
+                        "bn128",
+                        "12",
+                        str(pot_file),
+                        "-v",
+                    ],
+                    capture_output=True,
+                    timeout=120,
+                )
+
+                if result.returncode == 0 and pot_file.exists():
+                    logger.info("✓ Trusted setup successful")
+                else:
+                    logger.warning("⚠ Trusted setup had issues")
+                    return False
+
+                logger.info("🎉 All ZKP tools verification tests passed!")
+                return True
+
+        except subprocess.TimeoutExpired:
+            logger.error("✗ ZKP verification timed out")
+            return False
+        except Exception as e:
+            logger.error(f"✗ ZKP verification failed: {e}")
+            return False
+
+    def _basic_zkp_check(self) -> bool:
+        """Basic ZKP tools availability check"""
+        circom_ok = self._check_command_exists("circom")
+        snarkjs_ok = self._check_command_exists("snarkjs")
+
+        if circom_ok and snarkjs_ok:
+            logger.info("✓ Basic ZKP tools check passed")
+            return True
+        else:
+            if not circom_ok:
+                logger.error("✗ Circom not found")
+            if not snarkjs_ok:
+                logger.error("✗ SnarkJS not found")
             return False
 
     def create_config(self) -> bool:

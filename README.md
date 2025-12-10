@@ -10,6 +10,36 @@ This repository contains a complete implementation of a secure federated learnin
 - **🔗 Blockchain Integration**: On-chain verification for public auditability
 - **📈 Comprehensive Experiments**: Built-in benchmarking and visualization tools
 
+## 🔧 Prerequisites
+
+### Zero-Knowledge Proof Tools
+
+This project requires specific ZKP tools for circuit compilation and proof generation:
+
+- **Circom** (Rust-based): Circuit compiler for zero-knowledge proofs
+- **SnarkJS**: JavaScript library for zk-SNARK operations
+
+#### Quick Setup
+
+```bash
+# Install Rust (required for circom)
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+
+# Install circom from source
+git clone https://github.com/iden3/circom.git
+cd circom && cargo build --release && cargo install --path circom
+
+# Install snarkjs via npm
+npm install -g snarkjs
+
+# Verify installation
+uv run python -m secure_fl.setup check
+```
+
+📖 **Detailed Setup Guide**: See [docs/ZKP_SETUP.md](docs/ZKP_SETUP.md) for comprehensive installation instructions, troubleshooting, and platform-specific guidance.
+
+> **CI/CD Testing**: Automated tests run on Ubuntu and macOS. Windows support is available but requires manual setup and verification.
+
 ## 🏗️ Architecture Overview
 
 ```
