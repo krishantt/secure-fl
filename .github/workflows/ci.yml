@@ -102,16 +102,53 @@ jobs:
         if: matrix.test-type == 'integration'
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Get Circom commit hash
+        if: matrix.test-type == 'integration'
+        id: circom-commit
+        run: |
+          # Get the latest commit hash from the Circom repository
+          COMMIT_HASH=$(git ls-remote https://github.com/iden3/circom.git HEAD | cut -f1)
+          echo "hash=${COMMIT_HASH:0:8}" >> $GITHUB_OUTPUT
+
+      - name: Cache Rust dependencies
+        if: matrix.test-type == 'integration'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            /tmp/circom
+          key: ${{ runner.os }}-rust-circom-${{ steps.circom-commit.outputs.hash }}-v3
+          restore-keys: |
+            ${{ runner.os }}-rust-circom-
+            ${{ runner.os }}-rust-
+
       - name: Install ZKP tools (Linux/macOS)
         if: matrix.test-type == 'integration'
         continue-on-error: true
+        env:
+          CARGO_INCREMENTAL: 0
+          CARGO_NET_RETRY: 10
+          RUSTUP_MAX_RETRIES: 10
+          CARGO_TERM_COLOR: always
         run: |
-          # Install Rust-based Circom
-          git clone https://github.com/iden3/circom.git /tmp/circom
-          cd /tmp/circom
-          cargo build --release
-          cargo install --path circom
           # Install SnarkJS via npm
+          # Check if circom is already installed and working
+          if command -v circom &> /dev/null && circom --version &> /dev/null; then
+            echo "Circom already installed and working, version: $(circom --version)"
+          else
+            echo "Installing Circom from source..."
+            # Install Rust-based Circom
+            if [ ! -d "/tmp/circom" ]; then
+              git clone https://github.com/iden3/circom.git /tmp/circom
+            fi
+            cd /tmp/circom
+            # Use parallel compilation for faster builds
+            cargo build --release --jobs $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+            cargo install --path circom --force
+            echo "Circom installed successfully, version: $(circom --version)"
+          fi
           npm install -g snarkjs
 
       - name: Verify ZKP tools installation
