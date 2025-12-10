@@ -70,6 +70,9 @@ dependencies = [
     "rich>=13.0.0",
     "typer>=0.9.0",
     "pysnark",
+    "pytest-benchmark>=5.2.3",
+    "memory-profiler>=0.61.0",
+    "py-spy>=0.4.1",
 ]
 
 [project.optional-dependencies]

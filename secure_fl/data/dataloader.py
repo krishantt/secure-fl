@@ -37,7 +37,7 @@ class FederatedDataLoader:
     def __init__(
         self,
         dataset_name: str,
-        data_dir: str = "./_data",
+        data_dir: str | None = None,
         num_clients: int = 5,
         iid: bool = True,
         val_split: float = 0.2,
@@ -63,7 +63,25 @@ class FederatedDataLoader:
             )
 
         self.dataset_name = dataset_name.lower()
-        self.data_dir = Path(data_dir)
+
+        # Use repository root _data directory if no path specified
+        if data_dir is None:
+            # Find repository root (contains pyproject.toml)
+            current_path = Path(__file__).resolve()
+            repo_root = None
+            for parent in current_path.parents:
+                if (parent / "pyproject.toml").exists():
+                    repo_root = parent
+                    break
+
+            if repo_root is None:
+                # Fallback to parent directory of secure_fl package
+                repo_root = Path(__file__).resolve().parents[2]
+
+            self.data_dir = repo_root / "_data"
+        else:
+            self.data_dir = Path(data_dir)
+
         self.num_clients = num_clients
         self.iid = iid
         self.val_split = val_split
