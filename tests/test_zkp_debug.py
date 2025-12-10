@@ -44,12 +44,12 @@ def test_pysnark_basic():
         d = a * b
         logger.info(f"✅ Multiplication: {a} * {b} = {d}")
 
-        return True
+        assert True
 
     except Exception as e:
         logger.error(f"❌ Basic PySNARK failed: {e}")
         traceback.print_exc()
-        return False
+        assert False, f"Basic PySNARK failed: {e}"
 
 
 def test_pysnark_circuit_import():
@@ -60,7 +60,7 @@ def test_pysnark_circuit_import():
         # Try importing the circuit
 
         logger.info("✅ Circuit import successful")
-        return True
+        assert True
 
     except Exception as e:
         logger.error(f"❌ Circuit import failed: {e}")
@@ -73,11 +73,11 @@ def test_pysnark_circuit_import():
                 sys.path.insert(0, str(repo_root))
 
             logger.info("✅ Circuit import successful (fallback)")
-            return True
+            assert True
         except Exception as e2:
             logger.error(f"❌ Circuit import fallback failed: {e2}")
             traceback.print_exc()
-            return False
+            assert False, f"Circuit import failed: {e2}"
 
 
 def test_simple_proof_generation():
@@ -102,12 +102,13 @@ def test_simple_proof_generation():
 
         logger.info(f"✅ Simple proof generated in {end_time - start_time:.3f}s")
         logger.info(f"Result: {result}")
-        return True
+        logger.info("✅ Simple proof generation successful")
+        assert True
 
     except Exception as e:
         logger.error(f"❌ Simple proof generation failed: {e}")
         traceback.print_exc()
-        return False
+        assert False, f"Simple proof generation failed: {e}"
 
 
 def test_larger_proof_generation():
@@ -137,12 +138,13 @@ def test_larger_proof_generation():
 
         logger.info(f"✅ Medium proof generated in {end_time - start_time:.3f}s")
         logger.info(f"Result enabled: {result.get('enabled', False)}")
-        return True
+        logger.info("✅ Larger proof generation successful")
+        assert True
 
     except Exception as e:
-        logger.error(f"❌ Medium proof generation failed: {e}")
+        logger.error(f"❌ Larger proof generation failed: {e}")
         traceback.print_exc()
-        return False
+        assert False, f"Larger proof generation failed: {e}"
 
 
 def test_client_proof_integration():
@@ -205,12 +207,13 @@ def test_client_proof_integration():
         logger.info(f"Proof time: {metrics.get('proof_time', 0):.3f}s")
         logger.info(f"Training time: {metrics.get('training_time', 0):.3f}s")
 
-        return True
+        logger.info("✅ Client proof integration successful")
+        assert True
 
     except Exception as e:
-        logger.error(f"❌ Client integration failed: {e}")
+        logger.error(f"❌ Client proof integration failed: {e}")
         traceback.print_exc()
-        return False
+        assert False, f"Client proof integration failed: {e}"
 
 
 def test_proof_generation_scaling():
@@ -276,12 +279,13 @@ def test_proof_generation_scaling():
             else:
                 logger.info(f"  Size {size}: FAILED ❌")
 
-        return len(results) > 0
+        logger.info("✅ Proof generation scaling test successful")
+        assert len(results) > 0, "No scaling results generated"
 
     except Exception as e:
         logger.error(f"❌ Scaling test failed: {e}")
         traceback.print_exc()
-        return False
+        assert False, f"Scaling test failed: {e}"
 
 
 def debug_circuit_execution():

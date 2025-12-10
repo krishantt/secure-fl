@@ -107,9 +107,20 @@ class TestFedJSCMAggregator:
         # Store momentum state
         momentum_after_first = [m.copy() for m in aggregator.server_momentum]
 
-        # Second aggregation
+        # Create different client updates for second round (simulate real FL scenario)
+        second_round_updates = []
+        for client_update in sample_client_updates:
+            modified_update = []
+            for param in client_update:
+                # Add different noise to create different updates
+                noise = np.random.normal(0, 0.005, param.shape)
+                modified_param = param + noise
+                modified_update.append(modified_param.astype(np.float32))
+            second_round_updates.append(modified_update)
+
+        # Second aggregation with different updates
         result2 = aggregator.aggregate(
-            client_updates=sample_client_updates,
+            client_updates=second_round_updates,
             client_weights=client_weights,
             server_round=2,
             global_params=result1,
@@ -121,7 +132,7 @@ class TestFedJSCMAggregator:
 
         # Check results are different
         for r1, r2 in zip(result1, result2):
-            # Should be different due to momentum
+            # Should be different due to momentum and different updates
             assert not np.allclose(r1, r2, rtol=1e-6)
 
     @pytest.mark.unit

@@ -102,3 +102,7 @@ _minted*
 
 # Act containers and volumes
 .act/
+
+#circom files
+*.r1cs
+*.wtns

@@ -2797,18 +2797,26 @@ dependencies = [
     { name = "flwr" },
     { name = "hatchling" },
     { name = "matplotlib" },
+    { name = "medmnist" },
     { name = "memory-profiler" },
+    { name = "mypy" },
+    { name = "nibabel" },
     { name = "pandas" },
     { name = "poethepoet" },
     { name = "psutil" },
     { name = "py-ecc" },
     { name = "py-spy" },
+    { name = "pydicom" },
     { name = "pysnark" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-benchmark" },
+    { name = "pytest-cov" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "rich" },
+    { name = "ruff" },
     { name = "scikit-learn" },
     { name = "seaborn" },
     { name = "torch" },
@@ -2820,39 +2828,6 @@ dependencies = [
     { name = "websockets" },
 ]
 
-[package.optional-dependencies]
-all = [
-    { name = "medmnist" },
-    { name = "mypy" },
-    { name = "nibabel" },
-    { name = "pydicom" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-dev = [
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-medical = [
-    { name = "medmnist" },
-    { name = "nibabel" },
-    { name = "pydicom" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-lint = [
-    { name = "mypy" },
-    { name = "ruff" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.0.0" },
@@ -2861,29 +2836,28 @@ requires-dist = [
     { name = "flwr", specifier = ">=1.5.0" },
     { name = "hatchling", specifier = ">=1.21.0" },
     { name = "matplotlib", specifier = ">=3.7.0" },
-    { name = "medmnist", marker = "extra == 'medical'", specifier = ">=2.2.0" },
+    { name = "medmnist", specifier = ">=2.2.0" },
     { name = "memory-profiler", specifier = ">=0.61.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "nibabel", marker = "extra == 'medical'", specifier = ">=5.1.0" },
+    { name = "mypy", specifier = ">=1.19.0" },
+    { name = "nibabel", specifier = ">=5.1.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "poethepoet", specifier = ">=0.24.0" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "py-ecc", specifier = ">=6.0.0" },
     { name = "py-spy", specifier = ">=0.4.1" },
-    { name = "pydicom", marker = "extra == 'medical'", specifier = ">=2.4.0" },
+    { name = "pydicom", specifier = ">=2.4.0" },
     { name = "pysnark", git = "https://github.com/meilof/pysnark" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "pytest", specifier = ">=7.4.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-benchmark", specifier = ">=5.2.3" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "pytest-cov", specifier = ">=4.1.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "rich", specifier = ">=13.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.7" },
+    { name = "ruff", specifier = ">=0.14.8" },
     { name = "scikit-learn", specifier = ">=1.3.0" },
     { name = "seaborn", specifier = ">=0.12.0" },
-    { name = "secure-fl", extras = ["dev", "medical", "quantization"], marker = "extra == 'all'" },
     { name = "torch", specifier = ">=2.0.0" },
     { name = "torchvision", specifier = ">=0.15.0" },
     { name = "tqdm", specifier = ">=4.65.0" },
@@ -2891,14 +2865,6 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.23.0" },
     { name = "web3", specifier = ">=6.0.0" },
     { name = "websockets", specifier = ">=11.0" },
-]
-provides-extras = ["dev", "medical", "quantization", "all"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.8" }]
-lint = [
-    { name = "mypy", specifier = ">=1.5.0" },
-    { name = "ruff", specifier = ">=0.14.7" },
 ]
 
 [[package]]

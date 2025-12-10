@@ -1,7 +1,3 @@
-# from __future__ import print_function
-
-import sys
-
 from pysnark.runtime import snark
 
 
@@ -10,4 +6,5 @@ def cube(x):
     return x * x * x
 
 
-print("The cube of", sys.argv[1], "is", cube(int(sys.argv[1])))
+def test_snark():
+    assert cube(3) == 27
