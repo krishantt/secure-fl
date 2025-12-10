@@ -1,0 +1,462 @@
+name: Auto Publish
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - 'LICENSE'
+
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even if no changes'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  prepare-release:
+    name: Prepare Release Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_publish: ${{ steps.check.outputs.should_publish }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Check if we should publish
+        id: check
+        run: |
+          # Check if this is a force publish
+          if [[ "${{ inputs.force_publish }}" == "true" ]]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "Force publish requested"
+            exit 0
+          fi
+
+          # Check if there are meaningful changes since last release
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [[ -z "$LAST_TAG" ]]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "No previous tags found, will publish"
+            exit 0
+          fi
+
+          # Check for changes in source code
+          CHANGES=$(git diff --name-only $LAST_TAG..HEAD | grep -E '\.(py|toml)$' | grep -v '__pycache__' || true)
+
+          if [[ -n "$CHANGES" ]]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "Source code changes detected since $LAST_TAG"
+            echo "Changed files:"
+            echo "$CHANGES"
+          else
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "No significant changes since $LAST_TAG, skipping publish"
+          fi
+
+      - name: Increment version for release
+        if: steps.check.outputs.should_publish == 'true'
+        run: |
+          echo "Incrementing version for release..."
+          uv run python scripts/version.py publish
+
+      - name: Get release version
+        if: steps.check.outputs.should_publish == 'true'
+        id: version
+        run: |
+          VERSION=$(uv run python scripts/version.py show | grep "Secure FL Version:" | cut -d' ' -f4)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Commit version increment
+        if: steps.check.outputs.should_publish == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add secure_fl/.build_number
+            git commit -m "Auto-increment version to ${{ steps.version.outputs.version }}"
+            git push origin main
+          fi
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: prepare-release
+    if: needs.prepare-release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # For trusted publishing
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # Get latest commit with version increment
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Display publishing version
+        run: |
+          echo "Publishing version to PyPI:"
+          uv run python scripts/version.py show
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package
+        run: |
+          uv pip install twine
+          uv run twine check dist/*
+
+      - name: Test package installation
+        run: |
+          uv pip install dist/*.whl
+          uv run python -c "
+          import secure_fl
+          print(f'Successfully installed secure_fl version: {secure_fl.__version__}')
+
+          # Verify it's not a dev version for production
+          if '.dev.' not in secure_fl.__version__:
+              print('Warning: Expected dev version format!')
+          else:
+              print('✅ Publishing dev version with date stamp')
+          "
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
+          print-hash: true
+          verbose: true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-dist-${{ needs.prepare-release.outputs.version }}
+          path: dist/
+
+  publish-docker:
+    name: Publish Docker Image
+    needs: prepare-release
+    if: needs.prepare-release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # Get latest commit with version increment
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python (for version info)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package (for version info)
+        run: uv sync --no-dev
+
+      - name: Get version for Docker tags
+        id: version
+        run: |
+          VERSION=$(uv run python scripts/version.py show | grep "Secure FL Version:" | cut -d' ' -f4)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Docker will be tagged with version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{date 'YYYY.MM.DD'}},enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
+          labels: |
+            org.opencontainers.image.title=Secure FL
+            org.opencontainers.image.description=Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            SECURE_FL_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            GIT_SHA=${{ github.sha }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare-release, publish-pypi, publish-docker]
+    if: always() && needs.prepare-release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --no-dev
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+
+          # Get the last tag for comparison
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          echo "## 🚀 Secure FL Release $VERSION" > release_notes.md
+          echo "" >> release_notes.md
+          echo "**Release Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> release_notes.md
+          echo "**Version:** $VERSION" >> release_notes.md
+          echo "" >> release_notes.md
+
+          if [[ -n "$LAST_TAG" ]]; then
+            echo "## 📝 Changes Since $LAST_TAG" >> release_notes.md
+            echo "" >> release_notes.md
+
+            # Get commits since last tag
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --no-merges | head -20)
+            if [[ -n "$COMMITS" ]]; then
+              echo "### Commits:" >> release_notes.md
+              echo '```' >> release_notes.md
+              echo "$COMMITS" >> release_notes.md
+              echo '```' >> release_notes.md
+              echo "" >> release_notes.md
+            fi
+
+            # Get changed files
+            CHANGED_FILES=$(git diff --name-only $LAST_TAG..HEAD | grep -E '\.(py|toml|yml|yaml|md)$' | head -10)
+            if [[ -n "$CHANGED_FILES" ]]; then
+              echo "### Modified Files:" >> release_notes.md
+              echo '```' >> release_notes.md
+              echo "$CHANGED_FILES" >> release_notes.md
+              echo '```' >> release_notes.md
+              echo "" >> release_notes.md
+            fi
+          fi
+
+          echo "## 📦 Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### PyPI" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "pip install secure-fl==$VERSION" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Docker" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "docker pull ghcr.io/${{ github.repository }}:$VERSION" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+
+          echo "## 🔗 Links" >> release_notes.md
+          echo "" >> release_notes.md
+
+          if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+            echo "- 📦 [PyPI Package](https://pypi.org/project/secure-fl/$VERSION/)" >> release_notes.md
+          fi
+
+          if [[ "${{ needs.publish-docker.result }}" == "success" ]]; then
+            echo "- 🐳 [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/secure-fl)" >> release_notes.md
+          fi
+
+          echo "- 📚 [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)" >> release_notes.md
+          echo "- 🐛 [Issues](https://github.com/${{ github.repository }}/issues)" >> release_notes.md
+
+      - name: Create release tag
+        run: |
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          TAG_NAME="v${VERSION}"
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Create and push tag
+          git tag -a "${TAG_NAME}" -m "Release ${VERSION}"
+          git push origin "${TAG_NAME}"
+
+          echo "Created and pushed tag: ${TAG_NAME}"
+
+      - name: Download PyPI artifacts
+        if: needs.publish-pypi.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: pypi-dist-${{ needs.prepare-release.outputs.version }}
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.prepare-release.outputs.version }}
+          name: "Release ${{ needs.prepare-release.outputs.version }}"
+          body_path: release_notes.md
+          files: |
+            dist/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  publish-summary:
+    name: Publishing Summary
+    needs: [prepare-release, publish-pypi, publish-docker, create-release]
+    if: always() && needs.prepare-release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# 🚀 Auto-Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** Push to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ needs.prepare-release.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## 📊 Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Version preparation
+          echo "- **Version Preparation**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+
+          # PyPI results
+          if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+            echo "- **PyPI Publishing**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.publish-pypi.result }}" == "failure" ]]; then
+            echo "- **PyPI Publishing**: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **PyPI Publishing**: ⏭️ Skipped (${{ needs.publish-pypi.result }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Docker results
+          if [[ "${{ needs.publish-docker.result }}" == "success" ]]; then
+            echo "- **Docker Publishing**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.publish-docker.result }}" == "failure" ]]; then
+            echo "- **Docker Publishing**: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Docker Publishing**: ⏭️ Skipped (${{ needs.publish-docker.result }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Release results
+          if [[ "${{ needs.create-release.result }}" == "success" ]]; then
+            echo "- **GitHub Release**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.create-release.result }}" == "failure" ]]; then
+            echo "- **GitHub Release**: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **GitHub Release**: ⏭️ Skipped (${{ needs.create-release.result }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+            echo "- 📦 [PyPI Package](https://pypi.org/project/secure-fl/)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.publish-docker.result }}" == "success" ]]; then
+            echo "- 🐳 [GHCR Image](https://github.com/${{ github.repository }}/pkgs/container/secure-fl)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.create-release.result }}" == "success" ]]; then
+            echo "- 🏷️ [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "- 🔄 [This Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📅 Next Auto-Publish" >> $GITHUB_STEP_SUMMARY
+          echo "The next version will be published automatically on the next push to main with meaningful changes." >> $GITHUB_STEP_SUMMARY
+
+  skip-summary:
+    name: Skip Publishing Summary
+    needs: prepare-release
+    if: needs.prepare-release.outputs.should_publish == 'false'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate skip summary
+        run: |
+          echo "# ⏭️ Publishing Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** No significant changes detected since last release" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** Push to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To force publishing, use the manual workflow dispatch with 'Force publish' enabled." >> $GITHUB_STEP_SUMMARY

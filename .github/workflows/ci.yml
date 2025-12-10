@@ -1,4 +1,4 @@
-name: Secure FL CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -21,27 +21,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
       - name: Set up Python
-        uses: pdm-project/setup-pdm@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: true
 
       - name: Install dependencies
         run: |
-          pdm install -d
+          uv sync --all-extras --dev
 
       - name: Display version information
         run: |
-          pdm run version
+          uv run python scripts/version.py show
 
       - name: Run Ruff format check
         run: |
-          pdm run ruff format --check secure_fl tests
+          uv run ruff format --check secure_fl tests
 
       - name: Run mypy type checking
         run: |
-          pdm run type-check
+          uv run mypy secure_fl/
 
   test:
     name: Test Suite
@@ -67,35 +71,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: pdm-project/setup-pdm@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-          cache: true
+          cache: npm
+          cache-dependency-path: "**/package*.json"
 
       - name: Display version information
         run: |
-          pdm run version
+          uv run python scripts/version.py show
 
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Cache uv
+        uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/pdm
-            ~/.npm
-          key: ${{ runner.os }}-python-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/pdm.lock', '**/package*.json') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-python-${{ matrix.python-version }}-
+            ${{ runner.os }}-uv-
 
       - name: Install Python dependencies
         run: |
-          pdm install -d --no-self
+          uv sync --all-extras --dev
 
       - name: Install ZKP tools (Linux/macOS)
         if: runner.os != 'Windows' && matrix.test-type == 'integration'
@@ -104,7 +111,7 @@ jobs:
           # Install Circom and SnarkJS
           npm install -g circom snarkjs
           # Install Cairo (optional for tests)
-          pip install cairo-lang || echo "Cairo installation failed, continuing without it"
+          uv pip install cairo-lang || echo "Cairo installation failed, continuing without it"
 
       - name: Install ZKP tools (Windows)
         if: runner.os == 'Windows' && matrix.test-type == 'integration'
@@ -118,7 +125,7 @@ jobs:
       - name: Run unit tests
         if: matrix.test-type == 'unit'
         run: |
-          pdm run pytest tests/unit/ -v --cov=secure_fl --cov-report=xml --cov-report=html
+          uv run pytest tests/unit/ -v --cov=secure_fl --cov-report=xml --cov-report=html
 
       - name: Run integration tests
         if: matrix.test-type == 'integration'
@@ -126,22 +133,22 @@ jobs:
           SECURE_FL_SKIP_ZKP: ${{ runner.os == 'Windows' && '1' || '0' }}
           SECURE_FL_SKIP_GPU: "1"
         run: |
-          pdm run pytest tests/integration/ -v --cov=secure_fl --cov-report=xml --cov-report=html
+          uv run pytest tests/integration/ -v --cov=secure_fl --cov-report=xml --cov-report=html
 
       - name: Run basic system check
         run: |
-          python -m secure_fl.setup check || echo "System check completed with warnings"
+          uv run python -m secure_fl.setup check || echo "System check completed with warnings"
 
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
 
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.test-type }}
           path: |
@@ -158,19 +165,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
       - name: Set up Python
-        uses: pdm-project/setup-pdm@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: true
 
       - name: Install dependencies
         run: |
-          pdm install -d
+          uv sync --all-extras --dev
 
       - name: Display version information
         run: |
-          pdm run version
+          uv run python scripts/version.py show
 
       - name: Run end-to-end tests
         env:
@@ -178,13 +189,13 @@ jobs:
           SECURE_FL_SKIP_GPU: "1"
         timeout-minutes: 30
         run: |
-          pdm run pytest tests/e2e/ -v --tb=short
+          uv run pytest tests/e2e/ -v --tb=short
 
       - name: Test CLI commands
         run: |
           # Test basic CLI functionality
-          pdm run secure-fl --help
-          pdm run secure-fl setup check
+          uv run secure-fl --help
+          uv run secure-fl setup check
           echo "CLI tests completed"
 
   build-check:
@@ -195,26 +206,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
       - name: Set up Python
-        uses: pdm-project/setup-pdm@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: true
 
       - name: Display version information
         run: |
-          pdm run version
+          uv run python scripts/version.py show
 
       - name: Build package
         run: |
-          pdm build
+          uv build
 
       - name: Check package
         run: |
-          pip install twine
-          twine check dist/*
+          uv pip install twine
+          uv run twine check dist/*
 
       - name: Test package installation
         run: |
-          pip install dist/*.whl
-          python -c "import secure_fl; print(f'Package imported successfully, version: {secure_fl.__version__}')"
+          uv pip install dist/*.whl
+          uv run python -c "import secure_fl; print(f'Package imported successfully, version: {secure_fl.__version__}')"

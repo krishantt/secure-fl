@@ -193,6 +193,14 @@ shell = "uv sync --no-dev"
 help = "Update all dependencies"
 shell = "uv lock --upgrade"
 
+[tool.poe.tasks.publish-build]
+help = "Build package for publishing"
+shell = "uv build"
+
+[tool.poe.tasks.publish-check]
+help = "Check built package"
+shell = "uv run twine check dist/*"
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"

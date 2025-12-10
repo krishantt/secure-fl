@@ -92,3 +92,13 @@ _minted*
 # Overleaf auto-backups
 *.bak
 *-blx.bib
+
+# ===========================
+# Act (GitHub Actions local testing)
+# ===========================
+.secrets
+/tmp/artifacts/
+*-event.json
+
+# Act containers and volumes
+.act/
