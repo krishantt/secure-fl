@@ -106,8 +106,8 @@ def server(
         import torch.nn as nn
         import torch.nn.functional as F
 
+        from . import get_default_config
         from .server import SecureFlowerServer, create_server_strategy
-        from .utils import get_default_config
 
         # Load configuration
         if config:
@@ -124,14 +124,22 @@ def server(
                 "host": host,
                 "port": port,
                 "num_rounds": rounds,
-                "min_fit_clients": min_clients,
-                "min_evaluate_clients": min_clients,
             }
         )
 
-        cfg["aggregation"]["momentum"] = momentum
-        cfg["zkp"].update(
+        # Strategy parameters (separate from server parameters)
+        strategy_config = {
+            **cfg["strategy"],
+            **cfg["aggregation"],
+            **cfg["zkp"],
+        }
+
+        # Override strategy config with CLI arguments
+        strategy_config.update(
             {
+                "min_fit_clients": min_clients,
+                "min_evaluate_clients": min_clients,
+                "momentum": momentum,
                 "enable_zkp": enable_zkp,
                 "proof_rigor": proof_rigor,
                 "blockchain_verification": blockchain,
@@ -151,9 +159,7 @@ def server(
             )
 
         # Create server strategy
-        strategy = create_server_strategy(
-            model_fn=model_fn, **cfg["aggregation"], **cfg["zkp"]
-        )
+        strategy = create_server_strategy(model_fn=model_fn, **strategy_config)
 
         # Create and start server
         with Progress(

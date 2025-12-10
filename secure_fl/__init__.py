@@ -130,6 +130,8 @@ DEFAULT_CONFIG = {
         "host": "localhost",
         "port": 8080,
         "num_rounds": 10,
+    },
+    "strategy": {
         "min_fit_clients": 2,
         "min_evaluate_clients": 2,
         "fraction_fit": 1.0,
