@@ -1743,7 +1743,6 @@ wheels = [
 
 [[package]]
 name = "secure-fl"
-version = "2024.12.20.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

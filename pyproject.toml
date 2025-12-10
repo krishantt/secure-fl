@@ -1,6 +1,6 @@
 [project]
 name = "secure-fl"
-version = "2024.12.20.dev.1"
+dynamic = ["version"]
 description = "Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs"
 authors = [
     {name = "Krishant Timilsina", email = "krishtimil@gmail.com"},
@@ -94,7 +94,9 @@ secure-fl-setup = "secure_fl.cli:setup_command"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# Static version for Docker builds - dynamic version handled by _version.py at runtime
+[tool.hatch.version]
+source = "code"
+path = "secure_fl/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["secure_fl"]

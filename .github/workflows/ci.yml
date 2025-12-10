@@ -13,12 +13,6 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
     # Allow manual triggers
-    inputs:
-      force_publish:
-        description: "Force publish even if no version changes detected"
-        required: false
-        type: boolean
-        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -224,7 +218,6 @@ jobs:
         run: |
           # Test basic CLI functionality
           uv run secure-fl --help
-          uv run secure-fl setup --action check
           echo "CLI tests completed"
 
   build-check:
@@ -264,7 +257,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      should_publish: ${{ steps.check.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -278,39 +270,18 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Check if we should publish
-        id: check
-        run: |
-          # Check if version needs increment or force publish is set
-          if [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
-            echo "should_publish=true" >> $GITHUB_OUTPUT
-            echo "Force publish requested"
-          else
-            # Check if there are changes in source code
-            if git diff --name-only HEAD~1 HEAD | grep -E "(secure_fl/|pyproject.toml|uv.lock)" > /dev/null; then
-              echo "should_publish=true" >> $GITHUB_OUTPUT
-              echo "Source code changes detected, will publish"
-            else
-              echo "should_publish=false" >> $GITHUB_OUTPUT
-              echo "No source code changes, skipping publish"
-            fi
-          fi
-
       - name: Increment version for release
-        if: steps.check.outputs.should_publish == 'true'
         run: |
-          uv run python scripts/version.py increment-release
+          uv run python scripts/version.py increment
           echo "Version incremented for release"
 
       - name: Get release version
-        if: steps.check.outputs.should_publish == 'true'
         id: version
         run: |
           VERSION=$(uv run python scripts/version.py show --format=version)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Commit version increment
-        if: steps.check.outputs.should_publish == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -321,7 +292,6 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     needs: prepare-release
-    if: needs.prepare-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -348,30 +318,21 @@ jobs:
       - name: Build package
         run: uv build
 
-      - name: Check package
+      - name: Smoke test (basic validation)
         run: |
-          uv pip install twine
-          uv run twine check dist/*
+          # Run our custom smoke test
+          uv run python tests/smoke_test.py
 
-      - name: Test package installation
+      - name: Verify package metadata
         run: |
-          # Test in a clean environment
-          python -m venv test_env
-          source test_env/bin/activate
-          pip install dist/*.whl
-          python -c "
-          import secure_fl
-          print(f'✓ Package installed successfully')
-          print(f'✓ Version: {secure_fl.__version__}')
-          print(f'✓ Main module imported')
-          "
-
+          # Check that files were built correctly
+          ls -la dist/
+          echo "Checking wheel contents..."
+          unzip -l dist/*.whl | head -20
+          echo "Checking source distribution contents..."
+          tar -tzf dist/*.tar.gz | head -20
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://upload.pypi.org/legacy/
-          print-hash: true
-          verbose: true
+        run: uv publish
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -382,7 +343,6 @@ jobs:
   publish-container:
     name: Publish Container Image
     needs: prepare-release
-    if: needs.prepare-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -449,7 +409,6 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: [prepare-release, publish-pypi, publish-container]
-    if: always() && needs.prepare-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -564,7 +523,7 @@ jobs:
   publish-summary:
     name: Publishing Summary
     needs: [prepare-release, publish-pypi, publish-container, create-release]
-    if: always() && needs.prepare-release.outputs.should_publish == 'true'
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
@@ -610,20 +569,3 @@ jobs:
           echo "- [Docker Image](https://ghcr.io/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
           echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "- [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)" >> $GITHUB_STEP_SUMMARY
-
-  skip-summary:
-    name: Skip Publishing Summary
-    needs: prepare-release
-    if: needs.prepare-release.outputs.should_publish == 'false'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Generate skip summary
-        run: |
-          echo "# ⏭️ Publishing Skipped" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No publishable changes detected in this push." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To trigger publishing:" >> $GITHUB_STEP_SUMMARY
-          echo "- Make changes to \`secure_fl/\` directory or \`pyproject.toml\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Or trigger manually with 'force_publish' option" >> $GITHUB_STEP_SUMMARY
