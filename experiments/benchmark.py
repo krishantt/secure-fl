@@ -710,7 +710,7 @@ class MultiDatasetBenchmarkRunner:
     def run_comprehensive_benchmark(
         self, datasets: list[str] = None, configs: list[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        """Run comprehensive benchmark across multiple datasets"""
+        """Run comprehensive benchmark across multiple datasets using actual SecureFL"""
 
         if datasets is None:
             datasets = ["mnist", "cifar10", "synthetic"]
@@ -721,7 +721,7 @@ class MultiDatasetBenchmarkRunner:
         # Create organized output directory based on datasets and configs
         self.output_dir = self._create_output_directory(datasets, configs)
 
-        logger.info(f"Running multi-dataset benchmark on {datasets}")
+        logger.info(f"Running multi-dataset SecureFL benchmark on {datasets}")
         logger.info(f"Configurations: {[c['name'] for c in configs]}")
         logger.info(f"Results will be saved to: {self.output_dir}")
 
@@ -739,7 +739,8 @@ class MultiDatasetBenchmarkRunner:
                 logger.info(f"\nRunning config: {config_name}")
 
                 try:
-                    result = self._run_single_dataset_benchmark(dataset, config)
+                    # Always use secure-fl benchmark with actual components
+                    result = self._run_secure_fl_single_dataset(dataset, config)
                     dataset_results[config["name"]] = result
                     logger.info(f"✓ Completed {config_name}")
 
@@ -791,14 +792,10 @@ class MultiDatasetBenchmarkRunner:
 
         return output_dir
 
-    def _run_single_dataset_benchmark(
+    def _run_secure_fl_single_dataset(
         self, dataset: str, config: dict[str, Any]
     ) -> dict[str, Any]:
-        """Run benchmark for single dataset with specific config"""
-
-        # Get dataset-specific model
-        model = self.dataset_manager.get_model(dataset)
-        dataset_info = self.dataset_manager.get_dataset_info(dataset)
+        """Run benchmark using actual SecureFL components"""
 
         # Extract config parameters
         num_clients = config.get("num_clients", 3)
@@ -809,19 +806,54 @@ class MultiDatasetBenchmarkRunner:
         proof_rigor = config.get("proof_rigor", "medium")
         iid = config.get("iid", True)
 
-        logger.info(f"Model: {model.__class__.__name__}")
-        logger.info(f"Clients: {num_clients}, Rounds: {num_rounds}")
-        logger.info(f"ZKP: {enable_zkp}, Rigor: {proof_rigor}")
+        logger.info(f"SecureFL Benchmark - Dataset: {dataset}")
+        logger.info(f"Clients: {num_clients}, Rounds: {num_rounds}, ZKP: {enable_zkp}")
+
+        # Get dataset and model using DatasetManager
+        dataset_info = self.dataset_manager.get_dataset_info(dataset)
+        model_fn = self.dataset_manager.get_model_fn(dataset)
 
         # Load federated data
-        client_data = self.dataset_manager.load_federated_data(
-            dataset, num_clients, iid
+        federated_data = self.dataset_manager.load_federated_data(
+            dataset, num_clients=num_clients, iid=iid
         )
+
+        # Create server strategy
+        strategy = create_server_strategy(
+            model_fn=model_fn,
+            momentum=0.9,
+            learning_rate=learning_rate,
+            enable_zkp=enable_zkp,
+            proof_rigor=proof_rigor,
+            min_available_clients=num_clients,
+            min_fit_clients=num_clients,
+            min_evaluate_clients=num_clients,
+            fraction_fit=1.0,
+            fraction_evaluate=1.0,
+        )
+
+        # Create SecureFL clients
+        clients = []
+        for i in range(num_clients):
+            train_loader, test_loader = federated_data[i]
+            client = create_client(
+                client_id=f"client_{i}",
+                model_fn=model_fn,
+                train_data=train_loader.dataset,
+                val_data=test_loader.dataset if test_loader else None,
+                batch_size=32,
+                enable_zkp=enable_zkp,
+                proof_rigor=proof_rigor,
+                local_epochs=local_epochs,
+                learning_rate=learning_rate,
+                quantize_weights=False,
+            )
+            clients.append(client)
 
         # Initialize results tracking
         results = {
             "dataset": dataset,
-            "model_class": model.__class__.__name__,
+            "model_class": dataset_info["model_class"],
             "config": config.copy(),
             "dataset_info": dataset_info,
             "round_accuracies": [],
@@ -834,128 +866,128 @@ class MultiDatasetBenchmarkRunner:
 
         start_time = time.time()
 
-        # Simulate federated learning rounds
-        global_model = model
-        global_accuracy = 0.0
+        # Get initial parameters
+        initial_model = model_fn()
+        global_params = [
+            param.detach().cpu().numpy() for param in initial_model.parameters()
+        ]
 
+        # Run federated learning rounds with actual SecureFL
         for round_num in range(num_rounds):
             logger.info(f"  Round {round_num + 1}/{num_rounds}")
-
             round_start = time.time()
 
-            # Simulate client training
-            client_updates = []
-            client_weights = []
-            total_samples = 0
+            # Client training phase with actual SecureFL clients
+            client_results = []
+            round_proof_times = []
 
-            for client_id in range(num_clients):
-                train_loader, val_loader = client_data[client_id]
+            for i, client in enumerate(clients):
+                client_start = time.time()
 
-                # Count samples for weighting
-                samples_count = len(train_loader.dataset)
-                total_samples += samples_count
+                try:
+                    # Use actual SecureFL client.fit method
+                    fit_config = {"round": round_num + 1, "epochs": local_epochs}
+                    updated_params, num_examples, client_metrics = client.fit(
+                        global_params, fit_config
+                    )
 
-                # Simulate local training
-                client_model = type(global_model)(**dataset_info["model_kwargs"])
-                client_model.load_state_dict(global_model.state_dict())
+                    client_time = time.time() - client_start
+                    training_time = client_metrics.get("training_time", client_time)
+                    proof_time = client_metrics.get("proof_time", 0.0)
 
-                # Train for local epochs
-                client_model.train()
-                optimizer = torch.optim.SGD(client_model.parameters(), lr=learning_rate)
-                criterion = nn.CrossEntropyLoss()
+                    round_proof_times.append(proof_time)
 
-                for epoch in range(local_epochs):
-                    epoch_loss = 0.0
-                    for batch_idx, (data, target) in enumerate(train_loader):
-                        optimizer.zero_grad()
+                    client_results.append(
+                        {
+                            "client_id": f"client_{i}",
+                            "num_examples": num_examples,
+                            "parameters": updated_params,
+                            "training_time": training_time,
+                            "proof_time": proof_time,
+                            "metrics": client_metrics,
+                        }
+                    )
 
-                        # Handle different input shapes
-                        if dataset == "synthetic":
-                            data = data.view(data.size(0), -1)  # Flatten for synthetic
+                except Exception as e:
+                    logger.error(f"Client {i} failed: {e}")
+                    continue
 
-                        output = client_model(data)
-                        loss = criterion(output, target)
-                        loss.backward()
-                        optimizer.step()
-                        epoch_loss += loss.item()
+            if not client_results:
+                logger.error(f"No successful clients in round {round_num + 1}")
+                continue
 
-                # Get client parameters
-                client_params = torch_to_ndarrays(client_model)
-                client_updates.append(client_params)
-                client_weights.append(samples_count)
+            # Server aggregation using strategy
+            parameters_list = [
+                (res["parameters"], res["num_examples"]) for res in client_results
+            ]
 
-            # Normalize client weights
-            client_weights = [w / total_samples for w in client_weights]
-
-            # Simulate FedJSCM aggregation (simplified)
-            aggregated_params = []
-            for layer_idx in range(len(client_updates[0])):
-                weighted_layer = sum(
-                    w * client_update[layer_idx]
-                    for w, client_update in zip(client_weights, client_updates)
+            try:
+                aggregated_params, server_metrics = strategy.aggregate_fit(
+                    server_round=round_num + 1, results=parameters_list, failures=[]
                 )
-                aggregated_params.append(weighted_layer)
-
-            # Update global model
-            ndarrays_to_torch(global_model, aggregated_params)
+                global_params = aggregated_params
+            except Exception as e:
+                logger.error(f"Aggregation failed: {e}")
+                continue
 
             # Evaluate global model
-            global_model.eval()
-            correct = 0
-            total = 0
-            total_loss = 0.0
+            try:
+                # Create temporary model for evaluation
+                eval_model = model_fn()
+                ndarrays_to_torch(eval_model, global_params)
+                eval_model.eval()
 
-            # Use first client's test data for evaluation (simplified)
-            _, test_loader = client_data[0]
+                # Use first client's test data for evaluation
+                _, test_loader = federated_data[0]
 
-            with torch.no_grad():
-                for data, target in test_loader:
-                    if dataset == "synthetic":
-                        data = data.view(data.size(0), -1)
+                correct = 0
+                total = 0
+                total_loss = 0.0
+                criterion = nn.CrossEntropyLoss()
 
-                    outputs = global_model(data)
-                    loss = criterion(outputs, target)
-                    total_loss += loss.item()
+                with torch.no_grad():
+                    for data, target in test_loader:
+                        if dataset == "synthetic":
+                            data = data.view(data.size(0), -1)
 
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += target.size(0)
-                    correct += (predicted == target).sum().item()
+                        outputs = eval_model(data)
+                        loss = criterion(outputs, target)
+                        total_loss += loss.item()
 
-            accuracy = 100 * correct / total if total > 0 else 0.0
-            avg_loss = total_loss / len(test_loader) if len(test_loader) > 0 else 0.0
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += target.size(0)
+                        correct += (predicted == target).sum().item()
 
-            # Simulate ZKP overhead
-            proof_time = 0.0
-            if enable_zkp:
-                if proof_rigor == "high":
-                    proof_time = np.random.normal(2.5, 0.3)  # High rigor: ~2.5s
-                elif proof_rigor == "medium":
-                    proof_time = np.random.normal(1.2, 0.2)  # Medium rigor: ~1.2s
-                else:
-                    proof_time = np.random.normal(0.4, 0.1)  # Low rigor: ~0.4s
-                proof_time = max(0.1, proof_time)  # Ensure positive
+                accuracy = 100 * correct / total if total > 0 else 0.0
+                avg_loss = (
+                    total_loss / len(test_loader) if len(test_loader) > 0 else 0.0
+                )
 
-            # Calculate communication overhead (simplified)
-            base_comm = (
-                sum(param.numel() for param in global_model.parameters()) * 4 / 1024
-            )  # KB
-            zkp_overhead = 1.15 if enable_zkp else 1.0  # 15% overhead for ZKP
-            comm_overhead = base_comm * zkp_overhead
+            except Exception as e:
+                logger.error(f"Evaluation failed: {e}")
+                accuracy = 0.0
+                avg_loss = float("inf")
+
+            # Calculate communication overhead
+            comm_overhead = sum(param.nbytes for param in global_params) / 1024  # KB
+            avg_proof_time = np.mean(round_proof_times) if round_proof_times else 0.0
 
             # Record results
             results["round_accuracies"].append(accuracy)
             results["round_losses"].append(avg_loss)
             results["communication_overhead"].append(comm_overhead)
-            results["proof_times"].append(proof_time)
+            results["proof_times"].append(avg_proof_time)
 
             round_time = time.time() - round_start
             logger.info(f"    Accuracy: {accuracy:.2f}%, Loss: {avg_loss:.4f}")
             logger.info(
-                f"    Proof time: {proof_time:.3f}s, Comm: {comm_overhead:.1f}KB"
+                f"    Proof time: {avg_proof_time:.3f}s, Round time: {round_time:.3f}s"
             )
 
         results["training_time"] = time.time() - start_time
-        results["final_accuracy"] = results["round_accuracies"][-1]
+        results["final_accuracy"] = (
+            results["round_accuracies"][-1] if results["round_accuracies"] else 0.0
+        )
         results["convergence_round"] = self._calculate_convergence_round(
             results["round_accuracies"]
         )
@@ -979,9 +1011,8 @@ class MultiDatasetBenchmarkRunner:
         return len(accuracies)
 
     def get_default_benchmark_configs(self) -> list[dict[str, Any]]:
-        """Get default benchmark configurations"""
+        """Get default benchmark configurations for SecureFL"""
         return [
-            # Basic baselines
             {
                 "name": "baseline_iid",
                 "num_clients": 3,
@@ -1002,18 +1033,6 @@ class MultiDatasetBenchmarkRunner:
                 "iid": False,
                 "description": "Non-IID baseline without ZKP",
             },
-            # ZKP configurations
-            {
-                "name": "zkp_high_rigor",
-                "num_clients": 3,
-                "num_rounds": 5,
-                "local_epochs": 3,
-                "learning_rate": 0.01,
-                "enable_zkp": True,
-                "proof_rigor": "high",
-                "iid": False,
-                "description": "High ZKP rigor (~2.5s proof time)",
-            },
             {
                 "name": "zkp_medium_rigor",
                 "num_clients": 3,
@@ -1023,7 +1042,7 @@ class MultiDatasetBenchmarkRunner:
                 "enable_zkp": True,
                 "proof_rigor": "medium",
                 "iid": False,
-                "description": "Medium ZKP rigor (~1.2s proof time)",
+                "description": "SecureFL with medium ZKP rigor",
             },
             {
                 "name": "zkp_low_rigor",
@@ -1034,41 +1053,18 @@ class MultiDatasetBenchmarkRunner:
                 "enable_zkp": True,
                 "proof_rigor": "low",
                 "iid": False,
-                "description": "Low ZKP rigor (~0.4s proof time)",
-            },
-            # Scaled configurations
-            {
-                "name": "scaled_up",
-                "num_clients": 5,
-                "num_rounds": 8,
-                "local_epochs": 2,
-                "learning_rate": 0.01,
-                "enable_zkp": True,
-                "proof_rigor": "medium",
-                "iid": False,
-                "description": "Larger scale experiment (5 clients, 8 rounds)",
+                "description": "SecureFL with low ZKP rigor",
             },
             {
                 "name": "quick_test",
                 "num_clients": 2,
                 "num_rounds": 3,
                 "local_epochs": 2,
-                "learning_rate": 0.02,
+                "learning_rate": 0.01,
                 "enable_zkp": True,
                 "proof_rigor": "low",
                 "iid": True,
-                "description": "Quick test configuration",
-            },
-            # Performance focused
-            {
-                "name": "performance_focused",
-                "num_clients": 4,
-                "num_rounds": 10,
-                "local_epochs": 5,
-                "learning_rate": 0.005,
-                "enable_zkp": False,
-                "iid": False,
-                "description": "Performance-focused without ZKP overhead",
+                "description": "Quick SecureFL test",
             },
         ]
 
@@ -2121,12 +2117,9 @@ def main():
         choices=[
             "baseline_iid",
             "baseline_non_iid",
-            "zkp_high_rigor",
             "zkp_medium_rigor",
             "zkp_low_rigor",
-            "scaled_up",
             "quick_test",
-            "performance_focused",
         ],
         help="Specific configs to run",
     )
