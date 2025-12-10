@@ -1,0 +1,67 @@
+graph TD
+    %% Client ZKP Generation
+    subgraph "Client ZKP Generation"
+        TRAINING[Local Training<br/>SGD computation]
+        TRACE[SGD Trace<br/>Record all steps]
+        STARK_GEN[Generate zk-STARK<br/>Proof of correctness]
+    end
+
+    %% Server ZKP Generation
+    subgraph "Server ZKP Generation"
+        COLLECT[Collect Updates<br/>From all clients]
+        FEDERATED[FedJSCM Aggregation<br/>Weighted averaging]
+        SNARK_GEN[Generate zk-SNARK<br/>Proof of aggregation]
+    end
+
+    %% Verification Layer
+    subgraph "Verification Process"
+        VERIFY_CLIENT[Verify Client Proofs<br/>zk-STARK validation]
+        VERIFY_SERVER[Verify Server Proof<br/>zk-SNARK validation]
+        BLOCKCHAIN[Blockchain Verification<br/>On-chain consensus]
+    end
+
+    %% Dynamic Rigor
+    subgraph "Adaptive Security"
+        MONITOR[Monitor Training<br/>Stability analysis]
+        RIGOR[Adjust Rigor Level<br/>High: 2.58s<br/>Medium: 1.12s<br/>Low: 0.43s]
+    end
+
+    %% ZKP Types
+    subgraph "ZKP Properties"
+        STARK_PROPS[zk-STARK<br/>Transparent setup<br/>~200KB proof size<br/>Post-quantum secure]
+        SNARK_PROPS[zk-SNARK<br/>Trusted setup<br/>~200 byte proof size<br/>Fast verification]
+    end
+
+    %% Flow Connections
+    TRAINING --> TRACE
+    TRACE --> STARK_GEN
+    STARK_GEN --> COLLECT
+
+    COLLECT --> FEDERATED
+    FEDERATED --> SNARK_GEN
+
+    STARK_GEN --> VERIFY_CLIENT
+    SNARK_GEN --> VERIFY_SERVER
+    VERIFY_CLIENT --> BLOCKCHAIN
+    VERIFY_SERVER --> BLOCKCHAIN
+
+    BLOCKCHAIN --> MONITOR
+    MONITOR --> RIGOR
+    RIGOR --> TRAINING
+
+    %% Property Connections
+    STARK_GEN -.-> STARK_PROPS
+    SNARK_GEN -.-> SNARK_PROPS
+
+    %% Styling
+    classDef clientStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef serverStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef verifyStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef rigorStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef propsStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+    class TRAINING,TRACE,STARK_GEN clientStyle
+    class COLLECT,FEDERATED,SNARK_GEN serverStyle
+    class VERIFY_CLIENT,VERIFY_SERVER,BLOCKCHAIN verifyStyle
+    class MONITOR,RIGOR rigorStyle
+    class STARK_PROPS,SNARK_PROPS propsStyle

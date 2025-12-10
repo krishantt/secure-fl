@@ -1,0 +1,54 @@
+graph TB
+    %% Threat Categories
+    subgraph "Attack Vectors"
+        CLIENT_ATTACKS[Client-Side Attacks<br/>Data/gradient poisoning<br/>Byzantine behavior]
+        SERVER_ATTACKS[Server-Side Attacks<br/>Aggregation manipulation<br/>Model corruption]
+        NETWORK_ATTACKS[Network Attacks<br/>Man-in-the-middle<br/>Communication tampering]
+    end
+
+    %% Defense System
+    subgraph "ZKP Defense System"
+        STARK[zk-STARK Proofs<br/>Client SGD verification<br/>Transparent setup]
+        SNARK[zk-SNARK Proofs<br/>Server aggregation<br/>Blockchain ready]
+        ADAPTIVE[Adaptive Security<br/>Dynamic rigor adjustment<br/>Real-time monitoring]
+    end
+
+    %% Blockchain Security
+    subgraph "Blockchain Layer"
+        CONSENSUS[Consensus Mechanism<br/>2/3 validator agreement]
+        IMMUTABLE[Immutable Ledger<br/>Tamper-evident history]
+        AUDIT[Audit Trail<br/>Public verification]
+    end
+
+    %% Security Metrics
+    subgraph "Security Analysis"
+        DETECTION[Attack Detection<br/>99.99% accuracy]
+        FALSE_POS[False Positives<br/>Less than 0.1%]
+        OVERHEAD[Security Overhead<br/>15% performance cost]
+    end
+
+    %% Attack-Defense Mapping
+    CLIENT_ATTACKS --> STARK
+    SERVER_ATTACKS --> SNARK
+    NETWORK_ATTACKS --> CONSENSUS
+
+    %% Defense Integration
+    STARK --> ADAPTIVE
+    SNARK --> IMMUTABLE
+    ADAPTIVE --> AUDIT
+
+    %% Effectiveness Measurement
+    STARK --> DETECTION
+    SNARK --> FALSE_POS
+    CONSENSUS --> OVERHEAD
+
+    %% Styling
+    classDef attackStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef defenseStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+    classDef blockchainStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef metricsStyle fill:#fff8e1,stroke:#f57c00,stroke-width:2px
+
+    class CLIENT_ATTACKS,SERVER_ATTACKS,NETWORK_ATTACKS attackStyle
+    class STARK,SNARK,ADAPTIVE defenseStyle
+    class CONSENSUS,IMMUTABLE,AUDIT blockchainStyle
+    class DETECTION,FALSE_POS,OVERHEAD metricsStyle

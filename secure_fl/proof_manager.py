@@ -1,10 +1,10 @@
 """
 Proof Manager for ZKP Generation and Verification
 
-This module implements the proof management system for both client-side zk-STARK
+This module implements the proof management system for both client-side zk-SNARK
 proofs and server-side zk-SNARK proofs in the secure federated learning framework.
 
-Client-side: zk-STARK proofs for verifying correct local training
+Client-side: zk-SNARK proofs (PySNARK) for verifying correct local training
 Server-side: zk-SNARK (Groth16) proofs for verifying correct aggregation
 
 The proof managers handle:
@@ -610,10 +610,7 @@ class ServerProofManager(ProofManagerBase):
             "    signal weighted_sum[param_size];",
             "    signal partial_sums[n_clients][param_size];",
             "",
-            "    var SCALE = 1000000;"
-
-            "    // Calculate weighted deltas",
-
+            "    var SCALE = 1000000;    // Calculate weighted deltas",
             "    for (var i = 0; i < param_size; i++) {",
             "        for (var j = 0; j < n_clients; j++) {",
             "            partial_sums[j][i] <== client_weights[j] * client_deltas[j][i] / SCALE;",
@@ -655,6 +652,7 @@ class ServerProofManager(ProofManagerBase):
             raise RuntimeError(
                 f"Circuit file has incorrect format! First 100 bytes: {content[:100]}"
             )
+
     def _prepare_snark_inputs(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """
         Convert ALL floating-point model values to fixed-point integers.
@@ -697,7 +695,6 @@ class ServerProofManager(ProofManagerBase):
             witness["client_deltas"].append(flatten(update))
 
         return witness
-
 
     def _format_public_inputs(self, public_inputs: dict[str, Any]) -> list[str]:
         """Format public inputs for verification"""

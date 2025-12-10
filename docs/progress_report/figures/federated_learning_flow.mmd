@@ -1,0 +1,64 @@
+graph TD
+    %% Initialization
+    INIT[Server Initialization<br/>Global model w0]
+
+    %% Client Training
+    subgraph "Client Operations"
+        RECEIVE[Receive Model<br/>Download w_global]
+        TRAIN[Local Training<br/>SGD for E epochs]
+        UPDATE[Compute Update<br/>delta = w_local - w_global]
+        QUANTIZE[Quantize<br/>8-bit compression]
+        PROOF[Generate ZKP<br/>Prove SGD correctness]
+    end
+
+    %% Server Aggregation
+    subgraph "Server Operations"
+        VERIFY[Verify Proofs<br/>Validate all clients]
+        AGGREGATE[FedJSCM<br/>Weighted aggregation]
+        MOMENTUM[Update Momentum<br/>Server-side optimization]
+        BROADCAST[Broadcast Model<br/>Send w_new to clients]
+    end
+
+    %% Blockchain
+    subgraph "Blockchain Verification"
+        SUBMIT[Submit Proof<br/>zk-SNARK to blockchain]
+        CONSENSUS[Validator Consensus<br/>2/3 majority]
+        RECORD[Immutable Record<br/>Training log]
+    end
+
+    %% Adaptive Security
+    subgraph "Dynamic Rigor"
+        ANALYZE[Analyze Stability<br/>Monitor training]
+        ADJUST[Adjust Rigor<br/>High/Medium/Low]
+    end
+
+    %% Flow
+    INIT --> RECEIVE
+    RECEIVE --> TRAIN
+    TRAIN --> UPDATE
+    UPDATE --> QUANTIZE
+    QUANTIZE --> PROOF
+    PROOF --> VERIFY
+    VERIFY --> AGGREGATE
+    AGGREGATE --> MOMENTUM
+    MOMENTUM --> BROADCAST
+    BROADCAST --> SUBMIT
+    SUBMIT --> CONSENSUS
+    CONSENSUS --> RECORD
+    RECORD --> ANALYZE
+    ANALYZE --> ADJUST
+    ADJUST --> RECEIVE
+    BROADCAST --> RECEIVE
+
+    %% Styling
+    classDef initStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef clientStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef serverStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef blockchainStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef rigorStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+
+    class INIT initStyle
+    class RECEIVE,TRAIN,UPDATE,QUANTIZE,PROOF clientStyle
+    class VERIFY,AGGREGATE,MOMENTUM,BROADCAST serverStyle
+    class SUBMIT,CONSENSUS,RECORD blockchainStyle
+    class ANALYZE,ADJUST rigorStyle

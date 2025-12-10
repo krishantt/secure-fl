@@ -8,10 +8,14 @@ _data/
 *.pyc
 tests/pysnark/
 
+build/
+*.circom
+output/
 
 # ===========================
 # LaTeX build files
 # ===========================
+*.pdf
 *.aux
 *.bbl
 *.blg

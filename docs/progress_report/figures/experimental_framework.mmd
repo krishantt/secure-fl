@@ -1,0 +1,88 @@
+graph TB
+    %% Main Experimental Design
+    DESIGN[Experimental Design<br/>Multi-Phase Validation]
+
+    %% Phase 1: Baseline
+    subgraph "Phase 1: Baseline Testing"
+        BASELINE[Standard FL<br/>No ZKP]
+        IID[IID Data<br/>Equal distribution]
+        NON_IID[Non-IID Data<br/>Heterogeneous]
+    end
+
+    %% Phase 2: Secure FL
+    subgraph "Phase 2: Secure FL Testing"
+        SECURE[Secure FL<br/>With ZKP]
+        HIGH[High Rigor<br/>Full verification]
+        MED[Medium Rigor<br/>Bounds checking]
+        LOW[Low Rigor<br/>Lightweight]
+    end
+
+    %% Datasets
+    subgraph "Datasets"
+        MNIST[MNIST<br/>28x28, 10 classes]
+        FASHION[Fashion-MNIST<br/>Clothing categories]
+        CIFAR[CIFAR-10<br/>32x32x3, 10 classes]
+    end
+
+    %% Models
+    subgraph "Model Architectures"
+        MLP[MLP<br/>Simple neural net]
+        CNN[CNN<br/>Convolutional layers]
+        FLEX[Flexible<br/>Configurable depth]
+    end
+
+    %% Metrics
+    subgraph "Performance Metrics"
+        ACCURACY[Test Accuracy<br/>Primary metric]
+        CONVERGENCE[Convergence Rate<br/>Training efficiency]
+        PROOF_TIME[Proof Generation<br/>ZKP overhead]
+        SECURITY[Security Level<br/>128-bit strength]
+    end
+
+    %% Statistics
+    subgraph "Statistical Analysis"
+        TTEST[T-Tests<br/>Significance testing]
+        EFFECT[Effect Size<br/>Cohen's d]
+        CI[Confidence Intervals<br/>95% CI]
+    end
+
+    %% Connections
+    DESIGN --> BASELINE
+    DESIGN --> SECURE
+
+    BASELINE --> IID
+    BASELINE --> NON_IID
+
+    SECURE --> HIGH
+    SECURE --> MED
+    SECURE --> LOW
+
+    MNIST --> MLP
+    FASHION --> CNN
+    CIFAR --> FLEX
+
+    MLP --> ACCURACY
+    CNN --> CONVERGENCE
+    FLEX --> PROOF_TIME
+
+    ACCURACY --> TTEST
+    CONVERGENCE --> EFFECT
+    PROOF_TIME --> CI
+    SECURITY --> CI
+
+    %% Styling
+    classDef designStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef baselineStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef secureStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef dataStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef modelStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef metricsStyle fill:#fff8e1,stroke:#ef6c00,stroke-width:2px
+    classDef statsStyle fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+
+    class DESIGN designStyle
+    class BASELINE,IID,NON_IID baselineStyle
+    class SECURE,HIGH,MED,LOW secureStyle
+    class MNIST,FASHION,CIFAR dataStyle
+    class MLP,CNN,FLEX modelStyle
+    class ACCURACY,CONVERGENCE,PROOF_TIME,SECURITY metricsStyle
+    class TTEST,EFFECT,CI statsStyle
