@@ -1,6 +1,6 @@
 [project]
 name = "secure-fl"
-dynamic = ["version"]
+version = "2024.12.20.dev.1"
 description = "Dual-Verifiable Framework for Federated Learning using Zero-Knowledge Proofs"
 authors = [
     {name = "Krishant Timilsina", email = "krishtimil@gmail.com"},
@@ -73,6 +73,8 @@ dependencies = [
     "pytest-benchmark>=5.2.3",
     "memory-profiler>=0.61.0",
     "py-spy>=0.4.1",
+    "poethepoet>=0.24.0",
+    "hatchling>=1.21.0",
 ]
 
 [project.optional-dependencies]
@@ -92,29 +94,15 @@ medical = [
     "pydicom>=2.4.0",
 ]
 
-# Jupyter and notebook support
-notebook = [
-    "jupyter>=1.0.0",
-    "jupyterlab>=4.0.0",
-    "ipywidgets>=8.0.0",
-    "plotly>=5.15.0",
-]
-
 # Advanced quantization support
 quantization = [
     # "brevitas>=0.10.0",
     # "pytorch-quantization>=2.1.2",
 ]
 
-# Blockchain and smart contract tools (optional, requires external setup)
-blockchain = [
-    # "brownie-eth>=1.19.0; platform_system != 'Windows'",
-    # "solcx>=1.12.0",
-]
-
 # All optional dependencies
 all = [
-    "secure-fl[dev,medical,notebook,quantization,blockchain]",
+    "secure-fl[dev,medical,quantization]",
 ]
 
 [project.urls]
@@ -131,43 +119,34 @@ secure-fl-experiment = "secure_fl.cli:experiment_command"
 secure-fl-setup = "secure_fl.cli:setup_command"
 
 [build-system]
-requires = ["pdm-backend", "numpy", "flwr", "torch"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.pdm]
-version = {source = "call", getter = "secure_fl._version:get_version"}
-author-email = "krishtimil@gmail.com"
-license = {text = "MIT"}
+# Static version for Docker builds - dynamic version handled by _version.py at runtime
 
-[tool.pdm.dev-dependencies]
-test = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-mock>=3.11.0",
-]
-docs = [
-    "sphinx>=7.1.0",
-    "sphinx-rtd-theme>=1.3.0",
-    "myst-parser>=2.0.0",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["secure_fl"]
 
-[tool.pdm.scripts]
-# Development scripts
+[tool.poe.tasks]
+# Development tasks
 test = "pytest tests/ -v --cov=secure_fl --cov-report=html"
+test-fast = "pytest tests/ -x -v"
+test-watch = "pytest-watch tests/"
 lint = "ruff check ."
 format = "ruff format ."
 type-check = "mypy secure_fl/"
 lint-fix = "ruff check --fix ."
-precommit = {composite=["format", "lint-fix"]}
 
+# Composite tasks
+precommit = ["format", "lint-fix", "test-fast"]
+ci = ["lint", "type-check", "test"]
 
-# Setup and installation scripts
+# Setup and installation tasks
 setup-zkp = "python -m secure_fl.setup zkp"
 setup-full = "python -m secure_fl.setup full"
 check-system = "python -m secure_fl.setup check"
 
-# Version management scripts
+# Version management tasks
 version = "python scripts/version.py show"
 version-increment = "python scripts/version.py increment"
 version-set = "python scripts/version.py set"
@@ -175,14 +154,44 @@ version-publish = "python scripts/version.py publish"
 version-build-info = "python scripts/version.py build-info"
 build-with-version = "python scripts/version.py build"
 
-# Experiment scripts
-demo = "python -m secure_fl.experiments.demo"
-benchmark = "python -m secure_fl.experiments.benchmark"
-train = "python -m secure_fl.experiments.train"
+# Experiment tasks
+demo = "python experiments/demo.py"
+benchmark = "python experiments/benchmark.py"
+train = "python experiments/train.py"
 
-# Cleanup
+# Server and client tasks
+server = "python -m secure_fl.cli server"
+client = "python -m secure_fl.cli client"
+
+# Docker tasks
+docker-build = "./scripts/docker.sh build"
+docker-demo = "./scripts/docker.sh demo"
+docker-dev = "./scripts/docker.sh dev"
+docker-up = "./scripts/docker.sh up"
+docker-down = "./scripts/docker.sh down"
+docker-clean = "./scripts/docker.sh clean"
+docker-status = "./scripts/docker.sh status"
+
+# Cleanup tasks
 clean = "python -m secure_fl.setup clean"
 clean-all = "python -m secure_fl.setup clean --all"
+clean-cache = { shell = "find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true" }
+
+# Documentation tasks
+docs-build = "sphinx-build -b html docs/ docs/_build/html"
+docs-serve = { shell = "cd docs/_build/html && python -m http.server 8000" }
+
+[tool.poe.tasks.install-dev]
+help = "Install development dependencies"
+shell = "uv sync --all-extras --dev"
+
+[tool.poe.tasks.install-prod]
+help = "Install production dependencies only"
+shell = "uv sync --no-dev"
+
+[tool.poe.tasks.update-deps]
+help = "Update all dependencies"
+shell = "uv lock --upgrade"
 
 [tool.ruff]
 line-length = 88
@@ -274,17 +283,13 @@ exclude_lines = [
 [tool.uv.sources]
 pysnark = { git = "https://github.com/meilof/pysnark" }
 
-# Package data and files to include
-[tool.pdm.build]
-includes = [
+# Package configuration for hatch
+[tool.hatch.build]
+include = [
     "secure_fl/",
     "proofs/",
-    "blockchain/",
-    "docs/",
-    "k8s/",
-    "infra/",
 ]
-excludes = [
+exclude = [
     "**/__pycache__/",
     "**/*.pyc",
     "**/*.pyo",
@@ -296,8 +301,7 @@ excludes = [
     "**/circuit_js/",
     "**/.venv/",
     "**/node_modules/",
-    "experiments/",
-    "**/experiments/",
+    "**/experiments/results/",
 ]
 
 [dependency-groups]

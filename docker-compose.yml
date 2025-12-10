@@ -1,0 +1,138 @@
+version: "3.8"
+
+services:
+  # Base secure-fl service
+  secure-fl-base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    image: secure-fl:base
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=docker
+    networks:
+      - secure-fl-network
+
+  # FL Server
+  secure-fl-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    image: secure-fl:server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_SERVER_HOST=0.0.0.0
+      - SECURE_FL_SERVER_PORT=8080
+    networks:
+      - secure-fl-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # FL Client 1
+  secure-fl-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: client
+    image: secure-fl:client
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-1
+      - SECURE_FL_SERVER_URL=http://secure-fl-server:8080
+    depends_on:
+      secure-fl-server:
+        condition: service_healthy
+    networks:
+      - secure-fl-network
+
+  # FL Client 2
+  secure-fl-client-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: client
+    image: secure-fl:client
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-2
+      - SECURE_FL_SERVER_URL=http://secure-fl-server:8080
+    depends_on:
+      secure-fl-server:
+        condition: service_healthy
+    networks:
+      - secure-fl-network
+
+  # Development environment
+  secure-fl-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: secure-fl:dev
+    ports:
+      - "8081:8080"
+    volumes:
+      - .:/home/app/workspace
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=development
+    networks:
+      - secure-fl-network
+    command: ["bash"]
+
+  # Demo service for quick testing
+  secure-fl-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    image: secure-fl:base
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    environment:
+      - SECURE_FL_ENV=demo
+    networks:
+      - secure-fl-network
+    command: ["uv", "run", "python", "experiments/demo.py"]
+
+networks:
+  secure-fl-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  secure-fl-data:
+    driver: local
+  secure-fl-logs:
+    driver: local
+  secure-fl-results:
+    driver: local

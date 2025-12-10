@@ -9,6 +9,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+# Static version for hatchling - will be overridden by get_version()
+__version__ = "2024.12.20.dev.1"
+
 
 def get_version() -> str:
     """
@@ -140,7 +143,7 @@ def set_build_number(number: int):
     build_file.write_text(f"{current_date}:{number}")
 
 
-# Generate version at import time
+# Override with dynamic version at import time
 __version__ = get_version()
 
 # Expose main functions

@@ -82,10 +82,10 @@ site/
 logs/
 *.log.*
 
-# Data and results (exclude large files)
+# Data and results (exclude large files but keep structure)
 data/datasets/
 data/temp/
-results/
+results/temp_*/
 experiments/results/
 *.csv
 *.h5
@@ -93,17 +93,16 @@ experiments/results/
 *.pkl
 *.pickle
 
-# Compiled ZKP circuits
+# Compiled ZKP circuits (keep source, exclude compiled)
 proofs/compiled/
 proofs/**/witness/
 proofs/**/*.wasm
 proofs/**/circuit_js/
-*.r1cs
+circuit.r1cs
+witness.wtns
 *.sym
 
-# Blockchain artifacts
-blockchain/artifacts/
-blockchain/cache/
+# Node modules
 node_modules/
 
 # Temporary files
@@ -112,11 +111,13 @@ tmp/
 *.tmp
 *.temp
 
-# Model files (can be large)
+# Model files (can be large - exclude checkpoints)
 *.pth
 *.pt
 *.onnx
 *.pb
+**/checkpoints/
+**/saved_models/
 
 # Configuration secrets
 .env.local
@@ -128,12 +129,11 @@ private_keys/
 .github/
 .gitlab-ci.yml
 
-# Docker
-Dockerfile*
-docker-compose*.yml
+# Docker (keep main files)
+docker-compose*.override.yml
 .dockerignore
 
-# README and docs (keep lightweight versions)
-INSTALL.md
+# Documentation (keep main docs)
 CONTRIBUTING.md
 CHANGELOG.md
+docs/_build/
