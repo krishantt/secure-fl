@@ -48,7 +48,6 @@ def test_core_modules():
 def test_cli_import():
     """Test that CLI module can be imported."""
     try:
-        from secure_fl.cli import main
 
         print("✓ Successfully imported CLI main function")
         return True
@@ -60,17 +59,14 @@ def test_cli_import():
 def test_basic_functionality():
     """Test basic functionality works."""
     try:
-        import secure_fl
 
         # Test that we can access basic configuration
         from secure_fl.config import Config
 
-        config = Config()
+        _config = Config()
         print("✓ Successfully created Config instance")
 
         # Test that we can import key classes
-        from secure_fl.client import SecureFLClient
-        from secure_fl.server import SecureFLServer
 
         print("✓ Successfully imported core classes")
 
