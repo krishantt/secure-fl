@@ -191,7 +191,7 @@ jobs:
         run: |
           # Test basic CLI functionality
           uv run secure-fl --help
-          uv run secure-fl setup check
+          uv run secure-fl setup --action check
           echo "CLI tests completed"
 
   build-check:
