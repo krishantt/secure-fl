@@ -48,7 +48,6 @@ def test_core_modules():
 def test_cli_import():
     """Test that CLI module can be imported."""
     try:
-
         print("✓ Successfully imported CLI main function")
         return True
     except Exception as e:
@@ -59,7 +58,6 @@ def test_cli_import():
 def test_basic_functionality():
     """Test basic functionality works."""
     try:
-
         # Test that we can access basic configuration
         from secure_fl.config import Config
 
