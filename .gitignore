@@ -10,7 +10,7 @@ tests/pysnark/
 
 build/
 *.circom
-output/
+output/e
 
 # ===========================
 # LaTeX build files
