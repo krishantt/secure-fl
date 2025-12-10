@@ -211,7 +211,7 @@ class EnhancedServerProofManager(ServerProofManager):
             aggregation_correct = True
             max_error = 0.0
 
-            for expected, actual in zip(expected_aggregation, aggregated_params):
+            for expected, actual in zip(expected_aggregation, aggregated_params, strict=False):
                 error = np.max(np.abs(expected - actual))
                 max_error = max(max_error, error)
                 if error > tolerance:
@@ -229,7 +229,7 @@ class EnhancedServerProofManager(ServerProofManager):
             if momentum is not None:
                 # Check momentum dimensions match aggregated params
                 if len(momentum) == len(aggregated_params):
-                    for m_layer, agg_layer in zip(momentum, aggregated_params):
+                    for m_layer, agg_layer in zip(momentum, aggregated_params, strict=False):
                         if m_layer.shape != agg_layer.shape:
                             momentum_correct = False
                             break
@@ -483,12 +483,12 @@ class ProofManagerBenchmark:
 
         successful_proofs = 0
 
-        for i in range(num_iterations):
+        for _i in range(num_iterations):
             # Generate random client updates for testing
             client_updates = []
             client_weights = []
 
-            for j in range(num_clients):
+            for _j in range(num_clients):
                 client_update = [np.random.randn(param_size).astype(np.float32) * 0.01]
                 client_updates.append(client_update)
                 client_weights.append(np.random.uniform(0.5, 2.0))  # Random weights
@@ -499,7 +499,7 @@ class ProofManagerBenchmark:
 
             # Compute aggregated parameters (weighted average)
             aggregated_params = [np.zeros(param_size, dtype=np.float32)]
-            for client_update, weight in zip(client_updates, client_weights):
+            for client_update, weight in zip(client_updates, client_weights, strict=False):
                 aggregated_params[0] += weight * client_update[0]
 
             # Generate momentum

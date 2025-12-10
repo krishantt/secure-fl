@@ -51,8 +51,6 @@ try:
         Counter,
         Gauge,
         Histogram,
-        Info,
-        Summary,
         generate_latest,
         start_http_server,
     )
@@ -62,7 +60,6 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
 try:
-    import opentelemetry
     from opentelemetry import trace
     from opentelemetry.exporter.jaeger.thrift import JaegerExporter
     from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -707,7 +704,7 @@ class MetricsCollector:
                     0
                 ).total_memory / (1024**3)
                 gpu_usage_percent = (gpu_memory_used_gb / gpu_memory_total_gb) * 100
-            except:
+            except (RuntimeError, AttributeError):
                 pass
 
         metrics = SystemMetrics(

@@ -45,8 +45,10 @@ class TestBasicFLWorkflow:
     @pytest.mark.integration
     def test_single_round_training(self, client_datasets, server_config, client_config):
         """Test single round of federated training"""
+
         # Create simple model
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Create server strategy
         config = server_config.copy()
@@ -80,19 +82,21 @@ class TestBasicFLWorkflow:
             client_results.append(result)
 
         # Test aggregation
-        client_updates = [result.parameters for result in client_results]
+        [result.parameters for result in client_results]
         client_weights = [result.num_examples for result in client_results]
 
         # Normalize weights
         total_examples = sum(client_weights)
-        normalized_weights = [w / total_examples for w in client_weights]
+        [w / total_examples for w in client_weights]
 
         # Initialize parameters (normally done by Flower framework)
         strategy.initialize_parameters(None)
 
         # Use strategy to aggregate
         aggregated_result = strategy.aggregate_fit(
-            server_round=1, results=list(zip(clients, client_results)), failures=[]
+            server_round=1,
+            results=list(zip(clients, client_results, strict=False)),
+            failures=[],
         )
 
         # Verify results
@@ -103,14 +107,16 @@ class TestBasicFLWorkflow:
 
         # Parameters should have changed
         for init, final in zip(
-            initial_params, parameters_to_ndarrays(aggregated_params)
+            initial_params, parameters_to_ndarrays(aggregated_params), strict=False
         ):
             assert not np.allclose(init, final, rtol=1e-6)
 
     @pytest.mark.integration
     def test_multi_round_training(self, client_datasets, server_config, client_config):
         """Test multiple rounds of federated training"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Create server strategy
         config = server_config.copy()
@@ -152,7 +158,7 @@ class TestBasicFLWorkflow:
             # Server aggregation
             aggregated = strategy.aggregate_fit(
                 server_round=round_num,
-                results=list(zip(clients, client_results)),
+                results=list(zip(clients, client_results, strict=False)),
                 failures=[],
             )
 
@@ -164,7 +170,7 @@ class TestBasicFLWorkflow:
 
         # Parameters should be different across rounds
         for i in range(len(param_history) - 1):
-            for p1, p2 in zip(param_history[i], param_history[i + 1]):
+            for p1, p2 in zip(param_history[i], param_history[i + 1], strict=False):
                 assert not np.allclose(p1, p2, rtol=1e-6)
 
     @pytest.mark.integration
@@ -172,7 +178,9 @@ class TestBasicFLWorkflow:
         self, client_datasets, server_config, client_config
     ):
         """Test handling of client dropouts during training"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Create server strategy
         config = server_config.copy()
@@ -211,7 +219,7 @@ class TestBasicFLWorkflow:
         # Should still be able to aggregate
         aggregated = strategy.aggregate_fit(
             server_round=1,
-            results=list(zip(available_clients, client_results)),
+            results=list(zip(available_clients, client_results, strict=False)),
             failures=[],
         )
 
@@ -221,7 +229,9 @@ class TestBasicFLWorkflow:
     @pytest.mark.integration
     def test_heterogeneous_data_sizes(self, server_config, client_config):
         """Test training with clients having different data sizes"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Create datasets with very different sizes
         datasets = []
@@ -266,7 +276,9 @@ class TestBasicFLWorkflow:
 
         # Aggregation should work
         aggregated = strategy.aggregate_fit(
-            server_round=1, results=list(zip(clients, client_results)), failures=[]
+            server_round=1,
+            results=list(zip(clients, client_results, strict=False)),
+            failures=[],
         )
 
         assert aggregated is not None
@@ -278,7 +290,9 @@ class TestAggregationIntegration:
     @pytest.mark.integration
     def test_fedjscm_integration(self, client_datasets, server_config, client_config):
         """Test FedJSCM aggregation integration in FL workflow"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Create strategy with specific aggregation config
         config = server_config.copy()
@@ -317,7 +331,7 @@ class TestAggregationIntegration:
 
             aggregated = strategy.aggregate_fit(
                 server_round=round_num,
-                results=list(zip(clients, client_results)),
+                results=list(zip(clients, client_results, strict=False)),
                 failures=[],
             )
 
@@ -334,7 +348,9 @@ class TestAggregationIntegration:
         self, client_datasets, server_config, client_config
     ):
         """Test stability monitoring integration"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         config = server_config.copy()
         config.update({"enable_zkp": False})
@@ -369,7 +385,7 @@ class TestAggregationIntegration:
 
             aggregated = strategy.aggregate_fit(
                 server_round=round_num,
-                results=list(zip(clients, client_results)),
+                results=list(zip(clients, client_results, strict=False)),
                 failures=[],
             )
 
@@ -399,7 +415,9 @@ class TestZKPIntegration:
         mock_server_proof_manager,
     ):
         """Test ZKP workflow with mocked proof managers"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Enable ZKP in configuration
         zkp_config = client_config.copy()
@@ -449,7 +467,9 @@ class TestZKPIntegration:
 
             # Server aggregation with ZKP
             aggregated = strategy.aggregate_fit(
-                server_round=1, results=list(zip(clients, client_results)), failures=[]
+                server_round=1,
+                results=list(zip(clients, client_results, strict=False)),
+                failures=[],
             )
 
             # Verify server proof generation was called
@@ -460,7 +480,9 @@ class TestZKPIntegration:
     @pytest.mark.integration
     def test_zkp_disabled_fallback(self, client_datasets, server_config, client_config):
         """Test that FL works correctly when ZKP is disabled"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Explicitly disable ZKP
         no_zkp_config = client_config.copy()
@@ -494,7 +516,9 @@ class TestZKPIntegration:
             client_results.append(result)
 
         aggregated = strategy.aggregate_fit(
-            server_round=1, results=list(zip(clients, client_results)), failures=[]
+            server_round=1,
+            results=list(zip(clients, client_results, strict=False)),
+            failures=[],
         )
 
         assert aggregated is not None
@@ -508,7 +532,9 @@ class TestErrorHandling:
         self, client_datasets, server_config, client_config
     ):
         """Test handling of invalid client updates"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         config = server_config.copy()
         config.update({"enable_zkp": False})
@@ -568,7 +594,9 @@ class TestErrorHandling:
     @pytest.mark.integration
     def test_insufficient_clients(self, client_datasets, server_config, client_config):
         """Test behavior when insufficient clients participate"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Require at least 3 clients but provide only 1
         strict_config = server_config.copy()
@@ -610,7 +638,9 @@ class TestErrorHandling:
         self, client_datasets, server_config, client_config
     ):
         """Test handling of NaN parameters from clients"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         config = server_config.copy()
         config.update({"enable_zkp": False})
@@ -672,12 +702,14 @@ class TestPerformanceIntegration:
     @pytest.mark.slow
     def test_large_model_training(self, server_config, client_config):
         """Test FL workflow with larger models"""
+
         # Create a larger model
-        model_fn = lambda: MNISTModel(hidden_dims=[256, 128, 64])
+        def model_fn():
+            return MNISTModel(hidden_dims=[256, 128, 64])
 
         # Create larger synthetic datasets
         large_datasets = []
-        for i in range(3):
+        for _i in range(3):
             X = torch.randn(1000, 28 * 28)  # MNIST-like size
             y = torch.randint(0, 10, (1000,))
             dataset = TensorDataset(X, y)
@@ -713,7 +745,9 @@ class TestPerformanceIntegration:
             client_results.append(result)
 
         aggregated = strategy.aggregate_fit(
-            server_round=1, results=list(zip(clients, client_results)), failures=[]
+            server_round=1,
+            results=list(zip(clients, client_results, strict=False)),
+            failures=[],
         )
 
         end_time = time.time()
@@ -726,7 +760,9 @@ class TestPerformanceIntegration:
     @pytest.mark.integration
     def test_memory_efficiency(self, client_datasets, server_config, client_config):
         """Test that FL workflow is memory efficient"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         config = server_config.copy()
         config.update({"enable_zkp": False})
@@ -758,7 +794,7 @@ class TestPerformanceIntegration:
 
             aggregated = strategy.aggregate_fit(
                 server_round=round_num,
-                results=list(zip(clients, client_results)),
+                results=list(zip(clients, client_results, strict=False)),
                 failures=[],
             )
 
@@ -777,7 +813,9 @@ class TestConfigurationIntegration:
         self, client_datasets, server_config, client_config
     ):
         """Test FL with different aggregation configurations"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         # Test different momentum values
         momentum_values = [0.0, 0.5, 0.9, 0.99]
@@ -813,7 +851,9 @@ class TestConfigurationIntegration:
                 client_results.append(result)
 
             aggregated = strategy.aggregate_fit(
-                server_round=1, results=list(zip(clients, client_results)), failures=[]
+                server_round=1,
+                results=list(zip(clients, client_results, strict=False)),
+                failures=[],
             )
 
             assert aggregated is not None
@@ -821,7 +861,9 @@ class TestConfigurationIntegration:
     @pytest.mark.integration
     def test_various_client_configs(self, client_datasets, server_config):
         """Test FL with different client configurations"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         config = server_config.copy()
         config.update({"enable_zkp": False})
@@ -863,7 +905,9 @@ class TestConfigurationIntegration:
                 client_results.append(result)
 
             aggregated = strategy.aggregate_fit(
-                server_round=1, results=list(zip(clients, client_results)), failures=[]
+                server_round=1,
+                results=list(zip(clients, client_results, strict=False)),
+                failures=[],
             )
 
             assert aggregated is not None

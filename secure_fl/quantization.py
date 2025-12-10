@@ -130,7 +130,7 @@ class FixedPointQuantizer:
         if layer_names is None:
             layer_names = [f"layer_{i}" for i in range(len(parameters))]
 
-        for i, (param, name) in enumerate(zip(parameters, layer_names)):
+        for _i, (param, name) in enumerate(zip(parameters, layer_names, strict=False)):
             if self.config.per_channel and len(param.shape) > 1:
                 # Per-channel quantization for conv/linear layers
                 scales, zero_points = self._compute_per_channel_params(param)
@@ -167,7 +167,7 @@ class FixedPointQuantizer:
             "bounds": {"qmin": self.qmin, "qmax": self.qmax},
         }
 
-        for param, name in zip(parameters, layer_names):
+        for param, name in zip(parameters, layer_names, strict=False):
             if name not in self.scale_factors:
                 # Auto-calibrate if not done before
                 if self.config.per_channel and len(param.shape) > 1:
@@ -217,7 +217,7 @@ class FixedPointQuantizer:
                 f"Length mismatch: {len(quantized_params)} quantized params vs {len(layer_names)} metadata entries"
             )
 
-        for quantized, name in zip(quantized_params, layer_names):
+        for quantized, name in zip(quantized_params, layer_names, strict=False):
             if name not in metadata["scales"]:
                 raise ValueError(f"Missing scale for layer {name}")
             if name not in metadata["zero_points"]:
@@ -262,9 +262,9 @@ class FixedPointQuantizer:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Compute per-channel quantization parameters for conv/linear layers"""
         if len(param.shape) == 2:  # Linear layer (out_features, in_features)
-            axis = 0
+            pass
         elif len(param.shape) == 4:  # Conv layer (out_channels, in_channels, h, w)
-            axis = 0
+            pass
         else:
             # Fallback to per-tensor
             scale, zero_point = self._compute_per_tensor_params(param)
@@ -395,7 +395,7 @@ class GradientAwareQuantizer(FixedPointQuantizer):
                 layer_names = [f"layer_{i}" for i in range(len(gradients))]
 
             gradient_norms = {}
-            for grad, name in zip(gradients, layer_names):
+            for grad, name in zip(gradients, layer_names, strict=False):
                 gradient_norms[name] = float(np.linalg.norm(grad))
 
             metadata["gradient_norms"] = gradient_norms
@@ -412,7 +412,7 @@ class GradientAwareQuantizer(FixedPointQuantizer):
         if layer_names is None:
             layer_names = [f"layer_{i}" for i in range(len(gradients))]
 
-        for grad, name in zip(gradients, layer_names):
+        for grad, name in zip(gradients, layer_names, strict=False):
             if name not in self.gradient_history:
                 self.gradient_history[name] = []
 
@@ -520,7 +520,7 @@ def compute_quantization_error(
     layer_mae = []
     layer_snr = []
 
-    for orig, dequant in zip(original, dequantized):
+    for orig, dequant in zip(original, dequantized, strict=False):
         mse = np.mean((orig - dequant) ** 2)
         mae = np.mean(np.abs(orig - dequant))
 
@@ -588,7 +588,7 @@ def test_quantization():
 
     # Check shapes
     assert len(params) == len(quantized) == len(dequantized)
-    for orig, quant, dequant in zip(params, quantized, dequantized):
+    for orig, quant, dequant in zip(params, quantized, dequantized, strict=False):
         assert orig.shape == quant.shape == dequant.shape
         assert quant.dtype in [np.int32, np.int64]
         assert dequant.dtype in [np.float32, np.float64]

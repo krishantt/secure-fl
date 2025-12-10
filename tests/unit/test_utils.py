@@ -44,7 +44,7 @@ class TestParameterConversion:
         recovered = parameters_to_ndarrays(parameters)
         assert len(recovered) == len(model_parameters)
 
-        for orig, rec in zip(model_parameters, recovered):
+        for orig, rec in zip(model_parameters, recovered, strict=False):
             assert orig.shape == rec.shape
             assert np.allclose(orig, rec, rtol=1e-6)
 
@@ -56,7 +56,7 @@ class TestParameterConversion:
         recovered = parameters_to_ndarrays(parameters)
 
         assert len(recovered) == len(model_parameters)
-        for orig, rec in zip(model_parameters, recovered):
+        for orig, rec in zip(model_parameters, recovered, strict=False):
             assert isinstance(rec, np.ndarray)
             assert orig.shape == rec.shape
             assert np.allclose(orig, rec, rtol=1e-6)
@@ -69,7 +69,7 @@ class TestParameterConversion:
         assert isinstance(ndarrays, list)
         assert len(ndarrays) == len(list(simple_model.parameters()))
 
-        for i, (param, array) in enumerate(zip(simple_model.parameters(), ndarrays)):
+        for _i, (param, array) in enumerate(zip(simple_model.parameters(), ndarrays, strict=False)):
             assert isinstance(array, np.ndarray)
             assert param.shape == array.shape
             assert np.allclose(param.detach().numpy(), array, rtol=1e-6)
@@ -88,7 +88,7 @@ class TestParameterConversion:
 
         # Check that parameters were loaded correctly
         for orig_param, loaded_param in zip(
-            simple_model.parameters(), model_copy.parameters()
+            simple_model.parameters(), model_copy.parameters(), strict=False
         ):
             assert orig_param.shape == loaded_param.shape
             assert torch.allclose(orig_param, loaded_param, rtol=1e-6)
@@ -131,7 +131,7 @@ class TestParameterConversion:
         recovered = parameters_to_ndarrays(parameters)
 
         assert len(recovered) == len(params)
-        for orig, rec in zip(params, recovered):
+        for orig, rec in zip(params, recovered, strict=False):
             assert orig.shape == rec.shape
             # Note: conversion may change dtype, so we check values not dtype
 
@@ -230,41 +230,41 @@ class TestParameterValidation:
     @pytest.mark.unit
     def test_validate_parameters_valid(self, model_parameters):
         """Test validation with valid parameters"""
-        assert validate_parameters(model_parameters) == True
+        assert validate_parameters(model_parameters)
 
     @pytest.mark.unit
     def test_validate_parameters_empty(self):
         """Test validation with empty parameter list"""
-        assert validate_parameters([]) == True
+        assert validate_parameters([])
 
     @pytest.mark.unit
     def test_validate_parameters_none(self):
         """Test validation with None"""
-        assert validate_parameters(None) == False
+        assert not validate_parameters(None)
 
     @pytest.mark.unit
     def test_validate_parameters_invalid_type(self):
         """Test validation with invalid parameter types"""
         invalid_params = ["not_an_array", 123, None]
-        assert validate_parameters(invalid_params) == False
+        assert not validate_parameters(invalid_params)
 
     @pytest.mark.unit
     def test_validate_parameters_nan_values(self):
         """Test validation with NaN values"""
         params_with_nan = [np.array([1.0, 2.0, np.nan])]
-        assert validate_parameters(params_with_nan) == False
+        assert not validate_parameters(params_with_nan)
 
     @pytest.mark.unit
     def test_validate_parameters_inf_values(self):
         """Test validation with infinite values"""
         params_with_inf = [np.array([1.0, 2.0, np.inf])]
-        assert validate_parameters(params_with_inf) == False
+        assert not validate_parameters(params_with_inf)
 
     @pytest.mark.unit
     def test_validate_parameters_empty_array(self):
         """Test validation with empty arrays"""
         params_with_empty = [np.array([])]
-        assert validate_parameters(params_with_empty) == False
+        assert not validate_parameters(params_with_empty)
 
 
 class TestAggregation:
@@ -301,7 +301,7 @@ class TestAggregation:
                 param_sum += client_params[param_idx]
             expected.append(param_sum / num_clients)
 
-        for agg_param, exp_param in zip(aggregated, expected):
+        for agg_param, exp_param in zip(aggregated, expected, strict=False):
             assert np.allclose(agg_param, exp_param, rtol=1e-6)
 
     @pytest.mark.unit
@@ -312,7 +312,7 @@ class TestAggregation:
 
         aggregated = aggregate_weighted_average(single_update, weights)
 
-        for orig, agg in zip(model_parameters, aggregated):
+        for orig, agg in zip(model_parameters, aggregated, strict=False):
             assert np.allclose(orig, agg, rtol=1e-6)
 
     @pytest.mark.unit
@@ -323,7 +323,7 @@ class TestAggregation:
         aggregated = aggregate_weighted_average(sample_client_updates, weights)
 
         # Should be identical to first client's parameters
-        for orig, agg in zip(sample_client_updates[0], aggregated):
+        for orig, agg in zip(sample_client_updates[0], aggregated, strict=False):
             assert np.allclose(orig, agg, rtol=1e-6)
 
 
@@ -347,7 +347,7 @@ class TestSerialization:
         assert isinstance(deserialized, list)
         assert len(deserialized) == len(model_parameters)
 
-        for orig, deser in zip(model_parameters, deserialized):
+        for orig, deser in zip(model_parameters, deserialized, strict=False):
             assert isinstance(deser, np.ndarray)
             assert orig.shape == deser.shape
             assert np.allclose(orig, deser, rtol=1e-6)
@@ -362,7 +362,7 @@ class TestSerialization:
             current_params = deserialize_parameters(serialized)
 
         # Should still be identical
-        for orig, final in zip(model_parameters, current_params):
+        for orig, final in zip(model_parameters, current_params, strict=False):
             assert np.allclose(orig, final, rtol=1e-6)
 
     @pytest.mark.unit
@@ -513,7 +513,7 @@ class TestParameterIntegrity:
             params = parameters_to_ndarrays(flower_params)
 
         # Values should be identical
-        for orig, final in zip(model_parameters, params):
+        for orig, final in zip(model_parameters, params, strict=False):
             assert np.array_equal(orig, final)
 
     @pytest.mark.unit
@@ -549,7 +549,7 @@ class TestParameterIntegrity:
         base_params = [np.random.randn(10, 10)]
         hashes = set()
 
-        for i in range(100):
+        for _i in range(100):
             # Create slight variations
             modified = base_params[0] + np.random.normal(0, 1e-10, (10, 10))
             params = [modified]

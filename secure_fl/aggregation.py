@@ -109,7 +109,7 @@ class FedJSCMAggregator:
             raise ValueError("Number of client updates must match number of weights")
 
         # Check for negative weights
-        for i, weight in enumerate(client_weights):
+        for _i, weight in enumerate(client_weights):
             if weight < 0:
                 raise ValueError("All client weights must be non-negative")
 
@@ -140,7 +140,7 @@ class FedJSCMAggregator:
             else:
                 # Check individual layer shapes
                 for i, (momentum_layer, update_layer) in enumerate(
-                    zip(self.server_momentum, client_updates[0])
+                    zip(self.server_momentum, client_updates[0], strict=False)
                 ):
                     if momentum_layer.shape != update_layer.shape:
                         logger.info(
@@ -194,7 +194,9 @@ class FedJSCMAggregator:
         else:
             # Subsequent rounds: m^{(t+1)} = γ * m^{(t)} + (1-γ) * weighted_avg
             new_momentum = []
-            for old_m, new_avg in zip(self.server_momentum, aggregated_params):
+            for old_m, new_avg in zip(
+                self.server_momentum, aggregated_params, strict=False
+            ):
                 updated_m = current_momentum * old_m + (1 - current_momentum) * new_avg
                 new_momentum.append(updated_m)
             self.server_momentum = new_momentum
@@ -240,7 +242,7 @@ class FedJSCMAggregator:
 
         # Validate parameter shapes are consistent across clients
         reference_shapes = [param.shape for param in client_updates[0]]
-        for client_idx, client_params in enumerate(client_updates[1:], 1):
+        for _client_idx, client_params in enumerate(client_updates[1:], 1):
             if len(client_params) != len(reference_shapes):
                 raise ValueError("Parameter shapes must match")
             for layer_idx, param in enumerate(client_params):
@@ -252,7 +254,7 @@ class FedJSCMAggregator:
         aggregated = [np.zeros_like(client_updates[0][i]) for i in range(num_layers)]
 
         # Weighted sum
-        for client_params, weight in zip(client_updates, client_weights):
+        for client_params, weight in zip(client_updates, client_weights, strict=False):
             for i, layer_params in enumerate(client_params):
                 aggregated[i] += weight * layer_params
 
@@ -263,7 +265,7 @@ class FedJSCMAggregator:
     ) -> NDArrays:
         """Apply L2 weight decay regularization"""
         regularized_update = []
-        for update_layer, param_layer in zip(update, params):
+        for update_layer, param_layer in zip(update, params, strict=False):
             # Add weight decay term: update - λ * params
             regularized_layer = update_layer - decay * param_layer
             regularized_update.append(regularized_layer)
@@ -274,7 +276,7 @@ class FedJSCMAggregator:
     ) -> NDArrays:
         """Update server momentum: m^{(t+1)} = γ * m^{(t)} + update"""
         new_momentum = []
-        for momentum_layer, update_layer in zip(momentum, update):
+        for momentum_layer, update_layer in zip(momentum, update, strict=False):
             new_layer = momentum_coeff * momentum_layer + update_layer
             new_momentum.append(new_layer)
         return new_momentum
@@ -284,7 +286,7 @@ class FedJSCMAggregator:
     ) -> NDArrays:
         """Apply momentum update: w^{(t+1)} = w^{(t)} + η * m^{(t+1)}"""
         updated_params = []
-        for param_layer, momentum_layer in zip(params, momentum):
+        for param_layer, momentum_layer in zip(params, momentum, strict=False):
             new_layer = param_layer + lr * momentum_layer
             updated_params.append(new_layer)
         return updated_params

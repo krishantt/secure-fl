@@ -103,9 +103,6 @@ def server(
     """Start the Secure FL server"""
 
     try:
-        import torch.nn as nn
-        import torch.nn.functional as F
-
         from . import get_default_config
         from .server import SecureFlowerServer, create_server_strategy
 
@@ -148,11 +145,17 @@ def server(
 
         # Define model based on choice using centralized models
         if model == "mnist":
-            model_fn = lambda: MNISTModel()
+
+            def model_fn():
+                return MNISTModel()
         elif model == "cifar10":
-            model_fn = lambda: CIFAR10Model()
+
+            def model_fn():
+                return CIFAR10Model()
         elif model == "simple":
-            model_fn = lambda: SimpleModel(input_dim=784, output_dim=10)
+
+            def model_fn():
+                return SimpleModel(input_dim=784, output_dim=10)
         else:
             raise click.ClickException(
                 f"Unknown model '{model}'. Available: mnist, cifar10, simple"
@@ -191,10 +194,10 @@ def server(
             server.start()
 
     except ImportError as e:
-        raise click.ClickException(f"Missing dependencies: {e}")
+        raise click.ClickException(f"Missing dependencies: {e}") from e
     except Exception as e:
         logger.error(f"Server failed to start: {e}")
-        raise click.ClickException(f"Server error: {e}")
+        raise click.ClickException(f"Server error: {e}") from e
 
 
 @main.command()
@@ -273,11 +276,17 @@ def client(
         if dataset in ["mnist", "synthetic"]:
             if dataset != "custom":
                 if dataset == "mnist":
-                    model_fn = lambda: MNISTModel()
+
+                    def model_fn():
+                        return MNISTModel()
                 elif dataset == "cifar10":
-                    model_fn = lambda: CIFAR10Model()
+
+                    def model_fn():
+                        return CIFAR10Model()
                 else:
-                    model_fn = lambda: SimpleModel()
+
+                    def model_fn():
+                        return SimpleModel()
 
         # Create client
         client = create_client(
@@ -311,14 +320,14 @@ def client(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Connecting to server...", total=None)
+            progress.add_task("Connecting to server...", total=None)
             start_client(client, server_address)
 
     except ImportError as e:
-        raise click.ClickException(f"Missing dependencies: {e}")
+        raise click.ClickException(f"Missing dependencies: {e}") from e
     except Exception as e:
         logger.error(f"Client failed to start: {e}")
-        raise click.ClickException(f"Client error: {e}")
+        raise click.ClickException(f"Client error: {e}") from e
 
 
 @main.command()
@@ -402,7 +411,7 @@ def setup(action: str, force: bool, skip_zkp: bool):
 
     except Exception as e:
         logger.error(f"Setup failed: {e}")
-        raise click.ClickException(f"Setup error: {e}")
+        raise click.ClickException(f"Setup error: {e}") from e
 
 
 @main.command()

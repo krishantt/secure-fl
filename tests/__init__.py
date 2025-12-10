@@ -127,17 +127,17 @@ def check_test_dependencies():
     missing_deps = []
 
     try:
-        import pytest
+        import pytest  # noqa: F401
     except ImportError:
         missing_deps.append("pytest")
 
     try:
-        import torch
+        import torch  # noqa: F401
     except ImportError:
         missing_deps.append("torch")
 
     try:
-        import numpy
+        import numpy  # noqa: F401
     except ImportError:
         missing_deps.append("numpy")
 
@@ -162,7 +162,7 @@ def check_optional_dependencies():
             ["cairo-compile", "--version"], capture_output=True, timeout=5
         )
         deps_status["cairo"] = result.returncode == 0
-    except:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         deps_status["cairo"] = False
 
     try:
@@ -170,7 +170,7 @@ def check_optional_dependencies():
 
         result = subprocess.run(["circom", "--version"], capture_output=True, timeout=5)
         deps_status["circom"] = result.returncode == 0
-    except:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         deps_status["circom"] = False
 
     # GPU availability
@@ -178,12 +178,12 @@ def check_optional_dependencies():
         import torch
 
         deps_status["cuda"] = torch.cuda.is_available()
-    except:
+    except (ImportError, RuntimeError):
         deps_status["cuda"] = False
 
     # Medical datasets
     try:
-        import medmnist
+        import medmnist  # noqa: F401
 
         deps_status["medmnist"] = True
     except ImportError:
@@ -191,7 +191,7 @@ def check_optional_dependencies():
 
     # Blockchain tools
     try:
-        import web3
+        import web3  # noqa: F401
 
         deps_status["web3"] = True
     except ImportError:

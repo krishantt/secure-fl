@@ -132,7 +132,7 @@ class TestFixedPointQuantizer:
         assert len(metadata["zero_points"]) == len(model_parameters)
 
         # Check shapes are preserved
-        for orig, quant in zip(model_parameters, quantized):
+        for orig, quant in zip(model_parameters, quantized, strict=False):
             assert orig.shape == quant.shape
 
     @pytest.mark.unit
@@ -147,7 +147,7 @@ class TestFixedPointQuantizer:
         assert len(dequantized) == len(model_parameters)
 
         # Check shapes are preserved
-        for orig, dequant in zip(model_parameters, dequantized):
+        for orig, dequant in zip(model_parameters, dequantized, strict=False):
             assert orig.shape == dequant.shape
             assert dequant.dtype == np.float32
 
@@ -161,7 +161,7 @@ class TestFixedPointQuantizer:
         dequantized = quantizer.dequantize(quantized, metadata)
 
         # Check round-trip error is reasonable
-        for orig, dequant in zip(model_parameters, dequantized):
+        for orig, dequant in zip(model_parameters, dequantized, strict=False):
             # Allow for quantization error
             relative_error = np.mean(np.abs(orig - dequant) / (np.abs(orig) + 1e-8))
             assert relative_error < 0.1  # Less than 10% relative error on average
@@ -389,7 +389,7 @@ class TestUtilityFunctions:
 
         assert len(dequantized) == len(model_parameters)
 
-        for orig, dequant in zip(model_parameters, dequantized):
+        for orig, dequant in zip(model_parameters, dequantized, strict=False):
             assert orig.shape == dequant.shape
 
     @pytest.mark.unit
@@ -471,7 +471,7 @@ class TestEdgeCases:
         dequantized = quantizer.dequantize(quantized, metadata)
 
         assert len(dequantized) == 3
-        for orig, dequant in zip(mixed_shapes, dequantized):
+        for orig, dequant in zip(mixed_shapes, dequantized, strict=False):
             assert orig.shape == dequant.shape
 
     @pytest.mark.unit
@@ -593,5 +593,5 @@ class TestPerformance:
         assert len(dequantized) == 10
 
         # All shapes should be preserved
-        for orig, dequant in zip(tensors, dequantized):
+        for orig, dequant in zip(tensors, dequantized, strict=False):
             assert orig.shape == dequant.shape

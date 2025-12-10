@@ -97,7 +97,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
                 f"number of provided parameters ({len(parameters)})"
             )
 
-        for param, array in zip(model_params, parameters):
+        for param, array in zip(model_params, parameters, strict=False):
             param.data = torch.tensor(array)
 
     def fit(
@@ -303,7 +303,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
     ) -> NDArrays:
         """Compute parameter update delta = updated - initial"""
         delta = []
-        for init_p, updated_p in zip(initial_params, updated_params):
+        for init_p, updated_p in zip(initial_params, updated_params, strict=False):
             delta.append(updated_p - init_p)
         return delta
 
@@ -328,7 +328,7 @@ class SecureFlowerClient(fl.client.NumPyClient):
         sample_data = []
         sample_count = min(10, dataset_size)
 
-        for i, (data, target) in enumerate(self.train_loader):
+        for i, (data, _target) in enumerate(self.train_loader):
             if i >= sample_count:
                 break
             sample_data.extend(data.flatten().numpy()[:100])  # First 100 elements
@@ -453,13 +453,4 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
 
 # Example usage and testing
 if __name__ == "__main__":
-    # Simple test model
-    # Model moved to secure_fl.models
-
-    config = {"server_round": 1, "local_epochs": 2}
-
-    updated_params, num_examples, metrics = client.fit(initial_params, config)
-
-    print(f"Training completed: {num_examples} examples")
-    print(f"Metrics: {metrics}")
-    print("Client test completed successfully!")
+    print("Use 'python -m secure_fl.cli client' to start a client")

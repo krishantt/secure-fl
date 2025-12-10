@@ -13,7 +13,7 @@ class SimpleModel(nn.Module):
     def __init__(
         self,
         input_dim: int = 784,
-        hidden_dims: list[int] = [128, 64],
+        hidden_dims: list[int] = None,
         output_dim: int = 10,
         dropout_rate: float = 0.1,
         activation: str = "relu",
@@ -28,6 +28,8 @@ class SimpleModel(nn.Module):
             dropout_rate: Dropout probability
             activation: Activation function ('relu', 'tanh', 'gelu')
         """
+        if hidden_dims is None:
+            hidden_dims = [128, 64]
         super().__init__()
 
         self.input_dim = input_dim

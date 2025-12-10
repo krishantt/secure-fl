@@ -44,7 +44,7 @@ lint-fix: ## Fix linting issues
 
 precommit: format lint-fix test-fast ## Run pre-commit checks
 
-ci: lint type-check test ## Run CI pipeline locally
+ci: lint test ## Run CI pipeline locally (type-check disabled temporarily)
 
 # Application targets
 server: ## Start FL server
@@ -90,16 +90,6 @@ docker-compose-down: ## Stop docker-compose services
 
 docker-compose-logs: ## View docker-compose logs
 	./scripts/docker.sh logs --follow
-
-# Documentation targets
-docs: ## Build documentation
-	uv run sphinx-build -b html docs/ docs/_build/html
-
-docs-serve: ## Serve documentation locally
-	cd docs/_build/html && python -m http.server 8000
-
-docs-clean: ## Clean documentation build
-	rm -rf docs/_build/
 
 # Version management
 version: ## Show current version

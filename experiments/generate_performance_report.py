@@ -208,8 +208,8 @@ class PerformanceReportGenerator:
 
         if param_sizes and mean_times:
             # Sort by parameter size
-            sorted_data = sorted(zip(param_sizes, mean_times, std_times))
-            param_sizes, mean_times, std_times = zip(*sorted_data)
+            sorted_data = sorted(zip(param_sizes, mean_times, std_times, strict=False))
+            param_sizes, mean_times, std_times = zip(*sorted_data, strict=False)
 
             ax.errorbar(
                 param_sizes,
@@ -266,7 +266,7 @@ class PerformanceReportGenerator:
             ax.set_yscale("log")
 
             # Add value labels on bars
-            for bar, time in zip(bars, times):
+            for bar, time in zip(bars, times, strict=False):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -326,7 +326,7 @@ class PerformanceReportGenerator:
             ax.set_title("Training Time vs Model Size")
 
             # Add value labels
-            for bar, time in zip(bars, mean_times):
+            for bar, time in zip(bars, mean_times, strict=False):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -373,8 +373,8 @@ class PerformanceReportGenerator:
 
         if num_clients and mean_times:
             # Sort by number of clients
-            sorted_data = sorted(zip(num_clients, mean_times))
-            num_clients, mean_times = zip(*sorted_data)
+            sorted_data = sorted(zip(num_clients, mean_times, strict=False))
+            num_clients, mean_times = zip(*sorted_data, strict=False)
 
             ax.plot(num_clients, mean_times, "o-", linewidth=2, markersize=6)
             ax.set_xlabel("Number of Clients")
@@ -425,7 +425,7 @@ class PerformanceReportGenerator:
             ax.set_yscale("log")
 
             # Add value labels
-            for bar, time in zip(bars, times):
+            for bar, time in zip(bars, times, strict=False):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -491,7 +491,7 @@ class PerformanceReportGenerator:
             ax.set_yscale("log")
 
             # Add value labels
-            for bar, ratio in zip(bars, ratios):
+            for bar, ratio in zip(bars, ratios, strict=False):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -550,8 +550,8 @@ class PerformanceReportGenerator:
 
         if param_sizes:
             # Sort data
-            sorted_data = sorted(zip(param_sizes, mean_times, ops_per_sec))
-            param_sizes, mean_times, ops_per_sec = zip(*sorted_data)
+            sorted_data = sorted(zip(param_sizes, mean_times, ops_per_sec, strict=False))
+            param_sizes, mean_times, ops_per_sec = zip(*sorted_data, strict=False)
 
             # Plot 1: Time vs Parameters (log-log)
             ax1.loglog(param_sizes, mean_times, "o-", linewidth=2, markersize=8)
@@ -734,7 +734,7 @@ class PerformanceReportGenerator:
             ax1.set_title("ZKP Overhead by Operation")
             ax1.set_yscale("log")
 
-            for bar, overhead in zip(bars, overheads):
+            for bar, overhead in zip(bars, overheads, strict=False):
                 height = bar.get_height()
                 ax1.text(
                     bar.get_x() + bar.get_width() / 2.0,

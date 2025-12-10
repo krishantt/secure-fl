@@ -225,7 +225,7 @@ class StabilityMonitor:
         total_change_squared = 0.0
         total_norm_squared = 0.0
 
-        for prev_p, curr_p in zip(prev_params, curr_params):
+        for prev_p, curr_p in zip(prev_params, curr_params, strict=False):
             if prev_p.shape != curr_p.shape:
                 return float("inf")
 

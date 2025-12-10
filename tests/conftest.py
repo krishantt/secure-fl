@@ -276,7 +276,7 @@ def mock_blockchain_verifier():
 def sample_client_updates(model_parameters):
     """Sample client parameter updates"""
     updates = []
-    for i in range(3):  # 3 clients
+    for _i in range(3):  # 3 clients
         client_update = []
         for param in model_parameters:
             # Add some noise to simulate updates
@@ -378,7 +378,7 @@ def assert_parameters_equal(
     """Assert that two parameter lists are equal"""
     assert len(params1) == len(params2), "Parameter lists have different lengths"
 
-    for i, (p1, p2) in enumerate(zip(params1, params2)):
+    for i, (p1, p2) in enumerate(zip(params1, params2, strict=False)):
         assert p1.shape == p2.shape, (
             f"Parameter {i} shapes don't match: {p1.shape} vs {p2.shape}"
         )

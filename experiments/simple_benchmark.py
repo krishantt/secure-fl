@@ -619,7 +619,7 @@ def main():
     benchmark = SimpleBenchmark(benchmark_name=args.benchmark_name)
 
     # Run benchmark
-    results = benchmark.run_benchmark(
+    benchmark.run_benchmark(
         num_clients=args.clients, num_rounds=args.rounds, test_zkp=not args.no_zkp
     )
 

@@ -24,8 +24,8 @@ def test_server_verifies_client_pysnark_proof():
     ]
 
     # Delta from the client's perspective
-    param_delta = [u - o for o, u in zip(old_params, updated_params)]
-    delta_norm = compute_parameter_norm(param_delta, norm_type="l2")
+    param_delta = [u - o for o, u in zip(old_params, updated_params, strict=False)]
+    compute_parameter_norm(param_delta, norm_type="l2")
 
     # --- 2. Client side: generate proof ------------------------------------
     client_pm = ClientProofManager(

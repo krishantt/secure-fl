@@ -80,13 +80,13 @@ def create_overhead_plot(ax):
     ]
     baseline_times = [11.5, 13.2, 14.9]  # ms
     zkp_times = [8734, 35000, 75000]  # ms (estimated for larger models)
-    overhead_ratios = [zkp / base for zkp, base in zip(zkp_times, baseline_times)]
+    overhead_ratios = [zkp / base for zkp, base in zip(zkp_times, baseline_times, strict=False)]
 
     x = np.arange(len(model_sizes))
     width = 0.35
 
     # Create bars
-    bars1 = ax.bar(
+    ax.bar(
         x - width / 2,
         baseline_times,
         width,
@@ -104,7 +104,7 @@ def create_overhead_plot(ax):
     )
 
     # Add overhead ratio annotations
-    for i, (bar, ratio) in enumerate(zip(bars2, overhead_ratios)):
+    for _i, (bar, ratio) in enumerate(zip(bars2, overhead_ratios, strict=False)):
         height = bar.get_height()
         ax.annotate(
             f"{ratio:.0f}x",
@@ -217,13 +217,13 @@ def create_fl_comparison_plot(ax):
     round_times = [45, 26100, 75, 43700, 150, 87400]  # ms
     colors = ["#2E86AB", "#A23B72"] * 3
 
-    bars = ax.bar(configs, round_times, color=colors, alpha=0.8)
+    ax.bar(configs, round_times, color=colors, alpha=0.8)
 
     # Add overhead annotations
     baseline_indices = [0, 2, 4]
     zkp_indices = [1, 3, 5]
 
-    for base_idx, zkp_idx in zip(baseline_indices, zkp_indices):
+    for base_idx, zkp_idx in zip(baseline_indices, zkp_indices, strict=False):
         baseline_time = round_times[base_idx]
         zkp_time = round_times[zkp_idx]
         overhead = zkp_time / baseline_time
@@ -283,7 +283,7 @@ def generate_supplementary_plots():
     )
 
     # Add percentage increase
-    for i, (base, zkp) in enumerate(zip(baseline_memory, zkp_memory)):
+    for i, (base, zkp) in enumerate(zip(baseline_memory, zkp_memory, strict=False)):
         increase = ((zkp - base) / base) * 100
         ax.text(
             i, zkp + 2, f"+{increase:.0f}%", ha="center", va="bottom", fontweight="bold"
@@ -396,7 +396,7 @@ def main():
     generate_supplementary_plots()
 
     # Create performance table
-    df = create_table_data()
+    create_table_data()
 
     print("\n📊 Performance Analysis Summary:")
     print("=" * 50)

@@ -182,14 +182,14 @@ def print_system_info():
     }
 
     try:
-        import torch
+        import torch  # noqa: F401
 
         components["PyTorch"] = True
     except ImportError:
         components["PyTorch"] = False
 
     try:
-        import flwr
+        import flwr  # noqa: F401
 
         components["Flower"] = True
     except ImportError:
@@ -203,19 +203,19 @@ def print_system_info():
             ["cairo-compile", "--version"], capture_output=True, timeout=5
         )
         components["Cairo"] = result.returncode == 0
-    except:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         pass
 
     try:
         result = subprocess.run(["circom", "--version"], capture_output=True, timeout=5)
         components["Circom"] = result.returncode == 0
-    except:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         pass
 
     try:
         result = subprocess.run(["snarkjs", "help"], capture_output=True, timeout=5)
         components["SnarkJS"] = result.returncode == 0
-    except:
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
         pass
 
     print("Component Status:")

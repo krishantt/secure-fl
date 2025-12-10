@@ -584,7 +584,6 @@ class DatasetManager:
         total_samples = 4000
         samples_per_client = total_samples // num_clients
         input_dim = 50  # Financial features
-        num_classes = 2  # Normal, Fraud
 
         client_loaders = []
 
@@ -1252,7 +1251,7 @@ class MultiDatasetBenchmarkRunner:
             )
 
             # Add value labels with better formatting
-            for bar, acc in zip(bars, final_accuracies):
+            for bar, acc in zip(bars, final_accuracies, strict=False):
                 height = bar.get_height()
                 ax.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -1311,7 +1310,7 @@ class MultiDatasetBenchmarkRunner:
         rigor_levels = []
 
         for dataset, configs in results.items():
-            for config_name, result in configs.items():
+            for _config_name, result in configs.items():
                 if "error" not in result and result.get("config", {}).get(
                     "enable_zkp", False
                 ):
@@ -1326,10 +1325,14 @@ class MultiDatasetBenchmarkRunner:
 
         for rigor in ["low", "medium", "high"]:
             rigor_times = [
-                pt for pt, rl in zip(proof_times, rigor_levels) if rl == rigor
+                pt
+                for pt, rl in zip(proof_times, rigor_levels, strict=False)
+                if rl == rigor
             ]
             rigor_datasets = [
-                ds for ds, rl in zip(datasets, rigor_levels) if rl == rigor
+                ds
+                for ds, rl in zip(datasets, rigor_levels, strict=False)
+                if rl == rigor
             ]
 
             if rigor_times:
@@ -1355,7 +1358,7 @@ class MultiDatasetBenchmarkRunner:
             baseline_comm = None
             zkp_comm = None
 
-            for config_name, result in configs.items():
+            for _config_name, result in configs.items():
                 if "error" not in result:
                     avg_comm = np.mean(result.get("communication_overhead", [0]))
 
@@ -1378,7 +1381,7 @@ class MultiDatasetBenchmarkRunner:
                 edgecolor="black",
             )
 
-            for bar, overhead in zip(bars, overhead_data):
+            for bar, overhead in zip(bars, overhead_data, strict=False):
                 height = bar.get_height()
                 ax2.text(
                     bar.get_x() + bar.get_width() / 2.0,
@@ -1536,7 +1539,7 @@ class MultiDatasetBenchmarkRunner:
         }
 
         for i, (dataset, acc, complexity) in enumerate(
-            zip(datasets, accuracies, complexity_scores)
+            zip(datasets, accuracies, complexity_scores, strict=False)
         ):
             ax1.scatter(
                 complexity,
@@ -1561,11 +1564,11 @@ class MultiDatasetBenchmarkRunner:
         ax1.grid(True, alpha=0.3)
 
         # Plot 2: Training time vs accuracy
-        for i, (dataset, acc, time) in enumerate(
-            zip(datasets, accuracies, training_times)
+        for i, (dataset, acc, training_time) in enumerate(
+            zip(datasets, accuracies, training_times, strict=False)
         ):
             ax2.scatter(
-                time,
+                training_time,
                 acc,
                 label=dataset.upper(),
                 color=dataset_colors.get(dataset, "#666666"),
@@ -1622,8 +1625,8 @@ class MultiDatasetBenchmarkRunner:
         )
 
         # Extract train and test datasets from federated data
-        train_datasets = [client_data[0].dataset for client_data in federated_data]
-        test_datasets = (
+        [client_data[0].dataset for client_data in federated_data]
+        (
             [client_data[1].dataset for client_data in federated_data]
             if federated_data[0][1]
             else None
@@ -1634,7 +1637,7 @@ class MultiDatasetBenchmarkRunner:
         print(f"✅ Loaded federated data for {num_clients} clients")
 
         # Create server strategy
-        strategy = create_server_strategy(
+        create_server_strategy(
             model_fn=model_fn,
             momentum=0.9,
             learning_rate=0.01,
@@ -1766,7 +1769,9 @@ class MultiDatasetBenchmarkRunner:
                 test_model = model_fn()
 
                 # Set global parameters
-                for param, array in zip(test_model.parameters(), global_params):
+                for param, array in zip(
+                    test_model.parameters(), global_params, strict=False
+                ):
                     param.data = torch.tensor(array, dtype=param.dtype)
 
                 test_model.eval()
@@ -1860,7 +1865,7 @@ class MultiDatasetBenchmarkRunner:
 
         all_results = []
 
-        dataset_manager = DatasetManager()
+        DatasetManager()
 
         for dataset in datasets:
             model_name = dataset  # Assuming dataset name matches model name

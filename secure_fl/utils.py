@@ -31,7 +31,7 @@ def parameters_to_ndarrays(parameters: Parameters) -> NDArrays:
     """
     return [
         np.frombuffer(tensor, dtype=np.float32).reshape(shape)
-        for tensor, shape in zip(parameters.tensors, parameters.tensor_type)
+        for tensor, shape in zip(parameters.tensors, parameters.tensor_type, strict=False)
     ]
 
 
@@ -82,7 +82,7 @@ def ndarrays_to_torch(model: torch.nn.Module, ndarrays: NDArrays) -> None:
             f"number of arrays ({len(ndarrays)})"
         )
 
-    for param, array in zip(params, ndarrays):
+    for param, array in zip(params, ndarrays, strict=False):
         # Make array writable to avoid PyTorch warning
         if not array.flags.writeable:
             array = array.copy()
@@ -132,7 +132,7 @@ def compute_parameter_diff(params1: NDArrays, params2: NDArrays) -> float:
         raise ValueError("Parameter lists must have same length")
 
     diff_norm = 0.0
-    for p1, p2 in zip(params1, params2):
+    for p1, p2 in zip(params1, params2, strict=False):
         if p1.shape != p2.shape:
             raise ValueError("Parameter shapes must match")
         diff_norm += np.sum((p1 - p2) ** 2)

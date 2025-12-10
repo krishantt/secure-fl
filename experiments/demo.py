@@ -121,7 +121,7 @@ def simulate_federated_round(
         criterion = nn.CrossEntropyLoss()
 
         local_model.train()
-        for epoch in range(local_epochs):
+        for _epoch in range(local_epochs):
             for batch_x, batch_y in train_loader:
                 optimizer.zero_grad()
                 outputs = local_model(batch_x)
@@ -167,7 +167,7 @@ def simulate_federated_round(
         aggregated_state[key] = torch.zeros_like(global_model.state_dict()[key])
 
     # Weighted aggregation
-    for client_model, weight in zip(client_models, client_weights):
+    for client_model, weight in zip(client_models, client_weights, strict=False):
         client_state = client_model.state_dict()
         weight_ratio = weight / total_samples
 
@@ -276,7 +276,7 @@ def run_quick_demo() -> bool:
             f.write(f"  Rounds: {num_rounds}\n")
             f.write(f"  Local epochs: {local_epochs}\n\n")
             f.write("Training History:\n")
-            for i, (acc, loss) in enumerate(zip(history["accuracy"], history["loss"])):
+            for i, (acc, loss) in enumerate(zip(history["accuracy"], history["loss"], strict=False)):
                 f.write(f"  Round {i + 1}: Acc={acc:.3f}, Loss={loss:.3f}\n")
 
         print("✓ Metrics saved to:", metrics_path)

@@ -25,8 +25,6 @@ class SecureFLSetup:
         self.arch = platform.machine().lower()
 
         # Check Python version
-        if sys.version_info < (3, 8):
-            raise RuntimeError("Python 3.8 or higher is required")
 
         logger.info(
             f"Secure FL Setup - System: {self.system}, Python: {self.python_version}, Arch: {self.arch}"
@@ -54,7 +52,7 @@ class SecureFLSetup:
             disk_space = shutil.disk_usage(self.root_dir).free / (1024**3)
             checks["disk_space"] = disk_space >= 2
             checks["disk_space_gb"] = disk_space
-        except:
+        except (OSError, shutil.Error):
             checks["disk_space"] = None
 
         # Node.js (for ZKP tools)
@@ -66,7 +64,7 @@ class SecureFLSetup:
                 )
                 if result.returncode == 0:
                     checks["nodejs_version"] = result.stdout.strip()
-            except:
+            except (subprocess.SubprocessError, OSError):
                 checks["nodejs_version"] = "unknown"
 
         # npm
@@ -403,16 +401,22 @@ monitoring:
                 __import__(module)
                 logger.debug(f"✓ {module}")
             except ImportError as e:
-                raise ImportError(f"Failed to import {module}: {e}")
+                raise ImportError(f"Failed to import {module}: {e}") from e
 
     def _test_basic_functionality(self) -> None:
         """Test basic framework functionality"""
         try:
-            import torch
-            import torch.nn as nn
+            import torch  # noqa: F401
+            import torch.nn as nn  # noqa: F401
 
-            from secure_fl import create_server_strategy, get_default_config
-            from secure_fl.utils import ndarrays_to_torch, torch_to_ndarrays
+            from secure_fl import (  # noqa: F401
+                create_server_strategy,
+                get_default_config,
+            )
+            from secure_fl.utils import (  # noqa: F401
+                ndarrays_to_torch,
+                torch_to_ndarrays,
+            )
 
             # Test config loading
             config = get_default_config()

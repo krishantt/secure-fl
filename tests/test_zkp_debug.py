@@ -49,7 +49,7 @@ def test_pysnark_basic():
     except Exception as e:
         logger.error(f"❌ Basic PySNARK failed: {e}")
         traceback.print_exc()
-        assert False, f"Basic PySNARK failed: {e}"
+        raise AssertionError(f"Basic PySNARK failed: {e}") from e
 
 
 def test_pysnark_circuit_import():
@@ -77,7 +77,7 @@ def test_pysnark_circuit_import():
         except Exception as e2:
             logger.error(f"❌ Circuit import fallback failed: {e2}")
             traceback.print_exc()
-            assert False, f"Circuit import failed: {e2}"
+            raise AssertionError(f"Circuit import failed: {e2}") from e2
 
 
 def test_simple_proof_generation():
@@ -108,7 +108,7 @@ def test_simple_proof_generation():
     except Exception as e:
         logger.error(f"❌ Simple proof generation failed: {e}")
         traceback.print_exc()
-        assert False, f"Simple proof generation failed: {e}"
+        raise AssertionError(f"Simple proof generation failed: {e}") from e
 
 
 def test_larger_proof_generation():
@@ -144,7 +144,7 @@ def test_larger_proof_generation():
     except Exception as e:
         logger.error(f"❌ Larger proof generation failed: {e}")
         traceback.print_exc()
-        assert False, f"Larger proof generation failed: {e}"
+        raise AssertionError(f"Larger proof generation failed: {e}") from e
 
 
 def test_client_proof_integration():
@@ -213,7 +213,7 @@ def test_client_proof_integration():
     except Exception as e:
         logger.error(f"❌ Client proof integration failed: {e}")
         traceback.print_exc()
-        assert False, f"Client proof integration failed: {e}"
+        raise AssertionError(f"Client proof integration failed: {e}") from e
 
 
 def test_proof_generation_scaling():
@@ -285,7 +285,7 @@ def test_proof_generation_scaling():
     except Exception as e:
         logger.error(f"❌ Scaling test failed: {e}")
         traceback.print_exc()
-        assert False, f"Scaling test failed: {e}"
+        raise AssertionError(f"Scaling test failed: {e}") from e
 
 
 def debug_circuit_execution():
@@ -306,7 +306,6 @@ def debug_circuit_execution():
 
         # Create test data
         logger.info("Step 3: Create test vectors")
-        size = 5  # Very small for debugging
         initial = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float32)
         updated = np.array([1.1, 2.1, 3.1, 4.1, 5.1], dtype=np.float32)
 

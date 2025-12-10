@@ -247,8 +247,8 @@ class FederatedDataLoader:
         """Load MNIST dataset."""
         try:
             from torchvision import datasets, transforms
-        except ImportError:
-            raise ImportError("torchvision is required for MNIST dataset")
+        except ImportError as e:
+            raise ImportError("torchvision is required for MNIST dataset") from e
 
         transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
@@ -267,8 +267,8 @@ class FederatedDataLoader:
         """Load CIFAR-10 dataset."""
         try:
             from torchvision import datasets, transforms
-        except ImportError:
-            raise ImportError("torchvision is required for CIFAR-10 dataset")
+        except ImportError as e:
+            raise ImportError("torchvision is required for CIFAR-10 dataset") from e
 
         transform = transforms.Compose(
             [
@@ -290,10 +290,10 @@ class FederatedDataLoader:
         """Load MedMNIST dataset."""
         try:
             import medmnist
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "medmnist is required for MedMNIST dataset. Install with: pip install medmnist"
-            )
+            ) from e
 
         # Use PathMNIST as default MedMNIST dataset
         DataClass = medmnist.PathMNIST

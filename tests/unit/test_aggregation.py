@@ -85,7 +85,7 @@ class TestFedJSCMAggregator:
 
         # Check result structure
         assert len(result) == len(model_parameters)
-        for param, result_param in zip(model_parameters, result):
+        for param, result_param in zip(model_parameters, result, strict=False):
             assert param.shape == result_param.shape
             assert result_param.dtype == np.float32
 
@@ -127,11 +127,11 @@ class TestFedJSCMAggregator:
         )
 
         # Check momentum was updated
-        for m1, m2 in zip(momentum_after_first, aggregator.server_momentum):
+        for m1, m2 in zip(momentum_after_first, aggregator.server_momentum, strict=False):
             assert not np.array_equal(m1, m2)
 
         # Check results are different
-        for r1, r2 in zip(result1, result2):
+        for r1, r2 in zip(result1, result2, strict=False):
             # Should be different due to momentum and different updates
             assert not np.allclose(r1, r2, rtol=1e-6)
 
@@ -160,11 +160,11 @@ class TestFedJSCMAggregator:
             expected_weighted_avg.append(weighted_sum)
 
         # First momentum should equal weighted average
-        for expected, actual in zip(expected_weighted_avg, aggregator.server_momentum):
+        for expected, actual in zip(expected_weighted_avg, aggregator.server_momentum, strict=False):
             assert np.allclose(expected, actual, rtol=1e-6)
 
         # Second round
-        result2 = aggregator.aggregate(
+        aggregator.aggregate(
             client_updates=sample_client_updates,
             client_weights=client_weights,
             server_round=2,
@@ -174,7 +174,7 @@ class TestFedJSCMAggregator:
         # Manually compute expected momentum update
         # m^{(t+1)} = γ × m^{(t)} + (1-γ) × weighted_avg
         for param_idx in range(len(expected_weighted_avg)):
-            expected_momentum = (
+            (
                 momentum_coeff * expected_weighted_avg[param_idx]
                 + (1 - momentum_coeff) * expected_weighted_avg[param_idx]
             )
@@ -202,7 +202,7 @@ class TestFedJSCMAggregator:
                 weighted_sum += weight * sample_client_updates[client_idx][param_idx]
             expected.append(weighted_sum)
 
-        for exp, res in zip(expected, result):
+        for exp, res in zip(expected, result, strict=False):
             assert np.allclose(exp, res, rtol=1e-6)
 
     @pytest.mark.unit
@@ -221,7 +221,7 @@ class TestFedJSCMAggregator:
         )
 
         # With single client, result should equal client update
-        for orig, res in zip(model_parameters, result):
+        for orig, res in zip(model_parameters, result, strict=False):
             assert np.allclose(orig, res, rtol=1e-6)
 
     @pytest.mark.unit
@@ -247,7 +247,7 @@ class TestFedJSCMAggregator:
                 param_sum += client_update[param_idx]
             expected.append(param_sum / num_clients)
 
-        for exp, res in zip(expected, result):
+        for exp, res in zip(expected, result, strict=False):
             assert np.allclose(exp, res, rtol=1e-6)
 
     @pytest.mark.unit
@@ -265,7 +265,7 @@ class TestFedJSCMAggregator:
         )
 
         # With weight decay, parameters should be smaller in magnitude
-        for orig, res in zip(model_parameters, result):
+        for orig, res in zip(model_parameters, result, strict=False):
             # The exact comparison depends on implementation details
             assert res.shape == orig.shape
 
@@ -286,7 +286,7 @@ class TestFedJSCMAggregator:
                 stable_update.append(param + noise.astype(param.dtype))
             stable_updates.append(stable_update)
 
-        result = aggregator.aggregate(
+        aggregator.aggregate(
             client_updates=stable_updates,
             client_weights=client_weights,
             server_round=1,
@@ -314,7 +314,7 @@ class TestFedJSCMAggregator:
                 unstable_update.append(param + noise.astype(param.dtype))
             unstable_updates.append(unstable_update)
 
-        result = aggregator.aggregate(
+        aggregator.aggregate(
             client_updates=unstable_updates,
             client_weights=client_weights,
             server_round=1,
@@ -545,7 +545,7 @@ class TestFedJSCMAggregator:
 
         # Run aggregation multiple times
         for i in range(10):
-            result = aggregator.aggregate(
+            aggregator.aggregate(
                 client_updates=sample_client_updates,
                 client_weights=client_weights,
                 server_round=i + 1,

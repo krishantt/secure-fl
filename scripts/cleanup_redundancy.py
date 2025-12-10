@@ -455,26 +455,21 @@ class CodeCleanup:
                 continue
 
             self.files_processed += 1
-            file_changed = False
 
             # Update imports
             if self.update_imports_in_file(py_file):
-                file_changed = True
                 self.changes_made += 1
 
             # Remove duplicate functions
             if self.remove_duplicate_functions(py_file):
-                file_changed = True
                 self.changes_made += 1
 
             # Clean up unused imports
             if self.cleanup_unused_imports(py_file):
-                file_changed = True
                 self.changes_made += 1
 
             # Fix formatting
             if self.fix_inconsistent_formatting(py_file):
-                file_changed = True
                 self.changes_made += 1
 
         # 3. Consolidate constants

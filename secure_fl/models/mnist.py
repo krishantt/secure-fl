@@ -12,7 +12,7 @@ class MNISTModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dims: list[int] = [128, 64],
+        hidden_dims: list[int] = None,
         output_dim: int = 10,
         dropout_rate: float = 0.2,
         use_batch_norm: bool = True,
@@ -26,6 +26,8 @@ class MNISTModel(nn.Module):
             dropout_rate: Dropout probability
             use_batch_norm: Whether to use batch normalization
         """
+        if hidden_dims is None:
+            hidden_dims = [128, 64]
         super().__init__()
 
         self.flatten = nn.Flatten()
@@ -35,7 +37,7 @@ class MNISTModel(nn.Module):
         layers = []
         prev_dim = 28 * 28  # MNIST image size
 
-        for i, hidden_dim in enumerate(hidden_dims):
+        for _i, hidden_dim in enumerate(hidden_dims):
             layers.append(nn.Linear(prev_dim, hidden_dim))
 
             if use_batch_norm:

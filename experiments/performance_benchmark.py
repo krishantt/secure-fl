@@ -134,14 +134,22 @@ class SecureFlBenchmark:
 
     def run_comprehensive_benchmark(
         self,
-        datasets: list[str] = ["mnist"],
-        num_clients_list: list[int] = [3, 5, 10],
+        datasets: list[str] = None,
+        num_clients_list: list[int] = None,
         num_rounds: int = 10,
-        zkp_configs: list[bool] = [False, True],
-        rigor_levels: list[str] = ["low", "medium", "high"],
+        zkp_configs: list[bool] = None,
+        rigor_levels: list[str] = None,
     ) -> dict[str, Any]:
         """Run comprehensive benchmark across multiple configurations"""
 
+        if rigor_levels is None:
+            rigor_levels = ["low", "medium", "high"]
+        if zkp_configs is None:
+            zkp_configs = [False, True]
+        if num_clients_list is None:
+            num_clients_list = [3, 5, 10]
+        if datasets is None:
+            datasets = ["mnist"]
         logger.info("🚀 Starting Comprehensive Secure FL Benchmark")
         logger.info(f"Datasets: {datasets}")
         logger.info(f"Client counts: {num_clients_list}")
@@ -210,7 +218,7 @@ class SecureFlBenchmark:
 
         # Initialize aggregator and proof managers
         aggregator = FedJSCMAggregator(momentum=0.9, learning_rate=0.01)
-        client_proof_manager = ClientProofManager() if enable_zkp else None
+        ClientProofManager() if enable_zkp else None
         server_proof_manager = ServerProofManager() if enable_zkp else None
 
         # Results storage
@@ -352,7 +360,7 @@ class SecureFlBenchmark:
             if enable_zkp and server_proof_manager:
                 self.profiler.start_timer("server_proof")
                 try:
-                    server_proof = server_proof_manager.generate_server_proof(
+                    server_proof_manager.generate_server_proof(
                         client_updates=client_updates,
                         client_weights=normalized_weights,
                         aggregated_params=aggregated_params,
@@ -517,7 +525,7 @@ class SecureFlBenchmark:
             return
 
         # Create figure with subplots
-        fig = plt.figure(figsize=(20, 16))
+        plt.figure(figsize=(20, 16))
 
         # 1. ZKP Overhead Comparison
         ax1 = plt.subplot(3, 3, 1)
@@ -614,8 +622,8 @@ class SecureFlBenchmark:
             .reset_index()
         )
 
-        zkp_enabled = zkp_comparison[zkp_comparison["enable_zkp"] == True]
-        zkp_disabled = zkp_comparison[zkp_comparison["enable_zkp"] == False]
+        zkp_enabled = zkp_comparison[zkp_comparison["enable_zkp"]]
+        zkp_disabled = zkp_comparison[not zkp_comparison["enable_zkp"]]
 
         if not zkp_enabled.empty:
             ax.bar(
@@ -647,7 +655,7 @@ class SecureFlBenchmark:
             ax.set_title("Client Proof Generation Time")
             return
 
-        zkp_data = df[df["enable_zkp"] == True]
+        zkp_data = df[df["enable_zkp"]]
         if zkp_data.empty:
             ax.text(0.5, 0.5, "No ZKP data available", ha="center", va="center")
             ax.set_title("Client Proof Generation Time")
@@ -711,8 +719,8 @@ class SecureFlBenchmark:
             .reset_index()
         )
 
-        zkp_enabled = scalability[scalability["enable_zkp"] == True]
-        zkp_disabled = scalability[scalability["enable_zkp"] == False]
+        zkp_enabled = scalability[scalability["enable_zkp"]]
+        zkp_disabled = scalability[not scalability["enable_zkp"]]
 
         if not zkp_enabled.empty:
             ax.plot(
@@ -746,7 +754,7 @@ class SecureFlBenchmark:
             ax.set_title("Training vs Proof Time")
             return
 
-        zkp_data = df[df["enable_zkp"] == True]
+        zkp_data = df[df["enable_zkp"]]
         if zkp_data.empty or "pure_training_time" not in zkp_data.columns:
             ax.text(0.5, 0.5, "No ZKP correlation data", ha="center", va="center")
             ax.set_title("Training vs Proof Time")
@@ -805,7 +813,7 @@ class SecureFlBenchmark:
             return
 
         df_overhead = pd.DataFrame(overhead_ratios)
-        zkp_data = df_overhead[df_overhead["enable_zkp"] == True]
+        zkp_data = df_overhead[df_overhead["enable_zkp"]]
 
         if not zkp_data.empty:
             sns.barplot(data=zkp_data, x="num_clients", y="overhead_ratio", ax=ax)
@@ -926,8 +934,8 @@ class SecureFlBenchmark:
 
         plt.subplot(2, 2, 1)
         if not df_rounds.empty:
-            zkp_data = df_rounds[df_rounds["enable_zkp"] == True]
-            no_zkp_data = df_rounds[df_rounds["enable_zkp"] == False]
+            zkp_data = df_rounds[df_rounds["enable_zkp"]]
+            no_zkp_data = df_rounds[not df_rounds["enable_zkp"]]
 
             if not zkp_data.empty and not no_zkp_data.empty:
                 x = zkp_data.groupby("num_clients")["total_proof_overhead"].mean()
@@ -953,7 +961,7 @@ class SecureFlBenchmark:
         plt.subplot(2, 2, 2)
         # Proof generation efficiency
         if not df_clients.empty:
-            zkp_clients = df_clients[df_clients["enable_zkp"] == True]
+            zkp_clients = df_clients[df_clients["enable_zkp"]]
             if not zkp_clients.empty and "proof_generation_time" in zkp_clients.columns:
                 efficiency = (
                     zkp_clients.groupby(["num_clients", "round"])
@@ -992,8 +1000,8 @@ class SecureFlBenchmark:
                 .reset_index()
             )
 
-            zkp_server = server_perf[server_perf["enable_zkp"] == True]
-            no_zkp_server = server_perf[server_perf["enable_zkp"] == False]
+            zkp_server = server_perf[server_perf["enable_zkp"]]
+            no_zkp_server = server_perf[not server_perf["enable_zkp"]]
 
             if not zkp_server.empty:
                 plt.plot(
@@ -1040,8 +1048,8 @@ class SecureFlBenchmark:
                 + cost_analysis["avg_training_time"]
             )
 
-            zkp_cost = cost_analysis[cost_analysis["enable_zkp"] == True]
-            no_zkp_cost = cost_analysis[cost_analysis["enable_zkp"] == False]
+            zkp_cost = cost_analysis[cost_analysis["enable_zkp"]]
+            no_zkp_cost = cost_analysis[not cost_analysis["enable_zkp"]]
 
             if not zkp_cost.empty:
                 plt.bar(
@@ -1183,7 +1191,7 @@ def main():
     zkp_configs = [False] if args.no_zkp else [False, True]
 
     # Run benchmark
-    results = benchmark.run_comprehensive_benchmark(
+    benchmark.run_comprehensive_benchmark(
         datasets=args.datasets,
         num_clients_list=args.clients,
         num_rounds=args.rounds,

@@ -27,7 +27,7 @@ def test_server_verifies_valid_client_proof():
     cpm = ClientProofManager(max_update_norm=10, use_pysnark=True)
 
     updated = [p + 0.01 for p in initial_params]
-    delta = [u - i for u, i in zip(updated, initial_params)]
+    delta = [u - i for u, i in zip(updated, initial_params, strict=False)]
 
     proof_json = cpm.generate_training_proof(
         {

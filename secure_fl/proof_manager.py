@@ -458,7 +458,7 @@ class ServerProofManager(ProofManagerBase):
             self._create_aggregation_circuit(str(circom_file))
 
             r1cs = build_dir / "aggregation.r1cs"
-            wasm = build_dir / "aggregation.wasm"
+            build_dir / "aggregation.wasm"
             zkey = build_dir / "aggregation.zkey"
             vkey = build_dir / "verification_key.json"
 
@@ -544,7 +544,7 @@ class ServerProofManager(ProofManagerBase):
                 return False
 
             delta = []
-            for old_layer, new_layer in zip(old_global_params, new_params):
+            for old_layer, new_layer in zip(old_global_params, new_params, strict=False):
                 if old_layer.shape != new_layer.shape:
                     logger.warning("Parameter shape mismatch for client proof")
                     return False
@@ -665,13 +665,13 @@ class ServerProofManager(ProofManagerBase):
 
         client_updates = inputs["client_updates"]
         client_weights = inputs["client_weights"]
-        aggregated_params = inputs["aggregated_params"]
+        inputs["aggregated_params"]
         old_momentum = inputs["momentum"]
         momentum_coeff = inputs["momentum_coeff"]
 
         # Each parameter vector has size 5 (per your circuit: FedJSCMAggregation(2,5))
         param_size = 5
-        n_clients = len(client_updates)
+        len(client_updates)
 
         def flatten(arrs):
             """Flatten list of NDArrays into a fixed-length (param_size) list."""

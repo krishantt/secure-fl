@@ -21,9 +21,7 @@ Usage:
     simple_model = SimpleModel(input_dim=784, output_dim=10)
 """
 
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from secure_fl.models.cifar10 import CIFAR10Model
 from secure_fl.models.flexible_mlp import FlexibleMLP

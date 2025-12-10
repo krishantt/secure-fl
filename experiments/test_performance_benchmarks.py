@@ -135,7 +135,7 @@ class TestProofManagerBenchmarks:
 
             # Compute aggregated parameters
             aggregated_params = [np.zeros(param_size, dtype=np.float32)]
-            for client_update, weight in zip(client_updates, client_weights):
+            for client_update, weight in zip(client_updates, client_weights, strict=False):
                 aggregated_params[0] += weight * client_update[0]
 
             momentum = [np.random.randn(param_size).astype(np.float32) * 0.001]

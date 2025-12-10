@@ -22,7 +22,7 @@ def main():
     ]
 
     # Compute delta to avoid rounding mismatch
-    delta = [new - old for new, old in zip(new_params, old_params)]
+    delta = [new - old for new, old in zip(new_params, old_params, strict=False)]
 
     # Client Proof Manager
     cpm = ClientProofManager(max_update_norm=10.0)

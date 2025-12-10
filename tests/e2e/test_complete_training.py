@@ -49,7 +49,8 @@ class TestCompleteTrainingWorkflow:
         datasets = self._create_heterogeneous_datasets(num_clients, 500)
 
         # Create model function
-        model_fn = lambda: SimpleModel(input_dim=20, hidden_dims=[64, 32], output_dim=2)
+        def model_fn():
+            return SimpleModel(input_dim=20, hidden_dims=[64, 32], output_dim=2)
 
         # Create server strategy
         strategy = create_server_strategy(
@@ -175,7 +176,8 @@ class TestCompleteTrainingWorkflow:
         num_rounds = 3
 
         datasets = self._create_heterogeneous_datasets(num_clients, 200, input_dim=20)
-        model_fn = lambda: SimpleModel(input_dim=20, output_dim=2)
+        def model_fn():
+            return SimpleModel(input_dim=20, output_dim=2)
 
         strategy = create_server_strategy(
             model_fn=model_fn,
@@ -245,7 +247,8 @@ class TestCompleteTrainingWorkflow:
         num_rounds = 4
 
         datasets = self._create_heterogeneous_datasets(num_clients, 300, input_dim=20)
-        model_fn = lambda: SimpleModel(input_dim=20, output_dim=3)
+        def model_fn():
+            return SimpleModel(input_dim=20, output_dim=3)
 
         strategy = create_server_strategy(
             model_fn=model_fn,
@@ -400,7 +403,8 @@ class TestCompleteTrainingWorkflow:
             datasets = self._create_heterogeneous_datasets(
                 num_clients, 100, input_dim=20
             )
-            model_fn = lambda: SimpleModel(input_dim=20, output_dim=2)
+            def model_fn():
+                return SimpleModel(input_dim=20, output_dim=2)
 
             strategy = create_server_strategy(
                 model_fn=model_fn,
@@ -488,9 +492,10 @@ class TestCompleteTrainingWorkflow:
         datasets = self._create_heterogeneous_datasets(
             num_clients, samples_per_client, input_dim=50
         )
-        model_fn = lambda: SimpleModel(
-            input_dim=50, hidden_dims=[128, 64, 32], output_dim=5
-        )
+        def model_fn():
+            return SimpleModel(
+                    input_dim=50, hidden_dims=[128, 64, 32], output_dim=5
+                )
 
         strategy = create_server_strategy(
             model_fn=model_fn,
@@ -660,8 +665,8 @@ class TestCompleteTrainingWorkflow:
             correct = 0
             total = 0
 
-            for epoch in range(local_epochs):
-                for batch_idx, (data, target) in enumerate(client.train_loader):
+            for _epoch in range(local_epochs):
+                for _batch_idx, (data, target) in enumerate(client.train_loader):
                     optimizer.zero_grad()
                     output = client.model(data)
                     loss = criterion(output, target)
@@ -718,7 +723,8 @@ class TestErrorHandlingAndRecovery:
     @pytest.mark.e2e
     def test_malformed_client_updates(self):
         """Test handling of malformed client updates"""
-        model_fn = lambda: SimpleModel(input_dim=10, output_dim=2)
+        def model_fn():
+            return SimpleModel(input_dim=10, output_dim=2)
 
         strategy = create_server_strategy(
             model_fn=model_fn,
@@ -767,7 +773,8 @@ class TestErrorHandlingAndRecovery:
     @pytest.mark.e2e
     def test_network_timeout_simulation(self):
         """Test handling of network timeouts and delays"""
-        model_fn = lambda: SimpleModel(input_dim=5, output_dim=2)
+        def model_fn():
+            return SimpleModel(input_dim=5, output_dim=2)
         datasets = [TensorDataset(torch.randn(50, 5), torch.randint(0, 2, (50,)))]
 
         client = create_client(

@@ -16,7 +16,7 @@ def main():
     ]
 
     # Compute delta
-    delta = [u - i for u, i in zip(updated, initial)]
+    delta = [u - i for u, i in zip(updated, initial, strict=False)]
 
     # Create proof manager with PySNARK enabled
     cpm = ClientProofManager(

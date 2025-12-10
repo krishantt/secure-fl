@@ -75,24 +75,27 @@ def check_package_import():
 
     try:
         # Test main package import
-        import secure_fl
+        import secure_fl  # noqa: F401
 
         logger.info("✓ secure_fl package imports successfully")
 
         # Test key components
-        from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel
+        from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel  # noqa: F401
 
         logger.info("✓ Model imports working")
 
-        from secure_fl.server import SecureFlowerServer, SecureFlowerStrategy
+        from secure_fl.server import (  # noqa: F401
+            SecureFlowerServer,
+            SecureFlowerStrategy,
+        )
 
         logger.info("✓ Server imports working")
 
-        from secure_fl.client import SecureFlowerClient
+        from secure_fl.client import SecureFlowerClient  # noqa: F401
 
         logger.info("✓ Client imports working")
 
-        from secure_fl.aggregation import FedJSCMAggregator
+        from secure_fl.aggregation import FedJSCMAggregator  # noqa: F401
 
         logger.info("✓ Aggregation imports working")
 

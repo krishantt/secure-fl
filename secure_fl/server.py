@@ -145,7 +145,7 @@ class SecureFlowerStrategy(Strategy):
         client_updates = []
         client_weights = []
 
-        for client, fit_res in verified_results:
+        for _client, fit_res in verified_results:
             # Convert parameters to numpy arrays
             client_params = parameters_to_ndarrays(fit_res.parameters)
             client_updates.append(client_params)

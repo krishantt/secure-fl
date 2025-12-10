@@ -542,7 +542,7 @@ class ConfigManager:
             "experiment": ExperimentConfig,
         }
 
-        for component_name, component_class in components.items():
+        for component_name, _component_class in components.items():
             if component_name in config_dict:
                 component_dict = config_dict[component_name]
                 component_config = getattr(config, component_name)
