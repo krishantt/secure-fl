@@ -544,7 +544,9 @@ class ServerProofManager(ProofManagerBase):
                 return False
 
             delta = []
-            for old_layer, new_layer in zip(old_global_params, new_params, strict=False):
+            for old_layer, new_layer in zip(
+                old_global_params, new_params, strict=False
+            ):
                 if old_layer.shape != new_layer.shape:
                     logger.warning("Parameter shape mismatch for client proof")
                     return False

@@ -69,7 +69,9 @@ class TestParameterConversion:
         assert isinstance(ndarrays, list)
         assert len(ndarrays) == len(list(simple_model.parameters()))
 
-        for _i, (param, array) in enumerate(zip(simple_model.parameters(), ndarrays, strict=False)):
+        for _i, (param, array) in enumerate(
+            zip(simple_model.parameters(), ndarrays, strict=False)
+        ):
             assert isinstance(array, np.ndarray)
             assert param.shape == array.shape
             assert np.allclose(param.detach().numpy(), array, rtol=1e-6)

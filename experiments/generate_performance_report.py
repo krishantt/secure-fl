@@ -550,7 +550,9 @@ class PerformanceReportGenerator:
 
         if param_sizes:
             # Sort data
-            sorted_data = sorted(zip(param_sizes, mean_times, ops_per_sec, strict=False))
+            sorted_data = sorted(
+                zip(param_sizes, mean_times, ops_per_sec, strict=False)
+            )
             param_sizes, mean_times, ops_per_sec = zip(*sorted_data, strict=False)
 
             # Plot 1: Time vs Parameters (log-log)

@@ -211,7 +211,9 @@ class EnhancedServerProofManager(ServerProofManager):
             aggregation_correct = True
             max_error = 0.0
 
-            for expected, actual in zip(expected_aggregation, aggregated_params, strict=False):
+            for expected, actual in zip(
+                expected_aggregation, aggregated_params, strict=False
+            ):
                 error = np.max(np.abs(expected - actual))
                 max_error = max(max_error, error)
                 if error > tolerance:
@@ -229,7 +231,9 @@ class EnhancedServerProofManager(ServerProofManager):
             if momentum is not None:
                 # Check momentum dimensions match aggregated params
                 if len(momentum) == len(aggregated_params):
-                    for m_layer, agg_layer in zip(momentum, aggregated_params, strict=False):
+                    for m_layer, agg_layer in zip(
+                        momentum, aggregated_params, strict=False
+                    ):
                         if m_layer.shape != agg_layer.shape:
                             momentum_correct = False
                             break
@@ -499,7 +503,9 @@ class ProofManagerBenchmark:
 
             # Compute aggregated parameters (weighted average)
             aggregated_params = [np.zeros(param_size, dtype=np.float32)]
-            for client_update, weight in zip(client_updates, client_weights, strict=False):
+            for client_update, weight in zip(
+                client_updates, client_weights, strict=False
+            ):
                 aggregated_params[0] += weight * client_update[0]
 
             # Generate momentum

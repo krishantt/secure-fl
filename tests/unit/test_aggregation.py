@@ -127,7 +127,9 @@ class TestFedJSCMAggregator:
         )
 
         # Check momentum was updated
-        for m1, m2 in zip(momentum_after_first, aggregator.server_momentum, strict=False):
+        for m1, m2 in zip(
+            momentum_after_first, aggregator.server_momentum, strict=False
+        ):
             assert not np.array_equal(m1, m2)
 
         # Check results are different
@@ -160,7 +162,9 @@ class TestFedJSCMAggregator:
             expected_weighted_avg.append(weighted_sum)
 
         # First momentum should equal weighted average
-        for expected, actual in zip(expected_weighted_avg, aggregator.server_momentum, strict=False):
+        for expected, actual in zip(
+            expected_weighted_avg, aggregator.server_momentum, strict=False
+        ):
             assert np.allclose(expected, actual, rtol=1e-6)
 
         # Second round

@@ -80,7 +80,9 @@ def create_overhead_plot(ax):
     ]
     baseline_times = [11.5, 13.2, 14.9]  # ms
     zkp_times = [8734, 35000, 75000]  # ms (estimated for larger models)
-    overhead_ratios = [zkp / base for zkp, base in zip(zkp_times, baseline_times, strict=False)]
+    overhead_ratios = [
+        zkp / base for zkp, base in zip(zkp_times, baseline_times, strict=False)
+    ]
 
     x = np.arange(len(model_sizes))
     width = 0.35

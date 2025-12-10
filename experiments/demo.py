@@ -276,7 +276,9 @@ def run_quick_demo() -> bool:
             f.write(f"  Rounds: {num_rounds}\n")
             f.write(f"  Local epochs: {local_epochs}\n\n")
             f.write("Training History:\n")
-            for i, (acc, loss) in enumerate(zip(history["accuracy"], history["loss"], strict=False)):
+            for i, (acc, loss) in enumerate(
+                zip(history["accuracy"], history["loss"], strict=False)
+            ):
                 f.write(f"  Round {i + 1}: Acc={acc:.3f}, Loss={loss:.3f}\n")
 
         print("✓ Metrics saved to:", metrics_path)

@@ -31,7 +31,9 @@ def parameters_to_ndarrays(parameters: Parameters) -> NDArrays:
     """
     return [
         np.frombuffer(tensor, dtype=np.float32).reshape(shape)
-        for tensor, shape in zip(parameters.tensors, parameters.tensor_type, strict=False)
+        for tensor, shape in zip(
+            parameters.tensors, parameters.tensor_type, strict=False
+        )
     ]
 
 
