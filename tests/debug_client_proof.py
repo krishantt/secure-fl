@@ -1,7 +1,9 @@
 # debug_client_proof.py
-import numpy as np
-import sys
 import os
+import sys
+
+import numpy as np
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from secure_fl.proof_manager import ClientProofManager, ServerProofManager
@@ -16,8 +18,7 @@ def main():
 
     # Generate updated params first
     new_params = [
-        w + (0.01 * np.random.randn(*w.shape)).astype(np.float32)
-        for w in old_params
+        w + (0.01 * np.random.randn(*w.shape)).astype(np.float32) for w in old_params
     ]
 
     # Compute delta to avoid rounding mismatch

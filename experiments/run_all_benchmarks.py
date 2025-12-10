@@ -213,7 +213,7 @@ def run_benchmark_suite():
 def generate_summary_report(results):
     """Generate comprehensive summary report"""
 
-    print(f"\n📋 BENCHMARK SUITE SUMMARY")
+    print("\n📋 BENCHMARK SUITE SUMMARY")
     print("=" * 60)
 
     total_benchmarks = len(results)
@@ -226,7 +226,7 @@ def generate_summary_report(results):
     print(f"📈 Success Rate: {successful / total_benchmarks * 100:.1f}%")
 
     # Detailed results
-    print(f"\n📋 DETAILED RESULTS:")
+    print("\n📋 DETAILED RESULTS:")
     print("-" * 40)
 
     for name, result in results.items():
@@ -247,7 +247,7 @@ def generate_summary_report(results):
             print(f"    └─ Error: {error[:100]}...")
 
     # Results directory structure
-    print(f"\n📁 RESULTS DIRECTORY STRUCTURE:")
+    print("\n📁 RESULTS DIRECTORY STRUCTURE:")
     print("-" * 40)
 
     results_dir = Path("results")
@@ -277,7 +277,7 @@ def generate_summary_report(results):
     print(f"\n💾 Summary saved to: {summary_file}")
 
     # Key findings for research paper
-    print(f"\n🔬 KEY FINDINGS FOR RESEARCH PAPER:")
+    print("\n🔬 KEY FINDINGS FOR RESEARCH PAPER:")
     print("-" * 40)
 
     training_dir = results_dir / "training_comparison" / "benchmark_results.json"
@@ -318,7 +318,7 @@ def generate_summary_report(results):
         f"• ZKP Integration: {'✅ Working' if 'zkp_debug_tests' in [k for k, v in results.items() if v.get('status') == 'success'] else '❌ Issues Detected'}"
     )
 
-    print(f"\n🎯 NEXT STEPS:")
+    print("\n🎯 NEXT STEPS:")
     print("1. Review individual benchmark results in results/ directories")
     print("2. Update research paper with Figure 6.3 and performance data")
     print("3. Include comprehensive performance table from results")
@@ -339,9 +339,9 @@ def main():
     end_time = time.time()
 
     total_duration = end_time - start_time
-    print(f"\n🏁 BENCHMARK SUITE COMPLETED")
+    print("\n🏁 BENCHMARK SUITE COMPLETED")
     print(f"⏱️  Total Duration: {total_duration / 60:.1f} minutes")
-    print(f"📁 All results saved to: results/")
+    print("📁 All results saved to: results/")
 
     # Return appropriate exit code
     successful = sum(1 for r in results.values() if r.get("status") == "success")

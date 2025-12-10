@@ -313,6 +313,9 @@ exclude = [
 ]
 
 [dependency-groups]
+dev = [
+    "ruff>=0.14.8",
+]
 lint = [
     "mypy>=1.5.0",
     "ruff>=0.14.7",

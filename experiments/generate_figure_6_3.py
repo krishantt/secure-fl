@@ -400,19 +400,19 @@ def main():
 
     print("\n📊 Performance Analysis Summary:")
     print("=" * 50)
-    print(f"• ZKP Training Overhead: 759x")
-    print(f"• FL Round Overhead: 580x")
-    print(f"• Memory Increase: +35%")
-    print(f"• Proof Scaling: O(n^1.2)")
-    print(f"• Practical Parameter Limit: ~1,000")
-    print(f"• Production Parameter Limit: ~25,000")
+    print("• ZKP Training Overhead: 759x")
+    print("• FL Round Overhead: 580x")
+    print("• Memory Increase: +35%")
+    print("• Proof Scaling: O(n^1.2)")
+    print("• Practical Parameter Limit: ~1,000")
+    print("• Production Parameter Limit: ~25,000")
 
     output_dir = Path("results") / "figure_6_3_analysis"
-    print(f"\n✅ All figures generated successfully!")
+    print("\n✅ All figures generated successfully!")
     print(f"📁 Output directory: {output_dir}/")
-    print(f"📊 Main figure: figure_6_3_zkp_performance.png")
-    print(f"📈 Supplementary: memory_overhead.png, throughput_analysis.png")
-    print(f"📋 Table data: performance_table.csv, performance_table.tex")
+    print("📊 Main figure: figure_6_3_zkp_performance.png")
+    print("📈 Supplementary: memory_overhead.png, throughput_analysis.png")
+    print("📋 Table data: performance_table.csv, performance_table.tex")
 
     return fig
 

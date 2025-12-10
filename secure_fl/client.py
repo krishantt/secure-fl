@@ -19,8 +19,7 @@ import torch.nn as nn
 import torch.optim as optim
 from flwr.common import NDArrays
 from torch.utils.data import DataLoader
-from .utils import torch_to_ndarrays, ndarrays_to_torch
-import time
+
 from .proof_manager import ClientProofManager
 from .quantization import quantize_parameters
 
@@ -370,13 +369,11 @@ class SecureFlowerClient(fl.client.NumPyClient):
                 "total_samples": training_metrics.get("total_samples", 0),
             }
 
-           
             # Generate JSON proof object
             # --------------------------
             proof = self.proof_manager.generate_training_proof(proof_inputs)
             return proof
-    
-           
+
         except Exception as e:
             logger.error(f"Client {self.client_id} proof generation failed: {e}")
             return None

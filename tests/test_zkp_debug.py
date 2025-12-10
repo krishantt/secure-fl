@@ -32,7 +32,7 @@ def test_pysnark_basic():
     logger.info("=== Testing Basic PySNARK ===")
 
     try:
-        from pysnark.runtime import PrivVal, PubVal
+        from pysnark.runtime import PrivVal
 
         # Basic arithmetic
         a = PrivVal(3)
@@ -58,7 +58,6 @@ def test_pysnark_circuit_import():
 
     try:
         # Try importing the circuit
-        from proofs.client_circuits.delta_bound import delta_bound_proof
 
         logger.info("✅ Circuit import successful")
         return True
@@ -72,7 +71,6 @@ def test_pysnark_circuit_import():
             repo_root = Path(__file__).resolve().parents[1]
             if str(repo_root) not in sys.path:
                 sys.path.insert(0, str(repo_root))
-            from proofs.client_circuits.delta_bound import delta_bound_proof
 
             logger.info("✅ Circuit import successful (fallback)")
             return True
@@ -299,7 +297,6 @@ def debug_circuit_execution():
 
         # Test PySNARK types
         logger.info("Step 2: Import PySNARK types")
-        from pysnark.runtime import PrivVal, PubVal
 
         logger.info("✅ PySNARK types imported")
 

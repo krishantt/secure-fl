@@ -9,9 +9,10 @@ This test verifies:
 """
 
 import json
+
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from secure_fl.client import SecureFlowerClient
 from secure_fl.utils import torch_to_ndarrays

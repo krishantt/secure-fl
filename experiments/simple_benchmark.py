@@ -12,12 +12,10 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import torch
 from torch.utils.data import DataLoader
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -282,7 +280,7 @@ class SimpleBenchmark:
             "client_metrics": client_results,
         }
 
-    def _save_results(self, results: Dict[str, Any]):
+    def _save_results(self, results: dict[str, Any]):
         """Save benchmark results"""
         output_file = self.output_dir / "benchmark_results.json"
 
@@ -291,7 +289,7 @@ class SimpleBenchmark:
 
         logger.info(f"📄 Results saved to {output_file}")
 
-    def _generate_plots(self, results: Dict[str, Any]):
+    def _generate_plots(self, results: dict[str, Any]):
         """Generate performance comparison plots"""
         logger.info("📈 Generating performance plots...")
 
@@ -506,7 +504,7 @@ class SimpleBenchmark:
         # Generate summary report
         self._generate_report(results)
 
-    def _generate_report(self, results: Dict[str, Any]):
+    def _generate_report(self, results: dict[str, Any]):
         """Generate text summary report"""
         report_file = self.output_dir / "performance_report.txt"
 
@@ -515,7 +513,7 @@ class SimpleBenchmark:
             f.write("=" * 50 + "\n\n")
 
             config = results["config"]
-            f.write(f"Configuration:\n")
+            f.write("Configuration:\n")
             f.write(f"  - Number of clients: {config['num_clients']}\n")
             f.write(f"  - Number of rounds: {config['num_rounds']}\n")
             f.write(f"  - Samples per client: {config['samples_per_client']}\n\n")
@@ -625,7 +623,7 @@ def main():
         num_clients=args.clients, num_rounds=args.rounds, test_zkp=not args.no_zkp
     )
 
-    print(f"\n✅ Simple benchmark completed!")
+    print("\n✅ Simple benchmark completed!")
     print(f"📊 Results saved to: {benchmark.output_dir}")
     print(f"📈 Performance plot: {benchmark.output_dir}/performance_analysis.png")
     print(f"📝 Summary report: {benchmark.output_dir}/performance_report.txt")

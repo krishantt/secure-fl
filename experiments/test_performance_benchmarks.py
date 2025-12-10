@@ -7,10 +7,7 @@ using pytest-benchmark for accurate timing measurements and statistical analysis
 Run with: pytest experiments/test_performance_benchmarks.py --benchmark-only
 """
 
-import json
 import logging
-import time
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -20,7 +17,7 @@ from torch.utils.data import DataLoader
 from secure_fl.aggregation import FedJSCMAggregator
 from secure_fl.client import SecureFlowerClient
 from secure_fl.data.dataloader import FederatedDataLoader
-from secure_fl.models import MNISTModel, SimpleModel
+from secure_fl.models import MNISTModel
 from secure_fl.proof_manager import ClientProofManager, ServerProofManager
 
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during benchmarks
@@ -588,7 +585,7 @@ def generate_benchmark_report():
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if result.returncode == 0:
-            print(f"✅ Benchmark completed successfully!")
+            print("✅ Benchmark completed successfully!")
             print(f"📊 Results saved to: {output_file}")
             print(f"📈 View with: pytest-benchmark compare {output_file}")
         else:

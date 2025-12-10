@@ -38,17 +38,16 @@ from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from secure_fl.client import SecureFlowerClient, create_client
+from secure_fl.client import create_client
 from secure_fl.models import (
     CIFAR10Model,
     FlexibleMLP,
     MNISTModel,
     SimpleModel,
 )
-from secure_fl.server import SecureFlowerServer, create_server_strategy
+from secure_fl.server import create_server_strategy
 from secure_fl.utils import (
     ndarrays_to_torch,
-    torch_to_ndarrays,
 )
 
 logger = logging.getLogger(__name__)
@@ -1834,7 +1833,7 @@ class MultiDatasetBenchmarkRunner:
             else 0,
         }
 
-        print(f"🎉 Secure-FL benchmark completed!")
+        print("🎉 Secure-FL benchmark completed!")
         print(f"   Final accuracy: {final_accuracy:.3f}")
         print(f"   Total time: {total_time:.2f}s")
         print(f"   ZKP overhead: {results['summary']['zkp_overhead_ratio']:.2%}")

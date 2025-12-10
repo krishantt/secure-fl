@@ -10,11 +10,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
 # Set style for publication-quality plots
@@ -776,7 +774,7 @@ class PerformanceReportGenerator:
         plt.close()
         print(f"📈 Overhead analysis plot: {plot_file}")
 
-    def _extract_benchmark_data(self, suite_name: str) -> List[Dict]:
+    def _extract_benchmark_data(self, suite_name: str) -> list[dict]:
         """Extract benchmark data from results"""
         if suite_name not in self.results:
             return []
@@ -1082,7 +1080,7 @@ def main():
     # Generate report
     generator.generate_report()
 
-    print(f"\n✅ Performance analysis completed!")
+    print("\n✅ Performance analysis completed!")
     print(f"📁 Results directory: {generator.output_dir}")
     print(
         f"📊 Main plot: {generator.output_dir}/comprehensive_performance_analysis.png"

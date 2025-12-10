@@ -16,34 +16,26 @@ Key Metrics Measured:
 import gc
 import json
 import logging
-import multiprocessing as mp
-import os
 import sys
-import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import psutil
 import seaborn as sns
-import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
 from secure_fl.aggregation import FedJSCMAggregator
-from secure_fl.client import SecureFlowerClient, create_client
+from secure_fl.client import SecureFlowerClient
 from secure_fl.data.dataloader import FederatedDataLoader
-from secure_fl.models import CIFAR10Model, MNISTModel, SimpleModel
+from secure_fl.models import MNISTModel, SimpleModel
 from secure_fl.proof_manager import ClientProofManager, ServerProofManager
-from secure_fl.server import SecureFlowerStrategy
-from secure_fl.utils import ndarrays_to_torch, torch_to_ndarrays
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -83,7 +75,7 @@ class PerformanceProfiler:
             self.metrics[f"memory_{label}"] = []
         self.metrics[f"memory_{label}"].append(memory_mb)
 
-    def get_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_stats(self) -> dict[str, dict[str, float]]:
         """Get statistical summary of all metrics"""
         stats = {}
         for metric, values in self.metrics.items():
@@ -105,7 +97,7 @@ class DatasetLoader:
         # Not used anymore, kept for compatibility
         pass
 
-    def load_mnist(self, num_clients: int = 3) -> Tuple[List, Any]:
+    def load_mnist(self, num_clients: int = 3) -> tuple[list, Any]:
         """Load MNIST dataset split for FL using centralized loader"""
         fed_loader = FederatedDataLoader(
             dataset_name="mnist",
@@ -142,12 +134,12 @@ class SecureFlBenchmark:
 
     def run_comprehensive_benchmark(
         self,
-        datasets: List[str] = ["mnist"],
-        num_clients_list: List[int] = [3, 5, 10],
+        datasets: list[str] = ["mnist"],
+        num_clients_list: list[int] = [3, 5, 10],
         num_rounds: int = 10,
-        zkp_configs: List[bool] = [False, True],
-        rigor_levels: List[str] = ["low", "medium", "high"],
-    ) -> Dict[str, Any]:
+        zkp_configs: list[bool] = [False, True],
+        rigor_levels: list[str] = ["low", "medium", "high"],
+    ) -> dict[str, Any]:
         """Run comprehensive benchmark across multiple configurations"""
 
         logger.info("🚀 Starting Comprehensive Secure FL Benchmark")
@@ -209,7 +201,7 @@ class SecureFlBenchmark:
         num_rounds: int,
         enable_zkp: bool,
         proof_rigor: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run benchmark for a single configuration"""
 
         # Load dataset
@@ -422,7 +414,7 @@ class SecureFlBenchmark:
 
         return results
 
-    def _calculate_summary_stats(self, results: Dict[str, Any]) -> Dict[str, float]:
+    def _calculate_summary_stats(self, results: dict[str, Any]) -> dict[str, float]:
         """Calculate summary statistics from benchmark results"""
         round_metrics = results["round_metrics"]
         client_metrics = results["client_metrics"]
@@ -464,7 +456,7 @@ class SecureFlBenchmark:
             "convergence_rate": self._estimate_convergence_rate(round_metrics),
         }
 
-    def _estimate_convergence_rate(self, round_metrics: List[Dict]) -> float:
+    def _estimate_convergence_rate(self, round_metrics: list[dict]) -> float:
         """Estimate convergence rate from parameter norms"""
         if len(round_metrics) < 2:
             return 0.0
@@ -482,7 +474,7 @@ class SecureFlBenchmark:
 
         return np.mean(changes) if changes else 0.0
 
-    def _save_results(self, results: Dict[str, Any], filename: str):
+    def _save_results(self, results: dict[str, Any], filename: str):
         """Save benchmark results to JSON file"""
         output_file = self.output_dir / filename
 
@@ -513,7 +505,7 @@ class SecureFlBenchmark:
         else:
             return obj
 
-    def _generate_comprehensive_plots(self, results: Dict[str, Any]):
+    def _generate_comprehensive_plots(self, results: dict[str, Any]):
         """Generate comprehensive performance plots"""
         logger.info("📈 Generating performance plots...")
 
@@ -574,8 +566,8 @@ class SecureFlBenchmark:
         logger.info(f"📊 Plots saved to {self.output_dir}")
 
     def _results_to_dataframes(
-        self, results: Dict[str, Any]
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self, results: dict[str, Any]
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Convert results dictionary to pandas DataFrames"""
         round_data = []
         client_data = []
@@ -864,7 +856,7 @@ class SecureFlBenchmark:
         ax.tick_params(axis="x", rotation=45)
         ax.grid(True, alpha=0.3)
 
-    def _plot_summary_stats(self, results: Dict[str, Any], ax):
+    def _plot_summary_stats(self, results: dict[str, Any], ax):
         """Plot summary statistics"""
         summary_data = []
 
@@ -925,7 +917,7 @@ class SecureFlBenchmark:
         ax.grid(True, alpha=0.3)
 
     def _generate_detailed_plots(
-        self, df_rounds: pd.DataFrame, df_clients: pd.DataFrame, results: Dict[str, Any]
+        self, df_rounds: pd.DataFrame, df_clients: pd.DataFrame, results: dict[str, Any]
     ):
         """Generate additional detailed plots"""
 
@@ -1086,7 +1078,7 @@ class SecureFlBenchmark:
         # Generate summary report
         self._generate_summary_report(results)
 
-    def _generate_summary_report(self, results: Dict[str, Any]):
+    def _generate_summary_report(self, results: dict[str, Any]):
         """Generate comprehensive text summary report"""
         report_file = self.output_dir / "performance_summary_report.txt"
 
@@ -1199,7 +1191,7 @@ def main():
         rigor_levels=args.rigor_levels,
     )
 
-    print(f"\n✅ Benchmark completed successfully!")
+    print("\n✅ Benchmark completed successfully!")
     print(f"📊 Results and plots saved to: {args.output_dir}")
     print(f"📈 Generated {len([f for f in Path(args.output_dir).glob('*.png')])} plots")
     print(f"📝 Summary report: {args.output_dir}/performance_summary_report.txt")

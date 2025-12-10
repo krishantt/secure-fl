@@ -2845,6 +2845,9 @@ medical = [
 ]
 
 [package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
 lint = [
     { name = "mypy" },
     { name = "ruff" },
@@ -2892,6 +2895,7 @@ requires-dist = [
 provides-extras = ["dev", "medical", "quantization", "all"]
 
 [package.metadata.requires-dev]
+dev = [{ name = "ruff", specifier = ">=0.14.8" }]
 lint = [
     { name = "mypy", specifier = ">=1.5.0" },
     { name = "ruff", specifier = ">=0.14.7" },

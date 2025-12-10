@@ -7,7 +7,7 @@ for performance benchmarking and analysis.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from flwr.common import NDArrays
@@ -39,7 +39,7 @@ class TimingMetrics:
             return duration
         return 0.0
 
-    def get_summary(self) -> Dict[str, Dict[str, float]]:
+    def get_summary(self) -> dict[str, dict[str, float]]:
         """Get summary statistics for all timings"""
         summary = {}
         for operation, times in self.timings.items():
@@ -150,7 +150,7 @@ class EnhancedClientProofManager(ClientProofManager):
 
         return json.dumps(proof, indent=2)
 
-    def get_timing_summary(self) -> Dict[str, Any]:
+    def get_timing_summary(self) -> dict[str, Any]:
         """Get comprehensive timing summary"""
         return self.timing_metrics.get_summary()
 
@@ -164,12 +164,12 @@ class EnhancedServerProofManager(ServerProofManager):
 
     def generate_server_proof(
         self,
-        client_updates: List[NDArrays],
-        client_weights: List[float],
+        client_updates: list[NDArrays],
+        client_weights: list[float],
         aggregated_params: NDArrays,
         momentum: NDArrays,
         momentum_coeff: float,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Generate server proof with detailed timing"""
         self.timing_metrics.start("total_server_proof")
 
@@ -387,7 +387,7 @@ class EnhancedServerProofManager(ServerProofManager):
 
         return verification_result
 
-    def get_timing_summary(self) -> Dict[str, Any]:
+    def get_timing_summary(self) -> dict[str, Any]:
         """Get comprehensive timing summary"""
         return self.timing_metrics.get_summary()
 
@@ -415,7 +415,7 @@ class ProofManagerBenchmark:
 
     def benchmark_client_proof_generation(
         self, num_iterations: int = 10, param_size: int = 1000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Benchmark client proof generation performance"""
 
         results = {
@@ -470,7 +470,7 @@ class ProofManagerBenchmark:
 
     def benchmark_server_proof_generation(
         self, num_clients: int = 5, num_iterations: int = 10, param_size: int = 1000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Benchmark server proof generation performance"""
 
         results = {
@@ -536,14 +536,14 @@ if __name__ == "__main__":
     print("Benchmarking Enhanced Proof Managers...")
 
     client_results = benchmark.benchmark_client_proof_generation(num_iterations=5)
-    print(f"Client Proof Generation:")
+    print("Client Proof Generation:")
     print(
         f"  Average Time: {client_results['avg_time']:.4f} ± {client_results['std_time']:.4f} seconds"
     )
     print(f"  Success Rate: {client_results['success_rate']:.2f}")
 
     server_results = benchmark.benchmark_server_proof_generation(num_iterations=5)
-    print(f"Server Proof Generation:")
+    print("Server Proof Generation:")
     print(
         f"  Average Time: {server_results['avg_time']:.4f} ± {server_results['std_time']:.4f} seconds"
     )

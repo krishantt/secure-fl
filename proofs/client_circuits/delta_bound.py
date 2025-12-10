@@ -1,5 +1,6 @@
-from pysnark.runtime import PrivVal, PubVal, snark
 from pysnark.branching import if_then_else
+from pysnark.runtime import PrivVal, snark
+
 
 @snark
 def delta_bound_proof(initial, updated, bound):

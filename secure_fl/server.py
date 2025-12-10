@@ -19,7 +19,6 @@ from flwr.common import EvaluateRes, FitRes, NDArrays, Parameters, Scalar
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import Strategy
 
-
 from .aggregation import FedJSCMAggregator
 from .proof_manager import ServerProofManager
 from .stability_monitor import StabilityMonitor
@@ -294,8 +293,8 @@ class SecureFlowerStrategy(Strategy):
             return not self.enable_zkp
 
         try:
-            updated_params=parameters_to_ndarrays(fit_res.parameters)
-            old_global_params=self.current_global_params
+            updated_params = parameters_to_ndarrays(fit_res.parameters)
+            old_global_params = self.current_global_params
             ok = self.proof_manager.verify_client_proof(
                 client_proof,
                 updated_parameters=updated_params,
