@@ -89,6 +89,13 @@ usage() {
     echo "    --volumes             Clean volumes only"
     echo "    --force               Force cleanup without confirmation"
     echo ""
+    echo -e "${CYAN}Testing Commands:${NC}"
+    echo "  test                    Test Docker images"
+    echo "    --image IMAGE         Test specific image"
+    echo "    --all                 Test all images"
+    echo "    --quick               Quick tests only"
+    echo "    --full                Full test suite"
+    echo ""
     echo -e "${CYAN}Utility Commands:${NC}"
     echo "  shell [CONTAINER]       Connect to running container"
     echo "  exec CONTAINER CMD      Execute command in container"
@@ -103,6 +110,7 @@ usage() {
     echo "  $0 up                   # Start FL environment"
     echo "  $0 logs --follow        # Follow all logs"
     echo "  $0 scale client 5       # Scale to 5 clients"
+    echo "  $0 test --image test    # Test specific image"
     echo "  $0 clean --containers   # Clean containers only"
     echo ""
     echo "For detailed help on specific commands, use:"
@@ -116,7 +124,7 @@ check_docker_scripts() {
         exit 1
     fi
 
-    local required_scripts=("build.sh" "quickstart.sh" "dev.sh" "compose.sh" "clean.sh")
+    local required_scripts=("build.sh" "quickstart.sh" "dev.sh" "compose.sh" "clean.sh" "test.sh")
     for script in "${required_scripts[@]}"; do
         if [[ ! -f "$DOCKER_DIR/$script" ]]; then
             print_error "Required Docker script not found: $DOCKER_DIR/$script"
@@ -220,6 +228,11 @@ route_command() {
             "$DOCKER_DIR/clean.sh" "$@"
             ;;
 
+        # Testing commands
+        test)
+            "$DOCKER_DIR/test.sh" "$@"
+            ;;
+
         # Utility commands
         shell)
             if [[ -n "$1" ]]; then
@@ -252,7 +265,7 @@ route_command() {
         *)
             print_error "Unknown command: $command"
             echo ""
-            echo "Available commands: demo, dev, build, up, down, logs, clean, shell, info"
+            echo "Available commands: demo, dev, build, up, down, logs, test, clean, shell, info"
             echo "Use '$0 --help' for full command list"
             exit 1
             ;;
@@ -267,23 +280,25 @@ show_quick_menu() {
     echo "1) Demo - Run a quick federated learning demo"
     echo "2) Develop - Start development environment"
     echo "3) Build - Build Docker images"
-    echo "4) Deploy - Start full FL environment"
-    echo "5) Status - Check running services"
-    echo "6) Clean - Cleanup Docker resources"
-    echo "7) Help - Show detailed help"
-    echo "8) Quit"
+    echo "4) Test - Test Docker images"
+    echo "5) Deploy - Start full FL environment"
+    echo "6) Status - Check running services"
+    echo "7) Clean - Cleanup Docker resources"
+    echo "8) Help - Show detailed help"
+    echo "9) Quit"
     echo ""
-    read -p "Enter your choice (1-8): " choice
+    read -p "Enter your choice (1-9): " choice
 
     case $choice in
         1) route_command "demo" ;;
         2) route_command "dev" ;;
         3) route_command "build" ;;
-        4) route_command "up" ;;
-        5) route_command "status" ;;
-        6) route_command "clean" ;;
-        7) usage ;;
-        8) exit 0 ;;
+        4) route_command "test" ;;
+        5) route_command "up" ;;
+        6) route_command "status" ;;
+        7) route_command "clean" ;;
+        8) usage ;;
+        9) exit 0 ;;
         *)
             print_error "Invalid choice"
             show_quick_menu

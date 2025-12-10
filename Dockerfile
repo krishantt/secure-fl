@@ -98,6 +98,9 @@ USER app
 # Install development dependencies
 RUN uv sync --frozen --all-extras --dev
 
+# Copy tests for development
+COPY --chown=app:app tests/ ./tests/
+
 # Install poethepoet task runner
 RUN uv pip install poethepoet
 
@@ -109,3 +112,7 @@ ENV SECURE_FL_ENV=development
 
 # Default command for development
 CMD ["bash"]
+
+# Add test verification target
+FROM development AS test
+CMD ["uv", "run", "pytest", "tests/", "-v", "--tb=short"]

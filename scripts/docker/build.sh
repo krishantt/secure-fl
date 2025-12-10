@@ -38,7 +38,7 @@ usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  -t, --target TARGET     Build target (base, production, server, client, development) [default: base]"
+    echo "  -t, --target TARGET     Build target (base, production, server, client, development, test) [default: base]"
     echo "  -p, --push             Push images to registry after building"
     echo "  -c, --clean            Clean build (no cache)"
     echo "  --test                 Run tests after building"
@@ -48,8 +48,10 @@ usage() {
     echo "Examples:"
     echo "  $0                     # Build base image"
     echo "  $0 -t server           # Build server image"
+    echo "  $0 -t test             # Build test image"
     echo "  $0 --all               # Build all images"
     echo "  $0 -c -t development   # Clean build of development image"
+    echo "  $0 --test -t development # Build and run tests"
 }
 
 # Parse command line arguments
@@ -145,7 +147,7 @@ build_image() {
 # Main build logic
 if [[ "$BUILD_TARGET" == "all" ]]; then
     print_status "Building all images..."
-    targets=("base" "production" "server" "client" "development")
+    targets=("base" "production" "server" "client" "development" "test")
     for target in "${targets[@]}"; do
         build_image "$target"
     done
@@ -156,7 +158,14 @@ fi
 # Run tests if requested
 if [[ "$RUN_TESTS" == "true" ]]; then
     print_status "Running tests..."
-    docker run --rm secure-fl:$BUILD_TARGET uv run pytest tests/ -v
+    if [[ "$BUILD_TARGET" == "development" ]] || [[ "$BUILD_TARGET" == "all" ]]; then
+        # Build test image and run tests
+        build_image "test"
+        docker run --rm secure-fl:test
+    else
+        print_warning "Tests can only be run with development or test targets"
+        print_warning "Skipping tests for $BUILD_TARGET target"
+    fi
 fi
 
 # Push images if requested
@@ -174,6 +183,9 @@ echo ""
 print_status "Usage examples:"
 echo "  # Run demo:"
 echo "  docker run --rm -v \$(pwd)/data:/home/app/data secure-fl:base uv run python experiments/demo.py"
+echo ""
+echo "  # Run tests:"
+echo "  docker run --rm secure-fl:test"
 echo ""
 echo "  # Start development environment:"
 echo "  docker run --rm -it -p 8080:8080 -v \$(pwd):/home/app/workspace secure-fl:development"

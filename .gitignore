@@ -103,6 +103,9 @@ _minted*
 # Act containers and volumes
 .act/
 
+#test-coverage
+.coverage
+
 #circom files
 *.r1cs
 *.wtns

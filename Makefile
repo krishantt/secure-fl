@@ -113,8 +113,17 @@ clean-cache: ## Clean Python cache files
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type f -name "*.pyo" -delete 2>/dev/null || true
 
-clean-docker: ## Clean Docker images and containers
+docker-clean: ## Clean Docker images and containers
 	./scripts/docker.sh clean
+
+docker-test: ## Test Docker images
+	./scripts/docker.sh test
+
+docker-test-all: ## Test all Docker images
+	./scripts/docker.sh test --all
+
+docker-test-quick: ## Quick test of Docker images
+	./scripts/docker.sh test --quick
 
 # Build targets
 build: ## Build package
