@@ -411,7 +411,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [prepare-release, publish-pypi, publish-docker]
+    needs: [prepare-release, publish-pypi, publish-container]
     if: always() && needs.prepare-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -526,7 +526,7 @@ jobs:
 
   publish-summary:
     name: Publishing Summary
-    needs: [prepare-release, publish-pypi, publish-docker, create-release]
+    needs: [prepare-release, publish-pypi, publish-container, create-release]
     if: always() && needs.prepare-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
 
