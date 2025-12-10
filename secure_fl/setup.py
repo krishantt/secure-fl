@@ -205,7 +205,7 @@ component main = Test();
             type_info = f" ({circom_type}-based)" if circom_type != "unknown" else ""
             print(f"  Circom: {status}{type_info}")
         else:
-            print(f"  Circom: ✗")
+            print("  Circom: ✗")
 
         status = "✓" if checks.get("snarkjs") else "✗"
         print(f"  SnarkJS: {status}")
