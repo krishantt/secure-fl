@@ -19,6 +19,7 @@ import os
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -100,7 +101,6 @@ class ClientProofManager(ProofManagerBase):
         # return max(1e-6, 2.0 * float(delta_norm_l2))
         return min(1000.0, max(1e-6, 2.0 * float(delta_norm_l2)))
 
-
     def _generate_pysnark_delta_bound_proof(
         self,
         initial_params: NDArrays,
@@ -137,6 +137,7 @@ class ClientProofManager(ProofManagerBase):
             try:
                 import sys
                 from pathlib import Path
+
                 repo_root = Path(__file__).resolve().parents[1]  # secure-fl/
                 if str(repo_root) not in sys.path:
                     sys.path.insert(0, str(repo_root))
@@ -169,9 +170,8 @@ class ClientProofManager(ProofManagerBase):
             bound_float = self._get_effective_bound(delta_norm_l2)
             bound_int = int(round(bound_float * self.fixed_point_scale))
 
-
-                # 4) Wrap inputs with PySNARK value types
-                    # CRITICAL: These must be PrivVal/PubVal for the circuit to work
+            # 4) Wrap inputs with PySNARK value types
+            # CRITICAL: These must be PrivVal/PubVal for the circuit to work
             initial_circuit = [PrivVal(x) for x in init_fp]
             updated_circuit = [PrivVal(x) for x in upd_fp]
             bound_circuit = PubVal(bound_int)
@@ -183,13 +183,10 @@ class ClientProofManager(ProofManagerBase):
 
             # 5) Run the circuit - this generates the constraint system
             l2_sq_result = delta_bound_proof(
-                initial_circuit,
-                updated_circuit,
-                bound_circuit
+                initial_circuit, updated_circuit, bound_circuit
             )
 
             logger.info("PySNARK circuit executed successfully")
-
 
             # 4) Run the circuit
             # Note: PySNARK will internally treat Python ints as private/public values
@@ -206,17 +203,16 @@ class ClientProofManager(ProofManagerBase):
                 "l2_sq_result": str(int(l2_sq_result)),
             }
         except AssertionError as e:
-                logger.error(
-                    f"PySNARK constraint failed (bound violation): {e}"
-                )
-                return {
-                    "enabled": True,
-                    "error": "bound_violation",
-                    "message": str(e),
-                }
+            logger.error(f"PySNARK constraint failed (bound violation): {e}")
+            return {
+                "enabled": True,
+                "error": "bound_violation",
+                "message": str(e),
+            }
         except Exception as e:
             logger.error(f"PySNARK delta-bound proof generation failed: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return None
 
@@ -429,27 +425,91 @@ class ServerProofManager(ProofManagerBase):
     def _setup_snark_circuit(self) -> bool:
         """Setup Circom circuit and generate keys"""
         try:
-            os.makedirs(self.circuit_dir, exist_ok=True)
+            circuit_dir = Path(self.circuit_dir)
+            build_dir = circuit_dir / "build"
+            build_dir.mkdir(parents=True, exist_ok=True)
 
-            # Create aggregation circuit
-            circuit_file = os.path.join(self.circuit_dir, "aggregation.circom")
-            if not os.path.exists(circuit_file):
-                self._create_aggregation_circuit(circuit_file)
+            circom_file = circuit_dir / "aggregation.circom"
 
-            # Mock setup - real implementation would compile and setup keys
-            # This would involve:
-            # 1. circom circuit.circom --r1cs --wasm --sym
-            # 2. snarkjs groth16 setup circuit.r1cs pot12_final.ptau circuit.zkey
-            # 3. snarkjs zkey export verificationkey circuit.zkey verification_key.json
+            # CLEAN ALL OLD BUILD ARTIFACTS to prevent Circom caching issues
+            logger.info("Cleaning old build artifacts...")
+            artifacts_to_clean = [
+                circom_file,  # Old source file
+                circuit_dir / "aggregation.sym",  # Symbol table
+                build_dir / "aggregation.r1cs",  # Constraint system
+                build_dir / "aggregation.wasm",  # WASM witness generator
+                build_dir / "aggregation_js",  # JS directory
+                build_dir / "aggregation.sym",  # Symbol table in build
+                build_dir / "aggregation.zkey",  # Old proving key
+                build_dir / "verification_key.json",  # Old verification key
+            ]
 
-            self.proving_key = "mock_proving_key"
-            self.verification_key = "mock_verification_key"
+            for artifact in artifacts_to_clean:
+                if artifact.exists():
+                    if artifact.is_dir():
+                        import shutil
 
-            logger.debug("SNARK circuit setup completed")
+                        shutil.rmtree(artifact)
+                        logger.info(f"  Removed directory: {artifact.name}")
+                    else:
+                        artifact.unlink()
+                        logger.info(f"  Removed file: {artifact.name}")
+
+            # ALWAYS recreate the circuit file to ensure correct syntax
+            self._create_aggregation_circuit(str(circom_file))
+
+            r1cs = build_dir / "aggregation.r1cs"
+            wasm = build_dir / "aggregation.wasm"
+            zkey = build_dir / "aggregation.zkey"
+            vkey = build_dir / "verification_key.json"
+
+            # 1. Compile circuit (Circom will now be forced to read the new file)
+            logger.info("Compiling Circom circuit...")
+            subprocess.check_call(
+                [
+                    self.circom_path,
+                    str(circom_file),
+                    "--r1cs",
+                    "--wasm",
+                    "--sym",
+                    "-o",
+                    str(build_dir),
+                ]
+            )
+
+            # 2. Powers of tau (if missing, warn)
+            ptau = circuit_dir / "pot12_final.ptau"
+            if not ptau.exists():
+                logger.error(
+                    "Missing ptau file. Run: snarkjs powersoftau new & contribute"
+                )
+                return False
+
+            # 3. Groth16 setup
+            subprocess.check_call(
+                [self.snarkjs_path, "groth16", "setup", str(r1cs), str(ptau), str(zkey)]
+            )
+
+            # 4. Export verification key
+            subprocess.check_call(
+                [
+                    self.snarkjs_path,
+                    "zkey",
+                    "export",
+                    "verificationkey",
+                    str(zkey),
+                    str(vkey),
+                ]
+            )
+
+            self.proving_key = str(zkey)
+            self.verification_key = str(vkey)
+
+            logger.info("✓ SNARK circuit compiled and setup complete")
             return True
 
         except Exception as e:
-            logger.error(f"SNARK circuit setup failed: {e}")
+            logger.error(f"Failed SNARK setup: {e}")
             return False
 
     def verify_client_proof(
@@ -530,94 +590,114 @@ class ServerProofManager(ProofManagerBase):
             return False
 
     def _create_aggregation_circuit(self, circuit_path: str):
-        """Create Circom aggregation circuit"""
-        circuit_code = """
-pragma circom 2.0.0;
+        """Create a valid Circom 2.0 aggregation circuit"""
+        # Build circuit code line by line to ensure proper line breaks
+        circuit_lines = [
+            "pragma circom 2.0.0;",
+            "// Federated Learning Aggregation Circuit",
+            "",
+            "template FedJSCMAggregation(n_clients, param_size) {",
+            "    signal input client_deltas[n_clients][param_size];",
+            "    signal input old_momentum[param_size];",
+            "    signal input client_weights[n_clients];",
+            "    signal input momentum_coeff;",
+            "    signal input old_params[param_size];",
+            "",
+            "    signal output new_params[param_size];",
+            "    signal output new_momentum[param_size];",
+            "",
+            "    // Intermediate signals for weighted sum",
+            "    signal weighted_sum[param_size];",
+            "    signal partial_sums[n_clients][param_size];",
+            "",
+            "    var SCALE = 1000000;"
 
-// FedJSCM Aggregation Circuit
-// Verifies: w_new = w_old + momentum_coeff * momentum + sum(weight_i * delta_i)
+            "    // Calculate weighted deltas",
 
-template FedJSCMAggregation(n_clients, param_size) {
-    // Private inputs
-    signal private input client_deltas[n_clients][param_size];
-    signal private input old_momentum[param_size];
+            "    for (var i = 0; i < param_size; i++) {",
+            "        for (var j = 0; j < n_clients; j++) {",
+            "            partial_sums[j][i] <== client_weights[j] * client_deltas[j][i] / SCALE;",
+            "        }",
+            "    }",
+            "",
+            "    // Sum the weighted deltas",
+            "    for (var i = 0; i < param_size; i++) {",
+            "        var sum = 0;",
+            "        for (var j = 0; j < n_clients; j++) {",
+            "            sum += partial_sums[j][i];",
+            "        }",
+            "        weighted_sum[i] <== sum;",
+            "    }",
+            "",
+            "    // Compute momentum and new params",
+            "    signal momentum_term[param_size];",
+            "    for (var i = 0; i < param_size; i++) {",
+            "        momentum_term[i] <== momentum_coeff * old_momentum[i] / SCALE;",
+            "        new_momentum[i] <== momentum_term[i] + weighted_sum[i];",
+            "        new_params[i] <== old_params[i] + new_momentum[i];",
+            "    }",
+            "}",
+            "",
+            "component main = FedJSCMAggregation(2, 5);",
+        ]
 
-    // Public inputs
-    signal input client_weights[n_clients];
-    signal input momentum_coeff;
-    signal input old_params[param_size];
+        # Write using standard text mode with explicit line separator
+        with open(circuit_path, "w", newline="\n") as f:
+            f.write("\n".join(circuit_lines) + "\n")
 
-    // Outputs
-    signal output new_params[param_size];
-    signal output new_momentum[param_size];
+        # Verify the file was written correctly
+        with open(circuit_path, "rb") as f:
+            content = f.read()
 
-    // Intermediate signals
-    signal weighted_sum[param_size];
-
-    component weighted_aggregation[param_size];
-    component momentum_update[param_size];
-    component param_update[param_size];
-
-    // Compute weighted sum of client updates
-    for (var i = 0; i < param_size; i++) {
-        weighted_sum[i] <== 0;
-        for (var j = 0; j < n_clients; j++) {
-            weighted_sum[i] += client_weights[j] * client_deltas[j][i];
-        }
-    }
-
-    // Update momentum and parameters
-    for (var i = 0; i < param_size; i++) {
-        // new_momentum = momentum_coeff * old_momentum + weighted_sum
-        new_momentum[i] <== momentum_coeff * old_momentum[i] + weighted_sum[i];
-
-        // new_params = old_params + new_momentum
-        new_params[i] <== old_params[i] + new_momentum[i];
-    }
-}
-
-component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
-"""
-
-        with open(circuit_path, "w") as f:
-            f.write(circuit_code)
-
-        logger.debug(f"Created aggregation circuit: {circuit_path}")
-
-    def _prepare_snark_inputs(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        """Prepare inputs for Circom circuit"""
-        circuit_inputs = {}
-
-        # Extract components
-        client_updates = inputs.get("client_updates", [])
-        client_weights = inputs.get("client_weights", [])
-        aggregated_params = inputs.get("aggregated_params", [])
-        momentum = inputs.get("momentum", [])
-        momentum_coeff = inputs.get("momentum_coeff", 0.9)
-
-        # Flatten and quantize parameters
-        circuit_inputs["client_deltas"] = []
-        for update in client_updates:
-            flattened = np.concatenate([arr.flatten() for arr in update])
-            quantized = (flattened * 1000).astype(int).tolist()  # Simple quantization
-            circuit_inputs["client_deltas"].append(quantized[:10])  # Limit size
-
-        circuit_inputs["client_weights"] = [int(w * 1000) for w in client_weights]
-
-        if momentum:
-            momentum_flat = np.concatenate([arr.flatten() for arr in momentum])
-            circuit_inputs["old_momentum"] = (
-                (momentum_flat * 1000).astype(int).tolist()[:10]
-            )
+        if b"pragma circom 2.0.0;\n//" in content:
+            logger.info(f"✓ Circuit written and verified: {circuit_path}")
         else:
-            circuit_inputs["old_momentum"] = [0] * 10
+            raise RuntimeError(
+                f"Circuit file has incorrect format! First 100 bytes: {content[:100]}"
+            )
+    def _prepare_snark_inputs(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """
+        Convert ALL floating-point model values to fixed-point integers.
+        Circom/SnarkJS only accept integers (BigInts), NOT floats.
+        """
+        SCALE = 10**6
 
-        circuit_inputs["momentum_coeff"] = int(momentum_coeff * 1000)
+        def fp(x):
+            """Convert float → scaled int"""
+            return int(round(float(x) * SCALE))
 
-        # Mock old parameters for circuit
-        circuit_inputs["old_params"] = [0] * 10
+        client_updates = inputs["client_updates"]
+        client_weights = inputs["client_weights"]
+        aggregated_params = inputs["aggregated_params"]
+        old_momentum = inputs["momentum"]
+        momentum_coeff = inputs["momentum_coeff"]
 
-        return circuit_inputs
+        # Each parameter vector has size 5 (per your circuit: FedJSCMAggregation(2,5))
+        param_size = 5
+        n_clients = len(client_updates)
+
+        def flatten(arrs):
+            """Flatten list of NDArrays into a fixed-length (param_size) list."""
+            flat = np.concatenate([a.flatten() for a in arrs]).tolist()
+            # Trim/pad
+            if len(flat) < param_size:
+                flat += [0.0] * (param_size - len(flat))
+            return [fp(v) for v in flat[:param_size]]
+
+        # Build witness JSON
+        witness = {
+            "client_deltas": [],
+            "client_weights": [fp(w) for w in client_weights],
+            "old_params": flatten(inputs["old_params"]),
+            "old_momentum": flatten(old_momentum),
+            "momentum_coeff": fp(momentum_coeff),
+        }
+
+        for update in client_updates:
+            witness["client_deltas"].append(flatten(update))
+
+        return witness
+
 
     def _format_public_inputs(self, public_inputs: dict[str, Any]) -> list[str]:
         """Format public inputs for verification"""
@@ -633,45 +713,89 @@ component main = FedJSCMAggregation(5, 10);  // 5 clients, 10 parameters
         return formatted
 
     def _generate_snark_proof(self, inputs: dict[str, Any]) -> str | None:
-        """Generate SNARK proof"""
         try:
-            # Mock proof generation - real implementation would use snarkjs
-            mock_proof = {
-                "proof": {
-                    "pi_a": ["0x123", "0x456", "0x1"],
-                    "pi_b": [["0x789", "0xabc"], ["0xdef", "0x123"], ["0x1", "0x0"]],
-                    "pi_c": ["0x456", "0x789", "0x1"],
-                },
-                "publicSignals": self._format_public_inputs(inputs),
-            }
+            circuit_dir = Path(self.circuit_dir)
+            build = circuit_dir / "build"
 
-            return json.dumps(mock_proof, indent=2)
+            input_json = build / "input.json"
+            witness_wtns = build / "witness.wtns"
+            proof_json = build / "proof.json"
+            public_json = build / "public.json"
+
+            # Save input.json
+            with open(input_json, "w") as f:
+                json.dump(inputs, f)
+
+            # 1. Compute witness (CORRECTED PATH)
+            wasm_file = build / "aggregation_js" / "aggregation.wasm"  # ← ADD THIS LINE
+            subprocess.check_call(
+                [
+                    self.snarkjs_path,
+                    "wtns",
+                    "calculate",
+                    str(
+                        wasm_file
+                    ),  # ← CHANGE THIS (was: str(build / "aggregation.wasm"))
+                    str(input_json),
+                    str(witness_wtns),
+                ]
+            )
+
+            # 2. Create proof
+            subprocess.check_call(
+                [
+                    self.snarkjs_path,
+                    "groth16",
+                    "prove",
+                    str(self.proving_key),
+                    str(witness_wtns),
+                    str(proof_json),
+                    str(public_json),
+                ]
+            )
+
+            with open(proof_json) as f:
+                proof = json.load(f)
+
+            with open(public_json) as f:
+                public = json.load(f)
+
+            return json.dumps({"proof": proof, "public": public})
 
         except Exception as e:
             logger.error(f"SNARK proof generation failed: {e}")
             return None
 
-    def _verify_snark_proof(
-        self, proof_data: dict[str, Any], public_inputs: list[str]
-    ) -> bool:
-        """Verify SNARK proof"""
+    def _verify_snark_proof(self, proof_data: dict, public_inputs: list) -> bool:
         try:
-            # Mock verification - real implementation would use snarkjs verify
-            required_fields = ["proof", "publicSignals"]
-            for field in required_fields:
-                if field not in proof_data:
-                    return False
+            circuit_dir = Path(self.circuit_dir)
+            build = circuit_dir / "build"
+            proof_json = build / "verify_proof.json"
+            public_json = build / "verify_public.json"
 
-            # Check proof structure
-            proof = proof_data["proof"]
-            if not all(key in proof for key in ["pi_a", "pi_b", "pi_c"]):
-                return False
+            with open(proof_json, "w") as f:
+                json.dump(proof_data["proof"], f)
 
-            logger.debug("Verified SNARK aggregation proof")
-            return True
+            with open(public_json, "w") as f:
+                json.dump(proof_data["public"], f)
+
+            result = subprocess.run(
+                [
+                    self.snarkjs_path,
+                    "groth16",
+                    "verify",
+                    str(self.verification_key),
+                    str(public_json),
+                    str(proof_json),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            return "OK" in result.stdout
 
         except Exception as e:
-            logger.error(f"SNARK proof verification failed: {e}")
+            logger.error(f"SNARK verification failed: {e}")
             return False
 
 
@@ -692,8 +816,7 @@ def test_proof_managers():
         "round": 1,
         "data_commitment": "test_data",
         # "initial_params": [np.random.randn(5, 3), np.random.randn(3)],
-        "initial_params" : [np.random.uniform(-0.01, 0.01, size=(5,3))],
-
+        "initial_params": [np.random.uniform(-0.01, 0.01, size=(5, 3))],
         "updated_params": [np.random.randn(5, 3), np.random.randn(3)],
         "learning_rate": 0.01,
         "rigor_level": "medium",
