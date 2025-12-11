@@ -1,0 +1,218 @@
+# SecureFL Configuration Example
+# This file shows all available configuration options for customizing
+# your federated learning setup.
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+  num_rounds: 10
+
+# Strategy Configuration (FL Algorithm)
+strategy:
+  # FedAvg parameters
+  fraction_fit: 1.0          # Fraction of clients to sample for training
+  fraction_evaluate: 1.0     # Fraction of clients to sample for evaluation
+  min_fit_clients: 3         # Minimum clients required for training
+  min_evaluate_clients: 3    # Minimum clients required for evaluation
+  min_available_clients: 3   # Minimum clients that must be available
+
+  # Client selection
+  evaluate_fn: null          # Server-side evaluation function
+  on_fit_config_fn: null     # Function to configure training
+  on_evaluate_config_fn: null # Function to configure evaluation
+  accept_failures: true      # Whether to accept client failures
+
+  # Early stopping
+  initial_parameters: null   # Initial model parameters
+  fit_metrics_aggregation_fn: null
+  evaluate_metrics_aggregation_fn: null
+
+# Aggregation Configuration (FedJSCM)
+aggregation:
+  algorithm: "fedjscm"       # Aggregation algorithm: fedavg, fedjscm
+  momentum: 0.9              # FedJSCM momentum coefficient
+  server_learning_rate: 1.0  # Server-side learning rate
+  adaptive_clipping: true    # Enable adaptive gradient clipping
+  clipping_norm: 1.0         # Gradient clipping norm
+
+  # Weight averaging
+  weighted_aggregation: true # Use client sample sizes as weights
+  min_weight: 0.001         # Minimum weight for a client
+
+# Zero-Knowledge Proof Configuration
+zkp:
+  enable_zkp: true           # Enable ZKP verification
+  proof_system: "snark"     # Proof system: snark, stark, both
+  proof_rigor: "medium"     # Rigor level: low, medium, high
+
+  # SNARK configuration (server-side)
+  snark:
+    curve: "bn128"           # Elliptic curve: bn128, bls12_381
+    setup_key: "auto"        # Setup key path or "auto" for generation
+    verification_key: "auto" # Verification key path
+
+  # STARK configuration (client-side)
+  stark:
+    field_size: 256          # Field size in bits
+    security_level: 128      # Security level in bits
+    num_queries: 80          # Number of FRI queries
+
+  # Proof verification
+  batch_verification: true   # Batch verify multiple proofs
+  verification_threshold: 0.8 # Fraction of proofs that must verify
+  proof_caching: true       # Cache generated proofs
+
+  # Performance tuning
+  parallel_proving: true    # Generate proofs in parallel
+  proof_compression: true   # Compress proof artifacts
+
+# Blockchain Configuration (optional)
+blockchain:
+  enabled: false            # Enable blockchain verification
+  network: "local"          # Network: local, ethereum, polygon
+  contract_address: null    # Smart contract address
+  private_key: null         # Private key for transactions
+  gas_limit: 500000         # Gas limit for transactions
+
+# Client Configuration Defaults
+client:
+  local_epochs: 5           # Local training epochs per round
+  batch_size: 32            # Training batch size
+  learning_rate: 0.01       # Local learning rate
+  optimizer: "sgd"          # Optimizer: sgd, adam, adamw
+
+  # Data configuration
+  dataset: "mnist"          # Default dataset: mnist, cifar10, synthetic
+  data_path: "./data"       # Path to dataset
+  iid: false                # Whether data is IID across clients
+  num_classes: 10           # Number of classes
+
+  # Privacy configuration
+  differential_privacy: false # Enable differential privacy
+  noise_multiplier: 1.0     # DP noise multiplier
+  max_grad_norm: 1.0        # DP gradient clipping norm
+
+# Model Configuration
+model:
+  name: "mnist"             # Model name: mnist, cifar10, resnet18, custom
+  input_shape: [1, 28, 28]  # Input tensor shape
+  num_classes: 10           # Number of output classes
+
+  # Architecture (for custom models)
+  hidden_layers: [128, 64]  # Hidden layer sizes
+  activation: "relu"        # Activation function
+  dropout_rate: 0.2         # Dropout rate
+  batch_norm: false         # Use batch normalization
+
+# Data Configuration
+data:
+  # Dataset-specific settings
+  mnist:
+    download: true          # Auto-download dataset
+    normalize: true         # Normalize pixel values
+    augment: false          # Apply data augmentation
+
+  cifar10:
+    download: true
+    normalize: true
+    augment: true           # CIFAR-10 benefits from augmentation
+
+  synthetic:
+    num_samples: 1000       # Samples per client
+    num_features: 784       # Feature dimensions
+    num_classes: 10         # Number of classes
+    noise_level: 0.1        # Amount of noise to add
+
+  # Federated partitioning
+  partitioning:
+    method: "dirichlet"     # Partitioning method: iid, dirichlet, shards
+    alpha: 0.5              # Dirichlet concentration parameter
+    num_shards: 200         # Number of shards (for shard-based)
+
+# Logging Configuration
+logging:
+  level: "INFO"             # Log level: DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  # File logging
+  log_to_file: true         # Enable file logging
+  log_file: "logs/securefl.log" # Log file path
+  max_file_size: "10MB"     # Maximum log file size
+  backup_count: 5           # Number of backup files
+
+  # Console logging
+  log_to_console: true      # Enable console logging
+  console_level: "INFO"     # Console log level
+
+# Monitoring Configuration
+monitoring:
+  enabled: true             # Enable monitoring
+  metrics_interval: 10      # Metrics collection interval (seconds)
+
+  # Metrics to collect
+  collect_system_metrics: true    # CPU, memory, disk usage
+  collect_training_metrics: true  # Loss, accuracy, etc.
+  collect_network_metrics: true   # Bandwidth, latency
+
+  # Export configuration
+  export_prometheus: false  # Export to Prometheus
+  prometheus_port: 9090     # Prometheus metrics port
+  export_csv: true         # Export metrics to CSV
+  csv_path: "results/metrics.csv" # CSV file path
+
+# Security Configuration
+security:
+  # Authentication
+  enable_auth: false        # Enable client authentication
+  auth_method: "token"      # Authentication method: token, cert, none
+
+  # Encryption
+  enable_tls: false         # Enable TLS encryption
+  tls_cert: null           # TLS certificate path
+  tls_key: null            # TLS private key path
+
+  # Rate limiting
+  rate_limit_enabled: false # Enable rate limiting
+  requests_per_minute: 60   # Maximum requests per minute per client
+
+# Experimental Features
+experimental:
+  # Advanced aggregation
+  byzantine_robustness: false # Enable Byzantine-robust aggregation
+  compression: false        # Enable gradient compression
+  quantization: false       # Enable gradient quantization
+
+  # Adaptive learning
+  adaptive_lr: false        # Enable adaptive learning rate
+  personalization: false    # Enable model personalization
+
+  # System optimization
+  mixed_precision: false    # Enable mixed precision training
+  gradient_checkpointing: false # Enable gradient checkpointing
+
+# Environment-specific overrides
+environments:
+  development:
+    logging:
+      level: "DEBUG"
+    zkp:
+      proof_rigor: "low"
+    monitoring:
+      metrics_interval: 5
+
+  production:
+    logging:
+      level: "WARNING"
+    zkp:
+      proof_rigor: "high"
+    security:
+      enable_tls: true
+
+  docker:
+    data:
+      mnist:
+        download: true
+    logging:
+      log_to_console: true
+      log_to_file: false

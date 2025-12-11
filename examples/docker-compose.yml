@@ -1,0 +1,163 @@
+version: "3.8"
+
+services:
+  # Secure FL Server
+  securefl-server:
+    image: ghcr.io/krishantt/secure-fl:latest
+    container_name: securefl-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_SERVER_HOST=0.0.0.0
+      - SECURE_FL_SERVER_PORT=8080
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command: [
+      "python", "-m", "secure_fl.cli", "server",
+      "--host", "0.0.0.0",
+      "--port", "8080",
+      "--rounds", "10",
+      "--min-clients", "3",
+      "--model", "mnist",
+      "--enable-zkp",
+      "--proof-rigor", "medium"
+    ]
+    networks:
+      - securefl-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Secure FL Client 1
+  securefl-client-1:
+    image: ghcr.io/krishantt/secure-fl:latest
+    container_name: securefl-client-1
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-1
+      - SECURE_FL_SERVER_URL=http://securefl-server:8080
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command: [
+      "python", "-m", "secure_fl.cli", "client",
+      "--server-address", "securefl-server:8080",
+      "--client-id", "client-1",
+      "--dataset", "mnist",
+      "--partition", "0",
+      "--enable-zkp",
+      "--epochs", "5",
+      "--batch-size", "32",
+      "--learning-rate", "0.01"
+    ]
+    depends_on:
+      securefl-server:
+        condition: service_healthy
+    networks:
+      - securefl-network
+    restart: on-failure
+
+  # Secure FL Client 2
+  securefl-client-2:
+    image: ghcr.io/krishantt/secure-fl:latest
+    container_name: securefl-client-2
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-2
+      - SECURE_FL_SERVER_URL=http://securefl-server:8080
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command: [
+      "python", "-m", "secure_fl.cli", "client",
+      "--server-address", "securefl-server:8080",
+      "--client-id", "client-2",
+      "--dataset", "mnist",
+      "--partition", "1",
+      "--enable-zkp",
+      "--epochs", "5",
+      "--batch-size", "32",
+      "--learning-rate", "0.01"
+    ]
+    depends_on:
+      securefl-server:
+        condition: service_healthy
+    networks:
+      - securefl-network
+    restart: on-failure
+
+  # Secure FL Client 3
+  securefl-client-3:
+    image: ghcr.io/krishantt/secure-fl:latest
+    container_name: securefl-client-3
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-3
+      - SECURE_FL_SERVER_URL=http://securefl-server:8080
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command: [
+      "python", "-m", "secure_fl.cli", "client",
+      "--server-address", "securefl-server:8080",
+      "--client-id", "client-3",
+      "--dataset", "mnist",
+      "--partition", "2",
+      "--enable-zkp",
+      "--epochs", "5",
+      "--batch-size", "32",
+      "--learning-rate", "0.01"
+    ]
+    depends_on:
+      securefl-server:
+        condition: service_healthy
+    networks:
+      - securefl-network
+    restart: on-failure
+
+  # Optional: Monitoring service to view logs and status
+  securefl-monitor:
+    image: ghcr.io/krishant/securefl:latest
+    container_name: securefl-monitor
+    environment:
+      - SECURE_FL_ENV=production
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command: [
+      "python", "-m", "secure_fl.cli", "info"
+    ]
+    depends_on:
+      - securefl-server
+      - securefl-client-1
+      - securefl-client-2
+      - securefl-client-3
+    networks:
+      - securefl-network
+    profiles:
+      - monitoring
+
+networks:
+  securefl-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  securefl-data:
+    driver: local
+  securefl-logs:
+    driver: local
+  securefl-results:
+    driver: local
