@@ -44,7 +44,7 @@ def create_toy_dataset():
 # -----------------------------
 # Run the test
 # -----------------------------
-def run_client_test():
+def test_client():
     print("\n=== Running Client PySNARK Proof Test ===\n")
 
     train_loader = create_toy_dataset()
@@ -110,4 +110,4 @@ def run_client_test():
 # Run when executed directly
 # -----------------------------
 if __name__ == "__main__":
-    run_client_test()
+    test_client()

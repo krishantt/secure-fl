@@ -163,14 +163,14 @@ Current federated learning systems exhibit several critical limitations that our
 \textbf{Performance Overhead}: Existing ZKP implementations impose significant computational and communication costs without adaptive optimization strategies.
 
 \section{Objectives}
-The key objectives of this project are:
+The key objectives achieved in this project are:
 \begin{itemize}
-    \item To design and implement a dual-verifiable federated learning framework where both clients and the server provide ZKPs.
-    \item To implement zk-SNARK-based proofs for verifying both client-side local training (PySNARK) and server-side aggregation (Groth16).
-    \item To introduce a dynamic proof adjustment mechanism with three rigor levels that modifies proof complexity based on training stability.
-    \item To ensure the framework is efficient and deployable with minimal communication overhead.
-    \item To validate the system using comprehensive multi-dataset evaluation demonstrating consistent performance.
-    \item To demonstrate practical viability while providing cryptographic security guarantees.
+    \item Design and implement a dual-verifiable federated learning framework where both clients and the server provide ZKPs using our implemented SecureFlowerClient and SecureFlowerStrategy classes.
+    \item Implement zk-SNARK-based proof generation for client-side local training verification using PySNARK integration in our ClientProofManager.
+    \item Develop the FedJSCM (Federated Joint Server-Client Momentum) aggregation algorithm with momentum-based parameter updates.
+    \item Create a dynamic proof rigor adjustment system with three complexity levels (high, medium, low) through our StabilityMonitor component.
+    \item Validate the system performance across multiple datasets demonstrating minimal accuracy degradation (0.0\% to -0.2\% average).
+    \item Demonstrate practical deployment capabilities with proof generation times ranging from 0.43-2.58 seconds and verification under 100ms.
 \end{itemize}
 
 \section{Scope}
@@ -1702,6 +1702,180 @@ This work demonstrates that cryptographic security and machine learning performa
 
 Our system bridges theoretical advances in zero-knowledge proofs with practical federated learning deployment, establishing a new standard for trustworthy AI systems where training integrity can be cryptographically verified without compromising privacy or performance.
 
+\chapter{Appendix: Main Code Implementation}
+
+This appendix presents the key code components that implement our dual ZKP federated learning system.
+
+\section{Secure Federated Learning Client}
+
+The \texttt{SecureFlowerClient} class implements client-side training with zk-SNARK proof generation:
+
+\begin{lstlisting}[language=Python, caption=Secure FL Client Implementation]
+class SecureFlowerClient(fl.client.NumPyClient):
+    """Secure FL client with zk-SNARK proof generation"""
+
+    def __init__(self, client_id: str, model: nn.Module,
+                 train_loader: DataLoader, val_loader: DataLoader = None,
+                 device: str = "cpu", enable_zkp: bool = True,
+                 proof_rigor: str = "high", quantize_weights: bool = True,
+                 local_epochs: int = 1, learning_rate: float = 0.01):
+
+        self.client_id = client_id
+        self.model = model.to(device)
+        self.enable_zkp = enable_zkp
+        self.proof_rigor = proof_rigor
+
+        # ZKP components
+        self.proof_manager = ClientProofManager() if enable_zkp else None
+
+    def fit(self, parameters: NDArrays, config: dict) -> tuple:
+        """Train model locally and generate ZKP proof"""
+        # Set received parameters and train
+        self.set_parameters(parameters)
+        initial_params = self.get_parameters({})
+
+        # Perform local training
+        self._train_model()
+        updated_params = self.get_parameters({})
+
+        # Generate ZKP proof if enabled
+        if self.enable_zkp:
+            proof_data = self.proof_manager.generate_proof({
+                'initial_params': initial_params,
+                'updated_params': updated_params,
+                'rigor': self.proof_rigor
+            })
+
+        return updated_params, len(self.train_loader), metrics
+\end{lstlisting}
+
+\section{FedJSCM Aggregation Algorithm}
+
+The \texttt{FedJSCMAggregator} implements momentum-based parameter aggregation:
+
+\begin{lstlisting}[language=Python, caption=FedJSCM Aggregation Implementation]
+class FedJSCMAggregator:
+    """Federated Joint Server-Client Momentum Aggregator"""
+
+    def __init__(self, momentum: float = 0.9, learning_rate: float = 0.01):
+        self.momentum = momentum
+        self.learning_rate = learning_rate
+        self.server_momentum: NDArrays = None
+
+    def aggregate(self, client_updates: list[NDArrays],
+                 client_weights: list[float], server_round: int,
+                 global_params: NDArrays = None) -> NDArrays:
+        """Aggregate using momentum: m^{(t+1)} = gamma*m^{(t)} + sum(p_i*delta_i)"""
+
+        # Compute weighted average of client updates
+        weighted_deltas = []
+        for params, weight in zip(client_updates, client_weights):
+            weighted_delta = [p * weight for p in params]
+            weighted_deltas.append(weighted_delta)
+
+        # Aggregate updates
+        aggregated_delta = []
+        for i in range(len(weighted_deltas[0])):
+            layer_sum = sum(update[i] for update in weighted_deltas)
+            aggregated_delta.append(layer_sum)
+
+        # Apply momentum: m^{(t+1)} = gamma*m^{(t)} + aggregated_delta
+        if self.server_momentum is None:
+            self.server_momentum = aggregated_delta
+        else:
+            self.server_momentum = [
+                self.momentum * m + delta
+                for m, delta in zip(self.server_momentum, aggregated_delta)
+            ]
+
+        # Update global parameters: w^{(t+1)} = w^{(t)} + m^{(t+1)}
+        return [g + m for g, m in zip(global_params, self.server_momentum)]
+\end{lstlisting}
+
+\section{Zero-Knowledge Proof Manager}
+
+The \texttt{ClientProofManager} handles zk-SNARK proof generation and verification:
+
+\begin{lstlisting}[language=Python, caption=ZKP Manager Implementation]
+class ClientProofManager(ProofManagerBase):
+    """Client-side proof manager using PySNARK"""
+
+    def __init__(self, max_update_norm: float = None, use_pysnark: bool = True):
+        super().__init__()
+        self.max_update_norm = max_update_norm
+        self.use_pysnark = use_pysnark
+
+    def generate_proof(self, inputs: dict) -> str:
+        """Generate zk-SNARK proof for parameter update verification"""
+        initial_params = inputs['initial_params']
+        updated_params = inputs['updated_params']
+
+        # Compute parameter delta and its L2 norm
+        delta_params = [u - i for u, i in zip(updated_params, initial_params)]
+        delta_norm = np.sqrt(sum(np.sum(d**2) for d in delta_params))
+
+        # Generate proof that ||delta|| <= bound using PySNARK circuit
+        if self.use_pysnark:
+            bound = self._get_effective_bound(delta_norm)
+            proof_metadata = self._generate_pysnark_delta_bound_proof(
+                initial_params, updated_params, bound
+            )
+
+        return json.dumps({
+            'proof_type': 'delta_bound',
+            'delta_norm': float(delta_norm),
+            'bound_used': bound,
+            'pysnark_metadata': proof_metadata,
+            'timestamp': time.time()
+        })
+\end{lstlisting}
+
+\section{Dynamic Stability Monitor}
+
+The \texttt{StabilityMonitor} adjusts proof rigor based on training stability:
+
+\begin{lstlisting}[language=Python, caption=Stability Monitor Implementation]
+class StabilityMonitor:
+    """Monitor training stability and adjust proof rigor dynamically"""
+
+    def __init__(self, window_size: int = 10,
+                 stability_threshold_high: float = 0.9,
+                 stability_threshold_medium: float = 0.7):
+        self.window_size = window_size
+        self.stability_threshold_high = stability_threshold_high
+        self.stability_threshold_medium = stability_threshold_medium
+
+        # Sliding windows for metrics
+        self.parameter_norms = deque(maxlen=window_size)
+        self.loss_history = deque(maxlen=window_size)
+
+    def update_metrics(self, round_data: dict) -> StabilityMetrics:
+        """Update stability metrics with new round data"""
+        # Track parameter changes and loss variations
+        self.parameter_norms.append(round_data.get('param_norm', 0.0))
+        self.loss_history.append(round_data.get('loss', 0.0))
+
+        # Compute stability scores
+        param_stability = self._compute_parameter_stability()
+        loss_stability = self._compute_loss_stability()
+
+        overall_stability = (param_stability + loss_stability) / 2
+
+        return StabilityMetrics(
+            parameter_stability=param_stability,
+            loss_stability=loss_stability,
+            overall_stability=overall_stability
+        )
+
+    def recommend_rigor(self, stability: StabilityMetrics) -> str:
+        """Recommend proof rigor based on current stability"""
+        if stability.overall_stability >= self.stability_threshold_high:
+            return "low"    # Stable training, reduce proof complexity
+        elif stability.overall_stability >= self.stability_threshold_medium:
+            return "medium" # Moderate stability
+        else:
+            return "high"   # Unstable training, maintain high rigor
+\end{lstlisting}
 
 
 \addcontentsline{toc}{section}{References}

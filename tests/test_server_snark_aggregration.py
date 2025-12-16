@@ -48,7 +48,7 @@ def make_fake_updates():
     return updates, weights, stacked, old_params, momentum
 
 
-def run_test():
+def test_server_aggregation():
     print("=== SNARK Aggregation Test ===")
 
     pm = ServerProofManager()
@@ -68,6 +68,10 @@ def run_test():
         print("✓ Circuit compiled & proving key created.")
     else:
         print("✓ Circuit already built.")
+        # Set the proving and verification keys since they weren't set by _setup_snark_circuit()
+        vkey = build_dir / "verification_key.json"
+        pm.proving_key = str(zkey)
+        pm.verification_key = str(vkey)
 
     # Step 2: Prepare fake data
     updates, weights, aggregated, old_params, momentum = make_fake_updates()
@@ -111,4 +115,4 @@ def run_test():
 
 
 if __name__ == "__main__":
-    run_test()
+    test_server_aggregation()
