@@ -534,9 +534,12 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
         )
 
     host, port_str = server_address.split(":", 1)
-    port = int(port_str)
-    if port < 1 or port > 65535:
-        raise ValueError(f"Invalid port number: {port}")
+    try:
+        port = int(port_str)
+        if port < 1 or port > 65535:
+            raise ValueError(f"Invalid port number: {port}")
+    except ValueError:
+        raise ValueError(f"Invalid port in server address: {port_str}")
 
     logger.info(f"Parsed server address - Host: {host}, Port: {port}")
     logger.info("Client configuration:")
@@ -586,6 +589,7 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
         logger.error("3. Incompatible Flower versions")
         logger.error("4. Configuration mismatch between client and server")
         raise
+
 
 
 # Example usage and testing

@@ -8,6 +8,7 @@ in the Docker Compose environment.
 
 import socket
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path
@@ -47,6 +48,8 @@ def test_flower_imports():
         print(f"✓ Flower version: {fl.__version__}")
 
         # Test key components
+        from flwr.client import NumPyClient, start_numpy_client
+        from flwr.server import ServerConfig, start_server
 
         print("✓ Flower server/client imports successful")
 
@@ -59,6 +62,10 @@ def test_flower_imports():
 def test_secure_fl_imports():
     """Test that Secure FL modules can be imported"""
     try:
+        from secure_fl.client import SecureFlowerClient
+        from secure_fl.models import MNISTModel
+        from secure_fl.server import SecureFlowerServer
+
         print("✓ Secure FL imports successful")
         return True
     except Exception as e:
@@ -167,7 +174,7 @@ def main():
             )
 
             # Create test server
-            SecureFlowerServer(
+            server = SecureFlowerServer(
                 strategy=strategy,
                 host="localhost",
                 port=8081,  # Use different port

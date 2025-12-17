@@ -9,6 +9,7 @@ for the Secure FL framework.
 import os
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -166,9 +167,9 @@ def check_docker_info():
         # Docker ENV file
         dockerenv_content = ""
         try:
-            with open("/.dockerenv") as f:
+            with open("/.dockerenv", "r") as f:
                 dockerenv_content = f.read()
-        except Exception:
+        except:
             dockerenv_content = "Could not read /.dockerenv"
 
         print(f"/.dockerenv exists: {bool(dockerenv_content)}")
@@ -176,7 +177,7 @@ def check_docker_info():
         # Check /etc/hosts
         print("\n/etc/hosts entries:")
         try:
-            with open("/etc/hosts") as f:
+            with open("/etc/hosts", "r") as f:
                 hosts_content = f.read()
             for line in hosts_content.split("\n")[:20]:  # Show first 20 lines
                 if line.strip() and not line.startswith("#"):
@@ -195,8 +196,8 @@ def test_flower_connection():
         print(f"✓ Flower version: {fl.__version__}")
 
         # Test imports
-        from flwr.client import start_numpy_client  # noqa:F401
-        from flwr.server import start_server  # noqa:F401
+        from flwr.client import start_numpy_client
+        from flwr.server import start_server
 
         print("✓ Flower imports successful")
 
@@ -234,7 +235,9 @@ def test_secure_fl():
 
         print(f"✓ Secure FL version: {__version__}")
 
+        from secure_fl.client import SecureFlowerClient
         from secure_fl.models import MNISTModel
+        from secure_fl.server import SecureFlowerServer
 
         print("✓ Secure FL imports successful")
 
