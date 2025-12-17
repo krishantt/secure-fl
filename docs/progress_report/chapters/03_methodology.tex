@@ -1,0 +1,161 @@
+\chapter{Methodology}
+
+The proposed methodology outlines a secure and efficient federated learning system that utilizes dual Zero-Knowledge Proofs (ZKPs) to ensure end-to-end verifiability. The methodology follows an iterative, round-based training structure, integrating cryptographic proof systems and adaptive rigor tuning.
+
+\section{Overview}
+Each training round consists of:
+\begin{enumerate}
+    \item \textbf{Client-side training and proof generation} using zk-SNARKs (PySNARK).
+    \item \textbf{Server-side verification, aggregation, and proof generation} using Groth16 zk-SNARKs.
+\end{enumerate}
+
+\section{Step-by-Step Procedure}
+
+\subsection*{Step 1: Initialization}
+\begin{itemize}
+    \item The server initializes the global model \( w^{(0)} \), server momentum \( m^{(0)} = 0 \), and proof rigor parameters.
+    \item The server distributes the initial model to all participating clients.
+    \item Clients load their local data and prepare for training.
+\end{itemize}
+
+\subsection*{Step 2: Client-Side Operations}
+For each round \( t \), each client \( i \) performs the following:
+\begin{enumerate}
+    \item Downloads global model \( w^{(t)} \).
+    \item Computes model update \( \Delta_i^{(t)} \) by applying SGD for \( E \) local epochs:
+    \[
+    w_i^{(t+1)} = w^{(t)} - \eta \sum_{e=1}^E \nabla L_i(w_i^{(e)}; \mathcal{B}_e), \quad \Delta_i^{(t)} = w_i^{(t+1)} - w^{(t)}.
+    \]
+    where \( \mathcal{B}_e \) represents mini-batches from client \( i \)'s local dataset.
+    \item Applies \textbf{FixedPointQuantizer} to convert \( \Delta_i^{(t)} \) to 8-bit fixed point representation:
+    \[
+    \hat{\Delta}_i^{(t)} = \text{Quantize}(\Delta_i^{(t)}, \text{bits}=8, \text{scale}=2^7)
+    \]
+    \item Computes parameter norms and validation metrics for proof circuit inputs.
+    \item Generates a zk-SNARK proof \( \pi_i^{\text{client}} \) for the statement:
+    \begin{itemize}
+        \item The model update \( \Delta_i^{(t)} \) was generated from SGD using valid, committed local data.
+        \item The data used meets certain size and format requirements.
+    \end{itemize}
+    \item Sends \( (\Delta_i^{(t)}, \pi_i^{\text{client}}) \) to the server.
+\end{enumerate}
+
+\subsection*{Step 3: Server-Side Operations}
+Upon receiving submissions from all clients, the \textbf{SecureFlowerServer} performs:
+\begin{enumerate}
+    \item \textbf{Client Proof Verification}: Verifies each \( \pi_i^{\text{client}} \) using batch zk-SNARK verification through \texttt{ClientProofManager.verify\_proof()}.
+    \item \textbf{Update Filtering}: Filters out invalid updates and applies weight decay if configured:
+    \[
+    \tilde{\Delta}_i^{(t)} = \Delta_i^{(t)} - \lambda w^{(t)}
+    \]
+    where \( \lambda \) is the weight decay coefficient.
+    \item \textbf{FedJSCM Aggregation}: Implemented by \texttt{FedJSCMAggregator} class:
+    \begin{enumerate}
+        \item Computes weighted average of client updates:
+        \[
+        \bar{\Delta}^{(t)} = \sum_{i \in V} p_i \tilde{\Delta}_i^{(t)}
+        \]
+        where \( p_i = \frac{n_i}{\sum_{j \in V} n_j} \) and \( n_i \) is client \( i \)'s data size.
+        \item Updates server momentum with adaptive coefficient:
+        \[
+        m^{(t+1)} = \gamma_{\text{eff}}^{(t)} m^{(t)} + \bar{\Delta}^{(t)}
+        \]
+        where \( \gamma_{\text{eff}}^{(t)} = \gamma \cdot \text{momentum\_decay}^t \) for adaptive momentum.
+        \item Applies momentum to global model:
+        \[
+        w^{(t+1)} = w^{(t)} + \eta_{\text{global}} \cdot m^{(t+1)}
+        \]
+    \end{enumerate}
+    \item \textbf{Server Proof Generation}: Uses \texttt{ServerProofManager} to generate Groth16 zk-SNARK proof \( \pi^{\text{server}} \) proving:
+    \begin{itemize}
+        \item Correct weighted averaging: \( \sum_{i \in V} p_i = 1 \) and weights match data sizes
+        \item Valid momentum update: \( m^{(t+1)} = \gamma m^{(t)} + \bar{\Delta}^{(t)} \)
+        \item Correct model update: \( w^{(t+1)} = w^{(t)} + \eta_{\text{global}} m^{(t+1)} \)
+        \item Parameter bounds: \( \|\Delta_i^{(t)}\|_2 \leq \text{max\_update\_norm} \)
+        \item Public inputs include \( \text{hash}(w^{(t)}) \), \( \text{hash}(w^{(t+1)}) \), and round number \( t \)
+    \end{itemize}
+    \item \textbf{State Management}: Updates training metrics via \texttt{StabilityMonitor} for dynamic proof rigor adjustment.
+    \item \textbf{Broadcast}: Distributes \( (w^{(t+1)}, \pi^{\text{server}}, \text{proof\_rigor}^{(t+1)}) \) to clients.
+\end{enumerate}
+
+\subsection*{Dynamic Rigor}
+The system adjusts proof complexity based on training stability:
+\begin{itemize}
+    \item \textbf{High Rigor}: Full verification (2.6s proof time) for unstable training
+    \item \textbf{Medium Rigor}: Partial verification (1.2s) for moderate stability
+    \item \textbf{Low Rigor}: Basic verification (0.4s) for stable convergence
+\end{itemize}
+
+\section{System Components and Tools}
+
+\section{Implementation}
+\begin{itemize}
+    \item \textbf{Framework}: Flower with custom secure clients and servers
+    \item \textbf{Client Proofs}: PySNARK-based zk-SNARK circuits for SGD verification
+    \item \textbf{Server Proofs}: Groth16 zk-SNARKs for aggregation verification
+    \item \textbf{Quantization}: Fixed-point quantization for circuit compatibility
+\end{itemize}
+
+This methodology ensures verifiability, robustness, and efficiency across the entire FL pipeline, making it suitable for high-stakes and privacy-critical applications.
+
+\section{Experimental Design}
+
+Our experimental validation follows a multi-phase approach with statistical rigor, incorporating baseline testing, secure FL evaluation, and comprehensive analysis across diverse datasets and model architectures.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{experimental_framework.png}
+    \caption{Experimental Framework Design}
+    \label{fig:experimental_framework}
+\end{figure}
+
+\section{Infrastructure}
+
+\subsection{Cloud Deployment}
+We simulate a federated setup on AWS using the following:
+\begin{itemize}
+    \item \textbf{Server Node}: One VM as the central aggregator.
+    \item \textbf{Client Nodes}: 5--10 VMs, each representing a federated client.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Role} & \textbf{Instance} & \textbf{Specs} \\
+\hline
+Server & t3.xlarge & 4 vCPUs, 16 GB RAM \\
+Client & t3.medium & 2 vCPUs, 4 GB RAM \\
+\hline
+\end{tabular}
+\caption{EC2 Configuration}
+\end{table}
+
+\section{Software Stack}
+
+\subsection{Client VMs}
+\begin{itemize}
+    \item OS: Ubuntu 22.04
+    \item Framework: Flower with PyTorch and PySNARK (for zk-SNARKs)
+\end{itemize}
+
+\subsection{Server VM}
+\begin{itemize}
+    \item FL Server: Flower + FedJSCM
+    \item zk-SNARK Prover: Circom + SnarkJS
+\end{itemize}
+
+\section{Datasets}
+\begin{itemize}
+    \item MedMNIST (non-IID, split by class)
+    \item UCI HAR (sensor time-series)
+\end{itemize}
+Each client holds \textasciitilde5--10\% of the dataset.
+
+\section{Proof Configuration}
+\begin{itemize}
+    \item \textbf{Client (zk-SNARK)}: PySNARK circuits for SGD steps
+    \item \textbf{Server (zk-SNARK)}: Groth16 aggregation proof in Circom
+\end{itemize}
+
+This setup enables reproducible and secure simulation of federated learning with privacy-preserving, verifiable computation.

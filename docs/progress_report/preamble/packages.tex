@@ -1,0 +1,80 @@
+\documentclass[12pt]{report}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\usepackage[numbers]{natbib}%referencing
+\usepackage[left=1.0in,right=1.0in,top=.8in,bottom=.8in]{geometry}
+\usepackage{float}
+\linespread{1.3}
+\usepackage{graphicx}%figures
+\usepackage{rotating}%landscape
+\usepackage{amsmath}%math
+\usepackage{amssymb}%math symbols like \mathbb
+\usepackage{titlesec} %formatting chapters
+\titlespacing*{\chapter}{-15pt}{10pt}{15pt}
+\titlespacing*{\section}{0pt}{0pt}{5pt}
+\titlespacing*{\subsection}{0pt}{5pt}{5pt}
+\titleformat{\chapter}[hang]
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter.}{1em}{}
+\renewcommand{\chaptername}{}
+\graphicspath{{images/}}%image folder name
+\usepackage{graphicx}  % in the preamble
+\usepackage[table]{xcolor}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Define colors for Python syntax highlighting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{codeblue}{rgb}{0.0,0.3,0.7}
+\definecolor{codeorange}{rgb}{0.8,0.4,0.0}
+
+% Python style
+\lstdefinestyle{pythonstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    identifierstyle=\color{black},
+    emphstyle=\color{codeorange}\bfseries,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,
+    rulecolor=\color{codegray},
+    language=Python,
+    emph={self, __init__, aggregate, _weighted_average, _initialize_momentum, _update_momentum, _apply_momentum_update}
+}
+
+\lstset{style=pythonstyle}
+
+%Cover page contents
+\title{
+    \includegraphics[scale=.3]{logotu.jpg}\\[0.4cm]
+    {\large \uppercase{Tribhuvan University}\\
+    Institute of Engineering\\
+    Pulchowk Campus\\[0.6cm]
+    A Progress Report On\\[0.2cm]
+    \textbf{Hybrid Dual-Verification Framework for Federated Learning using Zero-Knowledge Proofs}\\[0.6cm]
+    \textbf{Submitted By:}\\
+    Bindu Paudel (PUL078BCT032)\\
+    Krishant Timilsina (PUL078BCT045)\\[0.5cm]
+    \textbf{Submitted To:}\\
+    Department of Electronics \& Computer Engineering }
+}
+
+\date{July, 2025}

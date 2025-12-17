@@ -1,0 +1,200 @@
+\chapter{System Design}
+
+This chapter presents the comprehensive system architecture and implementation details of our secure federated learning framework, detailing the design principles, component interactions, security mechanisms, and technical implementation that enable dual-verifiable distributed machine learning.
+
+\section{Overview}
+
+Our secure federated learning system implements a novel dual-verification architecture that provides end-to-end cryptographic guarantees without relying on trusted parties. The system combines client-side zero-knowledge proofs for local training verification with server-side proofs for aggregation correctness, creating a trustless federated learning environment.
+
+\subsection{Architecture}
+
+The system architecture consists of three primary layers, each with distinct responsibilities and security guarantees:
+
+\subsubsection{Client Layer}
+
+\begin{itemize}
+    \item \textbf{SecureFlowerClient}: Enhanced Flower client with integrated ZKP generation capabilities
+    \item \textbf{ClientProofManager}: PySNARK-based proof generation for local training verification
+    \item \textbf{FixedPointQuantizer}: Efficient parameter quantization for circuit compatibility
+    \item \textbf{LocalTrainingManager}: SGD execution with comprehensive audit trails
+    \item \textbf{DataCommitmentManager}: Cryptographic commitments to local training data
+\end{itemize}
+
+\subsubsection{Server Layer}
+
+\begin{itemize}
+    \item \textbf{SecureFlowerServer}: Enhanced Flower server with dual ZKP verification
+    \item \textbf{FedJSCMAggregator}: Momentum-based aggregation with adaptive parameters
+    \item \textbf{ServerProofManager}: Groth16 zk-SNARK proof generation for aggregation verification
+    \item \textbf{StabilityMonitor}: Dynamic proof rigor adjustment based on training metrics
+    \item \textbf{Communication Manager}: Efficient client-server communication with proof validation
+\end{itemize}
+
+\subsubsection{Verification and Audit Layer}
+
+\begin{itemize}
+    \item \textbf{ProofRegistry}: Distributed storage of proof verification records
+    \item \textbf{ModelStateTracker}: Cryptographic audit trail of model evolution
+    \item \textbf{ParticipantManager}: Client registration and reputation management
+\end{itemize}
+
+\subsection{Design Principles}
+
+\textbf{Dual Verifiability}: Every training round produces cryptographic proofs at both client and server levels, ensuring end-to-end verification without trusted parties.
+
+\textbf{Adaptive Security}: Dynamic proof rigor adjustment balances security guarantees with computational efficiency based on real-time training stability metrics.
+
+\textbf{Production Scalability}: Modular architecture supports deployment across diverse environments from edge devices to cloud infrastructure.
+
+\textbf{Transparent Operations}: All verification logic is open-source with comprehensive audit trails maintained through cryptographic logging.
+
+\section{Implementation Details}
+
+\subsection{Core Components Implementation}
+
+\textbf{SecureFlowerClient Implementation:}
+The client implementation extends the standard Flower NumPyClient with integrated zero-knowledge proof capabilities:
+\begin{itemize}
+    \item \textbf{Proof Integration:} PySNARK circuits embedded within the training loop
+    \item \textbf{Parameter Quantization:} Fixed-point quantization using 8-bit representation with scale factor $2^7$
+    \item \textbf{Data Commitment:} Cryptographic commitments to local training data using SHA-256 hashing
+    \item \textbf{Audit Trail:} Complete logging of all training operations for proof generation
+\end{itemize}
+
+\textbf{SecureFlowerServer Implementation:}
+The server implementation provides comprehensive verification and aggregation:
+\begin{itemize}
+    \item \textbf{Batch Verification:} Simultaneous verification of multiple client proofs for efficiency
+    \item \textbf{FedJSCM Aggregation:} Momentum-based aggregation with adaptive coefficients
+    \item \textbf{Groth16 Proofs:} Server-side proof generation using optimized Circom circuits
+    \item \textbf{Dynamic Rigor:} Real-time adjustment of proof complexity based on training stability
+\end{itemize}
+
+\textbf{Zero-Knowledge Proof Circuits:}
+\begin{itemize}
+    \item \textbf{Client Circuits:} PySNARK-based circuits for SGD verification with constraint optimization
+    \item \textbf{Server Circuits:} Groth16 circuits for aggregation proof with sub-linear scaling
+    \item \textbf{Circuit Caching:} Smart caching system to amortize circuit generation costs
+    \item \textbf{Memory Management:} Advanced memory optimization reducing requirements by 50\%
+\end{itemize}
+
+\section{System Architecture}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{system_architecture_mermaid.png}
+    \caption{Secure Federated Learning System Architecture}
+    \label{fig:system_architecture}
+\end{figure}
+
+The architecture implements a distributed topology with cryptographic verification at every layer. The secure server coordinates training rounds while clients maintain complete autonomy over their local data and training processes, with all interactions verified through zero-knowledge proofs.
+
+\section{Federated Learning Workflow}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{federated_learning_flow_mermaid.png}
+    \caption{Secure Federated Learning Training Workflow}
+    \label{fig:fl_workflow}
+\end{figure}
+
+The federated learning process follows a structured protocol that ensures both correctness and verifiability:
+
+\begin{enumerate}
+    \item \textbf{Round Initialization:} The server broadcasts the current global model along with proof rigor parameters determined by the StabilityMonitor
+    \item \textbf{Local Training Phase:} Clients perform SGD training on their private data while maintaining audit trails
+    \item \textbf{Proof Generation:} Each client generates cryptographic proofs of correct training execution using PySNARK circuits
+    \item \textbf{Secure Submission:} Clients submit model updates along with zero-knowledge proofs to the server
+    \item \textbf{Verification and Filtering:} The server verifies all client proofs and filters out invalid submissions
+    \item \textbf{FedJSCM Aggregation:} The server performs momentum-based aggregation of verified updates
+    \item \textbf{Server Proof Generation:} The server generates its own proof of correct aggregation computation
+    \item \textbf{Global Distribution:} The updated global model is distributed with server-side proofs for client verification
+\end{enumerate}
+
+\section{Zero-Knowledge Proof Verification Process}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{zkp_verification_process.png}
+    \caption{Zero-Knowledge Proof Verification Process Flow}
+    \label{fig:zkp_process}
+\end{figure}
+
+The dual-proof system creates a comprehensive verification framework:
+
+\subsection{Client-Side Verification}
+\begin{itemize}
+    \item \textbf{Training Correctness:} Proofs demonstrate that local SGD was performed correctly on committed data
+    \item \textbf{Parameter Bounds:} Verification that model updates fall within expected statistical ranges
+    \item \textbf{Data Integrity:} Cryptographic commitments ensure training used legitimate local datasets
+    \item \textbf{Computation Trace:} Complete audit trail of all training operations without revealing sensitive data
+\end{itemize}
+
+\subsection{Server-Side Verification}
+\begin{itemize}
+    \item \textbf{Aggregation Correctness:} Proofs ensure correct weighted averaging of client updates
+    \item \textbf{Momentum Updates:} Verification of proper FedJSCM momentum computation and application
+    \item \textbf{Protocol Adherence:} Confirmation that server followed prescribed aggregation protocol exactly
+    \item \textbf{State Consistency:} Verification of global model state transitions across rounds
+\end{itemize}
+
+\subsection{Mutual Accountability}
+The system creates symmetric verification where clients can verify server computations while the server validates client contributions, eliminating the need for trusted parties.
+
+\section{Technical Implementation Architecture}
+
+\subsection{Multi-Layer Security Architecture}
+
+The system implements a three-tier security architecture that provides comprehensive protection:
+
+\textbf{Application Layer Security:}
+\begin{itemize}
+    \item Client-side training verification through PySNARK circuits
+    \item Parameter validation and bounds checking
+    \item Data integrity verification using cryptographic commitments
+\end{itemize}
+
+\textbf{Protocol Layer Security:}
+\begin{itemize}
+    \item Server-side aggregation verification using Groth16 proofs
+    \item FedJSCM protocol enforcement through mathematical constraints
+    \item Dynamic rigor adjustment based on threat assessment
+\end{itemize}
+
+\textbf{Network Layer Security:}
+\begin{itemize}
+    \item TLS 1.3 encryption for all client-server communication
+    \item Proof integrity verification during transmission
+    \item Replay attack prevention through timestamp validation
+\end{itemize}
+
+\section{Security Threat Model and Defense Framework}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{security_threat_model.png}
+    \caption{Security Threat Model and ZKP Defense Mechanisms}
+    \label{fig:threat_model}
+\end{figure}
+
+The threat model analyzes attack vectors with corresponding ZKP defense mechanisms. The framework provides comprehensive protection through cryptographic verification rather than heuristic detection.
+
+\subsection{Implementation-Level Security}
+
+\textbf{Code-Level Protections:}
+\begin{itemize}
+    \item Input validation and sanitization for all client submissions
+    \item Memory-safe implementations preventing buffer overflow attacks
+    \item Secure random number generation for cryptographic operations
+    \item Exception handling to prevent information leakage through error messages
+\end{itemize}
+
+\textbf{Runtime Security Measures:}
+\begin{itemize}
+    \item Proof verification timeouts to prevent denial-of-service attacks
+    \item Rate limiting for client proof submissions
+    \item Resource monitoring to detect abnormal computational patterns
+    \item Automatic fallback mechanisms for system reliability
+\end{itemize}
+
+This comprehensive system design and implementation provides enterprise-grade security while maintaining practical performance characteristics for real-world federated learning deployments.

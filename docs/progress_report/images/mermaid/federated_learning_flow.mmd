@@ -1,0 +1,55 @@
+sequenceDiagram
+    participant C1 as Client 1
+    participant C2 as Client 2
+    participant CN as Client N
+    participant S as Secure Server
+    participant SM as StabilityMonitor
+    participant SPM as ServerProofManager
+
+    Note over C1,CN: Round Initialization
+    S->>C1: Global Model w(t) + Proof Rigor
+    S->>C2: Global Model w(t) + Proof Rigor
+    S->>CN: Global Model w(t) + Proof Rigor
+
+    Note over C1,CN: Local Training Phase
+    C1->>C1: Local SGD Training
+    C2->>C2: Local SGD Training
+    CN->>CN: Local SGD Training
+
+    Note over C1,CN: Proof Generation Phase
+    C1->>C1: Generate ZK Proof π1
+    C2->>C2: Generate ZK Proof π2
+    CN->>CN: Generate ZK Proof πN
+
+    Note over C1,CN: Model Update Submission
+    C1->>S: Model Update Δ1 + Proof π1
+    C2->>S: Model Update Δ2 + Proof π2
+    CN->>S: Model Update ΔN + Proof πN
+
+    Note over S,SPM: Server-Side Verification
+    S->>S: Verify Client Proofs
+    S->>S: Filter Valid Updates
+
+    Note over S,SPM: FedJSCM Aggregation
+    S->>S: Weighted Average Updates
+    S->>S: Update Server Momentum
+    S->>S: Apply Momentum to Global Model
+
+    Note over S,SPM: Server Proof Generation
+    S->>SPM: Generate Aggregation Proof
+    SPM->>S: Server Proof πserver
+
+    Note over S,SM: Dynamic Rigor Adjustment
+    S->>SM: Update Training Metrics
+    SM->>SM: Assess Stability
+    SM->>S: Next Round Rigor Level
+
+    Note over S,CN: Global Model Distribution
+    S->>C1: Updated Model w(t+1) + Server Proof
+    S->>C2: Updated Model w(t+1) + Server Proof
+    S->>CN: Updated Model w(t+1) + Server Proof
+
+    Note over C1,CN: Proof Verification
+    C1->>C1: Verify Server Proof
+    C2->>C2: Verify Server Proof
+    CN->>CN: Verify Server Proof

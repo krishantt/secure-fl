@@ -1,0 +1,403 @@
+\chapter*{Appendix: Main Code Implementation}
+
+This appendix provides key code implementations that demonstrate the core functionality of our secure federated learning framework. The code snippets illustrate the integration of zero-knowledge proofs with federated learning components.
+
+\section*{Secure Federated Learning Client}
+
+The SecureFlowerClient extends the standard Flower client with integrated zero-knowledge proof generation capabilities:
+
+\begin{lstlisting}[language=Python, caption=SecureFlowerClient Implementation]
+class SecureFlowerClient(fl.client.NumPyClient):
+    """Secure Flower client with ZKP generation capabilities."""
+
+    def __init__(self, model, train_loader, test_loader, client_id,
+                 proof_manager, config):
+        self.model = model
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+        self.client_id = client_id
+        self.proof_manager = proof_manager
+        self.config = config
+        self.quantizer = FixedPointQuantizer(bits=8, scale=2**7)
+
+    def fit(self, parameters, config):
+        """Perform local training with ZKP generation."""
+        # Set model parameters
+        self.set_parameters(parameters)
+
+        # Store initial parameters for delta calculation
+        initial_params = self.get_parameters()
+
+        # Perform local training
+        train_loss, train_acc = self.train_model(
+            epochs=config.get("local_epochs", 5)
+        )
+
+        # Calculate model update (delta)
+        final_params = self.get_parameters()
+        delta = self.calculate_delta(initial_params, final_params)
+
+        # Quantize delta for ZKP circuit compatibility
+        quantized_delta = self.quantizer.quantize(delta)
+
+        # Generate zero-knowledge proof
+        rigor_level = config.get("proof_rigor", "medium")
+        proof_data = self.generate_training_proof(
+            delta=quantized_delta,
+            rigor_level=rigor_level,
+            training_metadata={
+                "num_samples": len(self.train_loader.dataset),
+                "local_epochs": config.get("local_epochs", 5),
+                "batch_size": self.train_loader.batch_size
+            }
+        )
+
+        return final_params, len(self.train_loader.dataset), {
+            "train_loss": train_loss,
+            "train_accuracy": train_acc,
+            "zkp_proof": proof_data["proof"],
+            "proof_metadata": proof_data["metadata"]
+        }
+
+    def generate_training_proof(self, delta, rigor_level, training_metadata):
+        """Generate ZKP proving correct local training execution."""
+        try:
+            proof_inputs = {
+                "model_delta": delta,
+                "num_samples": training_metadata["num_samples"],
+                "local_epochs": training_metadata["local_epochs"],
+                "client_id": self.client_id,
+                "rigor_level": rigor_level
+            }
+
+            proof = self.proof_manager.generate_proof(
+                statement="local_training_correctness",
+                inputs=proof_inputs
+            )
+
+            return {
+                "proof": proof,
+                "metadata": {
+                    "rigor_level": rigor_level,
+                    "generation_time": proof.generation_time,
+                    "circuit_size": proof.circuit_size
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Proof generation failed: {e}")
+            raise ProofGenerationError(f"Failed to generate training proof: {e}")
+\end{lstlisting}
+
+\section*{FedJSCM Aggregation Algorithm}
+
+The FedJSCMAggregator implements momentum-based aggregation with enhanced convergence properties:
+
+\begin{lstlisting}[language=Python, caption=FedJSCM Aggregation Implementation]
+class FedJSCMAggregator:
+    """Federated Joint Server-Client Momentum aggregation algorithm."""
+
+    def __init__(self, momentum_coeff=0.9, momentum_decay=0.99,
+                 global_lr=1.0):
+        self.momentum_coeff = momentum_coeff
+        self.momentum_decay = momentum_decay
+        self.global_lr = global_lr
+        self.server_momentum = None
+        self.round_number = 0
+
+    def aggregate_fit(self, server_round, results, failures):
+        """Perform FedJSCM aggregation with momentum updates."""
+        if not results:
+            return None, {}
+
+        # Verify client proofs before aggregation
+        verified_results = self.verify_client_proofs(results)
+        if not verified_results:
+            raise SecurityError("No valid client proofs received")
+
+        # Calculate client weights based on data sizes
+        total_examples = sum(num_examples for _, num_examples, _ in verified_results)
+        client_weights = [
+            num_examples / total_examples
+            for _, num_examples, _ in verified_results
+        ]
+
+        # Compute weighted average of client updates
+        aggregated_delta = self.weighted_average_deltas(
+            verified_results, client_weights
+        )
+
+        # Update server momentum with adaptive coefficient
+        effective_momentum = self.momentum_coeff * (self.momentum_decay ** self.round_number)
+
+        if self.server_momentum is None:
+            self.server_momentum = aggregated_delta
+        else:
+            self.server_momentum = [
+                effective_momentum * m + delta
+                for m, delta in zip(self.server_momentum, aggregated_delta)
+            ]
+
+        # Apply momentum to global model update
+        global_update = [
+            self.global_lr * momentum
+            for momentum in self.server_momentum
+        ]
+
+        # Generate server-side aggregation proof
+        aggregation_proof = self.generate_aggregation_proof(
+            client_updates=[params for params, _, _ in verified_results],
+            client_weights=client_weights,
+            server_momentum=self.server_momentum,
+            global_update=global_update
+        )
+
+        self.round_number += 1
+
+        return global_update, {
+            "aggregation_proof": aggregation_proof,
+            "participating_clients": len(verified_results),
+            "total_examples": total_examples,
+            "momentum_coefficient": effective_momentum
+        }
+
+    def verify_client_proofs(self, results):
+        """Verify zero-knowledge proofs from all clients."""
+        verified_results = []
+
+        for parameters, num_examples, metrics in results:
+            if "zkp_proof" not in metrics:
+                logger.warning("Client submission missing ZKP proof")
+                continue
+
+            try:
+                proof_valid = self.proof_verifier.verify_proof(
+                    proof=metrics["zkp_proof"],
+                    public_inputs={
+                        "client_data_size": num_examples,
+                        "parameter_bounds": self.calculate_parameter_bounds(parameters)
+                    }
+                )
+
+                if proof_valid:
+                    verified_results.append((parameters, num_examples, metrics))
+                else:
+                    logger.warning("Invalid ZKP proof received from client")
+
+            except Exception as e:
+                logger.error(f"Proof verification failed: {e}")
+
+        return verified_results
+\end{lstlisting}
+
+\section*{Zero-Knowledge Proof Manager}
+
+The ClientProofManager handles the generation of zero-knowledge proofs for local training verification:
+
+\begin{lstlisting}[language=Python, caption=Zero-Knowledge Proof Manager]
+class ClientProofManager:
+    """Manages zero-knowledge proof generation for client-side training."""
+
+    def __init__(self, circuit_config):
+        self.circuit_config = circuit_config
+        self.pysnark_backend = PySNARKBackend()
+        self.circuit_cache = {}
+
+    def generate_proof(self, statement, inputs):
+        """Generate zero-knowledge proof for given statement and inputs."""
+        circuit_key = self.get_circuit_key(statement, inputs["rigor_level"])
+
+        # Load or generate circuit
+        if circuit_key not in self.circuit_cache:
+            circuit = self.build_circuit(statement, inputs["rigor_level"])
+            self.circuit_cache[circuit_key] = circuit
+        else:
+            circuit = self.circuit_cache[circuit_key]
+
+        # Prepare witness inputs
+        witness = self.prepare_witness(inputs)
+
+        # Generate proof
+        start_time = time.perf_counter()
+        proof = self.pysnark_backend.generate_proof(circuit, witness)
+        generation_time = time.perf_counter() - start_time
+
+        # Enhance proof with metadata
+        proof.generation_time = generation_time
+        proof.circuit_size = len(circuit.constraints)
+        proof.rigor_level = inputs["rigor_level"]
+
+        return proof
+
+    def build_circuit(self, statement, rigor_level):
+        """Build ZKP circuit for specific statement and rigor level."""
+        if statement == "local_training_correctness":
+            return self.build_training_circuit(rigor_level)
+        else:
+            raise ValueError(f"Unknown statement type: {statement}")
+
+    def build_training_circuit(self, rigor_level):
+        """Build circuit for local training correctness verification."""
+        if rigor_level == "high":
+            return self.build_high_rigor_circuit()
+        elif rigor_level == "medium":
+            return self.build_medium_rigor_circuit()
+        elif rigor_level == "low":
+            return self.build_low_rigor_circuit()
+        else:
+            raise ValueError(f"Invalid rigor level: {rigor_level}")
+
+    def build_high_rigor_circuit(self):
+        """Build high rigor circuit with full SGD verification."""
+        circuit = PySNARKCircuit()
+
+        # Verify complete SGD computation trace
+        # Including gradient computation, parameter updates, and data access patterns
+        with circuit.context():
+            # Model parameters (private input)
+            initial_params = PrivateInput("initial_params")
+            final_params = PrivateInput("final_params")
+
+            # Training data commitment (private input)
+            data_commitment = PrivateInput("data_commitment")
+
+            # Public inputs
+            num_samples = PublicInput("num_samples")
+            parameter_bounds = PublicInput("parameter_bounds")
+
+            # Verify parameter update bounds
+            delta = final_params - initial_params
+            circuit.assert_in_range(delta, parameter_bounds)
+
+            # Verify data commitment consistency
+            circuit.assert_valid_commitment(data_commitment, num_samples)
+
+            # Verify SGD computation (simplified)
+            expected_delta = circuit.simulate_sgd(
+                initial_params, data_commitment, num_samples
+            )
+            circuit.assert_equal(delta, expected_delta)
+
+        return circuit
+
+    def prepare_witness(self, inputs):
+        """Prepare witness inputs for proof generation."""
+        return {
+            "model_delta": self.serialize_parameters(inputs["model_delta"]),
+            "num_samples": inputs["num_samples"],
+            "local_epochs": inputs["local_epochs"],
+            "client_id": inputs["client_id"]
+        }
+\end{lstlisting}
+
+\section*{Dynamic Stability Monitor}
+
+The StabilityMonitor implements adaptive proof rigor adjustment based on training stability metrics:
+
+\begin{lstlisting}[language=Python, caption=Dynamic Stability Monitor]
+class StabilityMonitor:
+    """Monitors training stability and adjusts proof rigor dynamically."""
+
+    def __init__(self, window_size=5, stability_threshold=0.02):
+        self.window_size = window_size
+        self.stability_threshold = stability_threshold
+        self.accuracy_history = []
+        self.gradient_norm_history = []
+        self.client_consistency_history = []
+
+    def update_metrics(self, round_metrics):
+        """Update stability metrics with latest round data."""
+        self.accuracy_history.append(round_metrics["accuracy"])
+        self.gradient_norm_history.append(round_metrics["gradient_norm"])
+        self.client_consistency_history.append(round_metrics["client_consistency"])
+
+        # Maintain sliding window
+        if len(self.accuracy_history) > self.window_size:
+            self.accuracy_history.pop(0)
+            self.gradient_norm_history.pop(0)
+            self.client_consistency_history.pop(0)
+
+    def assess_stability(self):
+        """Assess current training stability and recommend rigor level."""
+        if len(self.accuracy_history) < 3:
+            return "high"  # Conservative approach for early rounds
+
+        # Calculate stability indicators
+        accuracy_variance = np.var(self.accuracy_history[-self.window_size:])
+        gradient_trend = self.analyze_gradient_trend()
+        client_consistency = np.mean(self.client_consistency_history[-3:])
+
+        # Stability scoring
+        stability_score = self.calculate_stability_score(
+            accuracy_variance, gradient_trend, client_consistency
+        )
+
+        # Rigor level decision
+        if stability_score > 0.8:
+            return "low"    # High stability - minimal verification needed
+        elif stability_score > 0.5:
+            return "medium" # Moderate stability - balanced verification
+        else:
+            return "high"   # Low stability - maximum verification
+
+    def calculate_stability_score(self, acc_var, grad_trend, consistency):
+        """Calculate composite stability score from multiple indicators."""
+        # Normalize metrics to [0, 1] range
+        acc_stability = max(0, 1 - acc_var / self.stability_threshold)
+        grad_stability = max(0, 1 - abs(grad_trend))
+        consistency_score = max(0, consistency)
+
+        # Weighted combination of stability indicators
+        weights = [0.4, 0.3, 0.3]  # accuracy, gradient, consistency
+        stability_score = (
+            weights[0] * acc_stability +
+            weights[1] * grad_stability +
+            weights[2] * consistency_score
+        )
+
+        return stability_score
+
+    def analyze_gradient_trend(self):
+        """Analyze gradient norm trend to detect training dynamics."""
+        if len(self.gradient_norm_history) < 3:
+            return 1.0  # Conservative for insufficient data
+
+        recent_gradients = self.gradient_norm_history[-3:]
+
+        # Calculate trend using linear regression slope
+        x = np.arange(len(recent_gradients))
+        slope = np.polyfit(x, recent_gradients, 1)[0]
+
+        # Normalize slope relative to gradient magnitude
+        avg_gradient = np.mean(recent_gradients)
+        normalized_slope = slope / max(avg_gradient, 1e-8)
+
+        return abs(normalized_slope)
+
+    def get_rigor_recommendation(self, current_round, total_rounds):
+        """Get rigor level recommendation based on current training state."""
+        stability_based_rigor = self.assess_stability()
+
+        # Apply round-based adjustments
+        if current_round < 0.2 * total_rounds:
+            # Early training phase - prefer higher rigor
+            if stability_based_rigor == "low":
+                return "medium"
+        elif current_round > 0.8 * total_rounds:
+            # Late training phase - can use lower rigor if stable
+            if stability_based_rigor == "high" and self.is_converging():
+                return "medium"
+
+        return stability_based_rigor
+
+    def is_converging(self):
+        """Check if training appears to be converging."""
+        if len(self.accuracy_history) < self.window_size:
+            return False
+
+        recent_accuracy = self.accuracy_history[-self.window_size:]
+        accuracy_trend = np.polyfit(range(len(recent_accuracy)), recent_accuracy, 1)[0]
+
+        # Consider converging if accuracy is stable or slowly improving
+        return abs(accuracy_trend) < 0.001 or accuracy_trend > 0
+\end{lstlisting}

@@ -1,0 +1,63 @@
+flowchart TD
+    %% Client Layer
+    subgraph CL ["Client Layer"]
+        direction TB
+        SC["SecureFlowerClient"]
+        CPM["ClientProofManager"]
+        FPQ["FixedPointQuantizer"]
+        LTM["LocalTrainingManager"]
+        DCM["DataCommitmentManager"]
+    end
+
+    %% Server Layer
+    subgraph SL ["Server Layer"]
+        direction TB
+        SS["SecureFlowerServer"]
+        FA["FedJSCMAggregator"]
+        SPM["ServerProofManager"]
+        SM["StabilityMonitor"]
+        CM["CommunicationManager"]
+    end
+
+    %% Verification Layer
+    subgraph VL ["Verification & Audit Layer"]
+        direction TB
+        PR["ProofRegistry"]
+        MST["ModelStateTracker"]
+        PM["ParticipantManager"]
+    end
+
+    %% Data Flow
+    SC --> |Model Updates + ZK Proofs| SS
+    SS --> |Verified Global Model| SC
+
+    CPM --> |Client Proofs| SPM
+    SPM --> |Server Proofs| CPM
+
+    FA --> |Aggregated Updates| SM
+    SM --> |Rigor Level| CPM
+
+    SS --> |Verification Records| PR
+    FA --> |Model States| MST
+    SC --> |Registration| PM
+
+    %% Internal Client Connections
+    SC --- CPM
+    SC --- LTM
+    LTM --- DCM
+    CPM --- FPQ
+
+    %% Internal Server Connections
+    SS --- FA
+    SS --- SPM
+    SS --- CM
+    FA --- SM
+
+    %% Styling
+    classDef clientClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef serverClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef verifyClass fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+
+    class SC,CPM,FPQ,LTM,DCM clientClass
+    class SS,FA,SPM,SM,CM serverClass
+    class PR,MST,PM verifyClass

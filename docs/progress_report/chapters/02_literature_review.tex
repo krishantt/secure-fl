@@ -1,0 +1,129 @@
+\chapter{Literature Review}
+
+This chapter provides a comprehensive foundation for understanding secure federated learning, starting from basic concepts and building up to advanced cryptographic techniques. We begin by explaining what federated learning is and why it matters, then explore the security challenges that arise in distributed machine learning systems. Finally, we introduce the cryptographic tools that enable verifiable computation and explain how they can be applied to create trustworthy federated learning systems.
+
+\section{Understanding Federated Learning}
+
+\subsection{What is Federated Learning?}
+
+Federated Learning represents a paradigm shift in how we approach machine learning with sensitive or distributed data. Instead of gathering all training data in a central location, federated learning allows multiple parties (called clients) to collaboratively train a shared machine learning model while keeping their data locally stored and private.
+
+To understand this concept, imagine a scenario where multiple hospitals want to train a medical diagnosis model. Traditionally, each hospital would need to share their patient data with a central server, which raises serious privacy concerns and regulatory issues. Federated learning solves this problem by allowing each hospital to train the model on their local data and only share the learned model parameters (not the raw data) with other participants.
+
+The fundamental idea behind federated learning was popularized by Google in their seminal work \cite{mcmahan2017communication}, where they demonstrated how mobile devices could collaboratively improve predictive text models without sending personal typing data to Google's servers. This approach has since been adopted across numerous domains including healthcare, finance, and autonomous systems \cite{kairouz2021advances}.
+
+The mathematical foundation of federated learning centers around minimizing a global objective function that represents the combined learning goals of all participants. If we have $N$ clients, each with their own dataset $\mathcal{D}_i$ and corresponding local loss function $L_i(w)$, the goal is to find model parameters $w$ that minimize the global loss:
+
+$$L_{global}(w) = \sum_{i=1}^N \frac{|\mathcal{D}_i|}{|\mathcal{D}|} L_i(w)$$
+
+where $|\mathcal{D}_i|$ represents the size of client $i$'s dataset and $|\mathcal{D}| = \sum_{i=1}^N |\mathcal{D}_i|$ is the total dataset size across all clients. This weighted combination ensures that clients with more data have proportionally more influence on the final model, which typically leads to better overall performance.
+
+\subsection{FedAvg Limitations}
+
+The most widely used federated learning algorithm is Federated Averaging (FedAvg), which operates in iterative rounds. In each round, the central server sends the current global model to selected clients. Each client then performs several epochs of local training on their private data, computing an updated model. Instead of sending the updated model back to the server, clients compute and send only the difference (called a model update) between their locally trained model and the original global model they received.
+
+The server then aggregates these model updates using a weighted average, where the weights are typically proportional to the number of training examples each client used. Mathematically, if client $i$ sends model update $\Delta w_i = w_i^{new} - w_{global}$, the server computes:
+
+$$w_{global}^{new} = w_{global} + \sum_{i=1}^N \frac{|\mathcal{D}_i|}{|\mathcal{D}|} \Delta w_i$$
+
+While FedAvg works well in idealized conditions, it faces significant challenges in real-world deployments. The most critical issue is data heterogeneity, where different clients have data that follows different distributions (called non-IID or non-independently and identically distributed data). For example, in a mobile keyboard application, different users have vastly different typing patterns, vocabularies, and languages.
+
+Another major challenge is the lack of verifiability. In the standard FedAvg protocol, there is no mechanism to verify that clients actually performed the training they claim to have done, or that the server correctly aggregated the received updates. Malicious clients could send arbitrary model updates to poison the global model, while a malicious server could manipulate the aggregation process to bias the model toward certain outcomes \cite{zhao2018federated}.
+
+\subsection{Security Vulnerabilities}
+
+The distributed nature of federated learning introduces several security vulnerabilities that don't exist in centralized machine learning. Understanding these vulnerabilities is crucial for appreciating why cryptographic verification is necessary.
+
+Model poisoning attacks represent one of the most serious threats. In these attacks, malicious clients deliberately submit model updates designed to degrade the global model's performance or introduce specific biases. For instance, a malicious client in a medical federated learning system could submit updates that cause the model to misdiagnose certain conditions. Because the server in standard federated learning has no way to verify that model updates actually came from legitimate training on real data, such attacks can be very effective.
+
+Byzantine attacks occur when clients deviate arbitrarily from the prescribed protocol, either due to malicious intent or system failures. In a Byzantine attack, clients might send random noise, outdated model parameters, or carefully crafted adversarial updates. The challenge is that without cryptographic verification, honest participants cannot distinguish between legitimate model updates and Byzantine behavior.
+
+Server-side attacks present another significant concern. A malicious server could manipulate the aggregation process by applying incorrect weights to different clients' updates, selectively excluding certain clients, or introducing bias into the global model. In current federated learning systems, clients must trust that the server performs aggregation correctly, but there's no way to verify this trust.
+
+Gradient inversion attacks demonstrate how even sharing model updates can leak private information. Researchers have shown that it's possible to reconstruct significant portions of clients' private training data from their model updates, especially for small batch sizes. This finding challenges the assumption that sharing model parameters is inherently privacy-preserving.
+
+\section{Cryptographic Solutions}
+
+\subsection{Traditional Approaches}
+
+The security vulnerabilities in federated learning have motivated researchers to explore cryptographic solutions. Differential privacy provides statistical guarantees about privacy protection by adding carefully calibrated noise to model updates. The idea is that the presence or absence of any single training example should not significantly affect the model updates, making it difficult for an attacker to infer information about individual data points.
+
+While differential privacy offers strong theoretical guarantees, it comes with practical limitations. The noise required for privacy protection can significantly degrade model accuracy, and the privacy-utility tradeoff is often poor for high-dimensional models. Additionally, differential privacy doesn't address the core issue of computational verifiability – it ensures privacy but doesn't verify that computations were performed correctly.
+
+Secure multi-party computation (MPC) and homomorphic encryption represent another class of cryptographic solutions. These techniques allow computation on encrypted data, enabling clients to perform training without revealing their data to other participants. However, these approaches typically incur significant computational and communication overhead, making them impractical for large-scale federated learning deployments.
+
+Secure aggregation protocols, notably the work by Bonawitz et al. \cite{bonawitz2017practical}, enable privacy-preserving aggregation of model updates using cryptographic techniques. These protocols ensure that the server can compute the aggregate model update without learning individual clients' contributions. While secure aggregation addresses privacy concerns, it doesn't solve the verifiability problem – there's still no way to verify that clients actually performed legitimate training.
+
+\subsection{Zero-Knowledge Proofs}
+
+Zero-Knowledge Proofs (ZKPs) offer a fundamentally different approach to securing federated learning by enabling verifiable computation. A zero-knowledge proof allows one party (the prover) to convince another party (the verifier) that they know a value or performed a computation correctly, without revealing any information beyond the validity of the claim.
+
+To understand zero-knowledge proofs intuitively, consider the famous "Ali Baba cave" example. Imagine a circular cave with a door that can only be opened with a secret password. Alice wants to prove to Bob that she knows the password without revealing it. Alice enters the cave through the entrance and goes either left or right to reach the door. Bob then enters the cave and randomly asks Alice to come out from either the left or right path. If Alice knows the password, she can always comply by opening the door if necessary. If she doesn't know the password, she'll be caught with 50\% probability. By repeating this process many times, Alice can convince Bob she knows the password with overwhelming probability, without ever revealing the password itself.
+
+In the context of federated learning, zero-knowledge proofs enable clients to prove that they performed legitimate training computations on real data without revealing their private data or detailed information about their model updates. Similarly, servers can prove that they correctly aggregated client updates without revealing individual contributions.
+
+The mathematical foundation of zero-knowledge proofs rests on three essential properties \cite{goldwasser1985knowledge}. Completeness ensures that if a statement is true and both parties follow the protocol honestly, the verifier will accept the proof. Soundness guarantees that if the statement is false, no cheating prover can convince the verifier to accept except with negligible probability. Zero-knowledge ensures that the verifier learns nothing beyond the validity of the statement being proved.
+
+\section{Security in Federated Learning}
+
+The landscape of secure federated learning has evolved significantly over the past decade, with researchers proposing various approaches to address the fundamental challenges of privacy, security, and verifiability in distributed machine learning systems. These approaches can be broadly categorized into several distinct paradigms, each offering different trade-offs between security guarantees, computational efficiency, and practical deployability.
+
+Differential privacy has emerged as one of the most widely adopted statistical approaches to privacy preservation in federated learning \cite{geyer2017differentially, dwork2014algorithmic}. The fundamental principle behind differential privacy lies in adding carefully calibrated noise to model updates or gradients, ensuring that the presence or absence of any individual data point cannot be reliably detected by an adversary analyzing the released information. Recent implementations, such as the hybrid approach proposed by Truex et al. \cite{truex2019hybrid}, combine local and global differential privacy mechanisms to provide stronger privacy guarantees while attempting to minimize the utility degradation inherent in noise injection. However, differential privacy approaches consistently face the fundamental challenge of the privacy-utility trade-off, where stronger privacy guarantees necessarily result in reduced model accuracy, with typical degradations ranging from 15\% to 25\% depending on the privacy budget and model complexity.
+
+Homomorphic encryption represents another significant category of cryptographic solutions for federated learning privacy preservation. The work by Phong et al. \cite{phong2017privacy} demonstrated early applications of additively homomorphic encryption to enable computation on encrypted gradients, while more recent research by Ma et al. \cite{ma2022privacy} has explored multi-key homomorphic encryption schemes that can handle multiple participants without requiring a trusted key distribution center. The comprehensive survey by Acar et al. \cite{acar2018survey} provides detailed analysis of various homomorphic encryption schemes and their applicability to machine learning contexts. Despite the strong theoretical privacy guarantees offered by homomorphic encryption, practical implementations continue to suffer from substantial computational overhead, often requiring 300\% or more additional computation compared to plaintext operations, making them challenging to deploy in resource-constrained environments or large-scale federated systems.
+
+Secure aggregation protocols have gained considerable attention following the seminal work by Bonawitz et al. \cite{bonawitz2017practical}, which introduced practical methods for computing aggregate statistics without revealing individual participant contributions. These protocols typically employ techniques from secure multi-party computation to enable the server to learn only the sum of client updates while maintaining the privacy of individual contributions. While secure aggregation addresses privacy concerns against honest-but-curious servers, it fundamentally does not solve the verifiability problem that is central to our work. Participants must still trust that other clients are behaving honestly and that the aggregation process itself is being performed correctly, leaving the system vulnerable to sophisticated adversarial attacks.
+
+Byzantine-robust federated learning approaches focus on maintaining system integrity in the presence of malicious participants who may deviate arbitrarily from the prescribed protocol. The foundational work by Blanchard et al. \cite{blanchard2017machine} introduced machine learning algorithms specifically designed to tolerate Byzantine failures, while subsequent research by Yin et al. \cite{yin2018byzantine} and So et al. \cite{so2021byzantine} has developed increasingly sophisticated detection and mitigation mechanisms. These approaches typically rely on statistical analysis of model updates to identify and exclude potentially malicious contributions, using techniques such as coordinate-wise median computation, geometric median estimation, or robust aggregation rules. However, Byzantine-robust methods inherently depend on statistical assumptions about the distribution of honest versus malicious updates and may fail against sufficiently sophisticated adversaries who can craft attacks that appear statistically normal while still compromising the global model.
+
+The most directly relevant to our work is the emerging field of zero-knowledge proof-based verification in federated learning. The zkFL framework introduced by Zhu et al. \cite{zhu2021zkfl} represents the first comprehensive attempt to apply zero-knowledge proofs to federated learning verification, focusing primarily on communication efficiency and basic correctness guarantees. While zkFL demonstrates the feasibility of cryptographic verification in distributed machine learning, it lacks several critical features that limit its practical applicability, including adaptive security mechanisms, comprehensive dual-verification of both clients and servers, and efficient proof systems optimized for the specific computational patterns found in modern deep learning algorithms.
+
+\section{Zero-Knowledge Proof Systems}
+
+\subsection{zk-SNARKs}
+
+Zero-Knowledge Succinct Non-Interactive Arguments of Knowledge (zk-SNARKs) provide small proofs (~200 bytes) with fast verification \cite{groth2016size}. The Groth16 construction offers optimal efficiency for proof size and verification time. Recent advances include universal setup constructions \cite{chiesa2020marlin} and transparent alternatives \cite{wahby2018doubly}.
+
+Our system uses dual zk-SNARKs: PySNARK for client-side training verification and Groth16 for server-side aggregation proofs. This creates efficient end-to-end verifiability with compact proofs suitable for distributed systems \cite{parno2013pinocchio}.
+
+\subsection{FedJSCM Algorithm}
+
+The Federated Joint Server-Client Momentum (FedJSCM) algorithm addresses one of the most significant challenges in practical federated learning: poor convergence under non-IID data distributions \cite{li2020federated}. In standard federated averaging, when clients have heterogeneous data, the aggregated model can oscillate or converge slowly because local updates may point in conflicting directions.
+
+FedJSCM introduces server-side momentum to stabilize the aggregation process. Instead of directly applying the weighted average of client updates to the global model, the server maintains a momentum vector that accumulates information from previous rounds. The momentum update rule is:
+
+$$m^{(t+1)} = \gamma m^{(t)} + \sum_{i \in S^{(t)}} \frac{n_i}{\sum_{j \in S^{(t)}} n_j} \Delta w_i^{(t)}$$
+
+where $m^{(t)}$ is the momentum vector at round $t$, $\gamma$ is the momentum coefficient (typically between 0.9 and 0.99), $S^{(t)}$ is the set of clients participating in round $t$, $n_i$ is the number of samples client $i$ used for training, and $\Delta w_i^{(t)}$ is client $i$'s model update.
+
+The global model is then updated as:
+
+$$w^{(t+1)} = w^{(t)} + \eta_{global} \cdot m^{(t+1)}$$
+
+where $\eta_{global}$ is the global learning rate.
+
+This momentum mechanism helps smooth out the noise and conflicting directions that arise from heterogeneous client data. When clients have very different data distributions, their individual model updates might point in different directions, but the momentum vector accumulates the long-term trends, leading to more stable convergence.
+
+The mathematical intuition behind FedJSCM's effectiveness comes from optimization theory. In centralized optimization, momentum methods accelerate convergence by accumulating gradients that consistently point in the same direction while dampening oscillations caused by noisy or conflicting gradients. FedJSCM applies this same principle to the federated setting, where the "noise" comes from data heterogeneity rather than stochastic sampling.
+
+Proving the correctness of FedJSCM aggregation using zk-SNARKs involves encoding the momentum update equations as arithmetic circuits. The server must prove that it correctly computed the weighted average of client updates, properly updated the momentum vector using the previous momentum and current aggregated update, and applied the momentum to update the global model. This proof ensures that clients can verify the server followed the FedJSCM protocol exactly, without revealing individual client updates.
+
+\subsection{Adaptive Security}
+
+One of the key innovations in our approach is the dynamic adjustment of proof rigor based on the current state of the federated learning process. Not all phases of federated learning require the same level of cryptographic verification. During periods when the model is changing rapidly or when there are signs of instability, stronger verification is warranted. Conversely, when the model has largely converged and updates are small and consistent, lighter verification can reduce computational overhead while maintaining security.
+
+The dynamic rigor system monitors several indicators of training stability and model convergence. The gradient norm provides information about how quickly the model is changing – large gradients indicate rapid changes that might benefit from stronger verification, while small gradients suggest the model is stabilizing. The variance in accuracy across recent rounds indicates whether training is proceeding smoothly or encountering instability. The consistency of client updates, measured by computing pairwise similarities between model updates from different clients, reveals whether clients are learning coherently or if there might be adversarial behavior.
+
+Based on these metrics, the system automatically selects from three levels of proof rigor. High rigor involves complete verification of every arithmetic operation in the SGD process, including detailed proof of gradient computations, parameter updates, and data access patterns. This level provides the strongest security guarantees but requires the most computational resources, with proof generation times of 2-3 seconds per client update.
+
+Medium rigor focuses on verifying the essential properties of the training process without proving every individual operation. This includes verifying that model updates fall within expected bounds, that the claimed number of training samples was used, and that the update is consistent with legitimate SGD training. Medium rigor provides strong security with moderate computational cost, typically requiring 1-2 seconds for proof generation.
+
+Low rigor provides basic verification that prevents the most obvious attacks while minimizing computational overhead. This includes verifying parameter update norms, ensuring updates are not adversarially large, and confirming basic consistency with the expected training protocol. Low rigor proofs can be generated in under 0.5 seconds while still preventing many common attacks.
+
+The transition between rigor levels is governed by a machine learning model that takes the stability metrics as input and predicts the optimal rigor level. This model is trained on historical federated learning runs and learns to identify patterns that indicate when stronger or weaker verification is needed. The system errs on the side of caution – when in doubt, it chooses higher rigor to ensure security.
+
+This dynamic approach is particularly valuable because federated learning workloads exhibit distinct phases with different security requirements. Early in training, when the model is changing rapidly and the risk of destabilizing attacks is high, strong verification is crucial. As training progresses and the model converges, the focus can shift toward efficiency while maintaining adequate security. During the final phases of training, when updates become very small, lightweight verification is often sufficient to detect any remaining adversarial behavior.
+
+The mathematical foundation for rigor selection can be formalized as an optimization problem that balances security guarantees against computational cost. If $S(r)$ represents the security level achieved by rigor level $r$ and $C(r)$ represents the computational cost, the optimal rigor selection seeks to maximize security subject to computational constraints or minimize cost subject to security requirements.
+
+The system implements verification logic that ensures only valid updates are accepted, providing tamper-evidence and integrity enforcement.
