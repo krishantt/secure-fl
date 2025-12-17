@@ -1,97 +1,147 @@
-version: "3.8"
-
 services:
-  # Base secure-fl service
-  secure-fl-base:
+  # Secure FL Server
+  securefl-server:
     build:
       context: .
       dockerfile: Dockerfile
-      target: base
-    image: secure-fl:base
-    volumes:
-      - ./data:/home/app/data
-      - ./logs:/home/app/logs
-      - ./results:/home/app/results
-    environment:
-      - SECURE_FL_ENV=docker
-    networks:
-      - secure-fl-network
-
-  # FL Server
-  secure-fl-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: server
-    image: secure-fl:server
+    container_name: securefl-server
     ports:
       - "8080:8080"
-    volumes:
-      - ./data:/home/app/data
-      - ./logs:/home/app/logs
-      - ./results:/home/app/results
     environment:
       - SECURE_FL_ENV=production
       - SECURE_FL_SERVER_HOST=0.0.0.0
       - SECURE_FL_SERVER_PORT=8080
-    networks:
-      - secure-fl-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # FL Client 1
-  secure-fl-client-1:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: client
-    image: secure-fl:client
     volumes:
       - ./data:/home/app/data
       - ./logs:/home/app/logs
       - ./results:/home/app/results
+    command:
+      [
+        "python",
+        "-m",
+        "secure_fl.cli",
+        "server",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+        "--rounds",
+        "10",
+        "--min-clients",
+        "2",
+        "--model",
+        "mnist",
+        "--enable-zkp",
+        "--proof-rigor",
+        "medium",
+      ]
+    networks:
+      - securefl-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import requests; requests.get('http://localhost:8080').raise_for_status()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Secure FL Client 1
+  securefl-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: securefl-client-1
     environment:
       - SECURE_FL_ENV=production
       - SECURE_FL_CLIENT_ID=client-1
-      - SECURE_FL_SERVER_URL=http://secure-fl-server:8080
-    depends_on:
-      secure-fl-server:
-        condition: service_healthy
-    networks:
-      - secure-fl-network
-
-  # FL Client 2
-  secure-fl-client-2:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: client
-    image: secure-fl:client
+      - SECURE_FL_SERVER_URL=http://securefl-server:8080
     volumes:
       - ./data:/home/app/data
       - ./logs:/home/app/logs
       - ./results:/home/app/results
-    environment:
-      - SECURE_FL_ENV=production
-      - SECURE_FL_CLIENT_ID=client-2
-      - SECURE_FL_SERVER_URL=http://secure-fl-server:8080
+    command:
+      [
+        "python",
+        "-m",
+        "secure_fl.cli",
+        "client",
+        "--server-address",
+        "securefl-server:8080",
+        "--client-id",
+        "client-1",
+        "--dataset",
+        "mnist",
+        "--partition",
+        "0",
+        "--enable-zkp",
+        "--epochs",
+        "5",
+        "--batch-size",
+        "32",
+        "--learning-rate",
+        "0.01",
+      ]
     depends_on:
-      secure-fl-server:
+      securefl-server:
         condition: service_healthy
     networks:
-      - secure-fl-network
+      - securefl-network
+    restart: on-failure
 
-  # Development environment
-  secure-fl-dev:
+  # Secure FL Client 2
+  securefl-client-2:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
-    image: secure-fl:dev
+    container_name: securefl-client-2
+    environment:
+      - SECURE_FL_ENV=production
+      - SECURE_FL_CLIENT_ID=client-2
+      - SECURE_FL_SERVER_URL=http://securefl-server:8080
+    volumes:
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ./results:/home/app/results
+    command:
+      [
+        "python",
+        "-m",
+        "secure_fl.cli",
+        "client",
+        "--server-address",
+        "securefl-server:8080",
+        "--client-id",
+        "client-2",
+        "--dataset",
+        "mnist",
+        "--partition",
+        "1",
+        "--enable-zkp",
+        "--epochs",
+        "5",
+        "--batch-size",
+        "32",
+        "--learning-rate",
+        "0.01",
+      ]
+    depends_on:
+      securefl-server:
+        condition: service_healthy
+    networks:
+      - securefl-network
+    restart: on-failure
+
+  # Development environment
+  securefl-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: securefl-dev
     ports:
       - "8081:8080"
     volumes:
@@ -102,37 +152,44 @@ services:
     environment:
       - SECURE_FL_ENV=development
     networks:
-      - secure-fl-network
+      - securefl-network
     command: ["bash"]
+    profiles:
+      - development
 
-  # Demo service for quick testing
-  secure-fl-demo:
+  # Optional: Monitoring service to view logs and status
+  securefl-monitor:
     build:
       context: .
       dockerfile: Dockerfile
-      target: base
-    image: secure-fl:base
+    container_name: securefl-monitor
+    environment:
+      - SECURE_FL_ENV=production
     volumes:
       - ./data:/home/app/data
       - ./logs:/home/app/logs
       - ./results:/home/app/results
-    environment:
-      - SECURE_FL_ENV=demo
+    command: ["python", "-m", "secure_fl.cli", "info"]
+    depends_on:
+      - securefl-server
+      - securefl-client-1
+      - securefl-client-2
     networks:
-      - secure-fl-network
-    command: ["uv", "run", "python", "experiments/demo.py"]
+      - securefl-network
+    profiles:
+      - monitoring
 
 networks:
-  secure-fl-network:
+  securefl-network:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.21.0.0/16
 
 volumes:
-  secure-fl-data:
+  securefl-data:
     driver: local
-  secure-fl-logs:
+  securefl-logs:
     driver: local
-  secure-fl-results:
+  securefl-results:
     driver: local

@@ -29,8 +29,13 @@ from secure_fl._version import (  # noqa: E402
 )
 
 
-def show_version():
+def show_version(format_type=None):
     """Display current version information."""
+    if format_type == "version":
+        # Just output the version string for CI/scripting
+        print(get_version())
+        return
+
     print("=== Secure FL Version Information ===")
     print_version_info()
 
@@ -174,7 +179,12 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Show command
-    subparsers.add_parser("show", help="Show current version information")
+    show_parser = subparsers.add_parser("show", help="Show current version information")
+    show_parser.add_argument(
+        "--format",
+        choices=["version"],
+        help="Output format (version: just the version string)",
+    )
 
     # Increment command
     subparsers.add_parser("increment", help="Increment build increment for publishing")
@@ -195,7 +205,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "show":
-        show_version()
+        show_version(getattr(args, "format", None))
     elif args.command == "increment":
         increment_version()
     elif args.command == "set":
