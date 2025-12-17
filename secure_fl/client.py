@@ -534,7 +534,7 @@ def start_client(client: SecureFlowerClient, server_address: str = "localhost:80
         )
 
     host, port_str = server_address.split(":", 1)
-    
+
     port = int(port_str)
     if port < 1 or port > 65535:
         raise ValueError(f"Invalid port number: {port}")
