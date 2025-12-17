@@ -64,7 +64,8 @@ class FederatedDataLoader:
 
         self.dataset_name = dataset_name.lower()
 
-        # Use repository root _data directory if no path specified
+        # Use data directory with Docker container support
+        # Use repository root data directory if no path specified
         if data_dir is None:
             # Find repository root (contains pyproject.toml)
             current_path = Path(__file__).resolve()
@@ -78,7 +79,7 @@ class FederatedDataLoader:
                 # Fallback to parent directory of secure_fl package
                 repo_root = Path(__file__).resolve().parents[2]
 
-            self.data_dir = repo_root / "_data"
+            self.data_dir = repo_root / "data"
         else:
             self.data_dir = Path(data_dir)
 

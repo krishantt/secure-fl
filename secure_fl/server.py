@@ -392,17 +392,56 @@ class SecureFlowerServer:
         logger.info(f"SecureFlowerServer initialized on {host}:{port}")
 
     def start(self):
-        """Start the federated learning server"""
-        logger.info(f"Starting FL server for {self.num_rounds} rounds")
+        """Start the federated learning server with improved error handling"""
+        logger.info(
+            f"Starting FL server on {self.host}:{self.port} for {self.num_rounds} rounds"
+        )
+        logger.info(f"Strategy: {type(self.strategy).__name__}")
 
-        # Start Flower server
-        fl.server.start_server(
-            server_address=f"{self.host}:{self.port}",
-            config=fl.server.ServerConfig(num_rounds=self.num_rounds),
-            strategy=self.strategy,
+        # Validate server configuration
+        if self.port < 1 or self.port > 65535:
+            raise ValueError(f"Invalid port number: {self.port}")
+
+        logger.info("Creating server configuration...")
+        config = fl.server.ServerConfig(
+            num_rounds=self.num_rounds,
+            round_timeout=120.0,  # 2 minute timeout per round
         )
 
-        logger.info("FL training completed")
+        logger.info("Server configuration created successfully")
+        logger.info(f"Listening on address: {self.host}:{self.port}")
+        logger.info("Waiting for clients to connect...")
+
+        try:
+            # Use the legacy start_server (still functional)
+            logger.warning(
+                "Using deprecated fl.server.start_server - this is expected until migration"
+            )
+
+            history = fl.server.start_server(
+                server_address=f"{self.host}:{self.port}",
+                config=config,
+                strategy=self.strategy,
+            )
+
+            logger.info("FL training completed successfully")
+            return history
+
+        except OSError as e:
+            if "Address already in use" in str(e):
+                logger.error(
+                    f"Port {self.port} is already in use. Please use a different port."
+                )
+            else:
+                logger.error(f"Network error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Server failed to start: {type(e).__name__}: {e}")
+            logger.error("Check that:")
+            logger.error("1. The port is available and not blocked by firewall")
+            logger.error("2. The host address is valid")
+            logger.error("3. All dependencies are properly installed")
+            raise
 
     def get_training_history(self) -> list[dict]:
         """Get training history and metrics"""

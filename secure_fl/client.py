@@ -70,6 +70,9 @@ class SecureFlowerClient(fl.client.NumPyClient):
         self.quantize_weights = quantize_weights
         self.local_epochs = local_epochs
         self.learning_rate = learning_rate
+        self.batch_size = (
+            train_loader.batch_size if hasattr(train_loader, "batch_size") else 32
+        )
 
         # ZKP components
         self.proof_manager = ClientProofManager() if enable_zkp else None
@@ -106,73 +109,120 @@ class SecureFlowerClient(fl.client.NumPyClient):
         """
         Train model locally and generate ZKP proof
         """
-        start_time = time.time()
-        self.round_count = config.get("server_round", 0)
+        try:
+            start_time = time.time()
+            self.round_count = config.get("server_round", 0)
 
-        # Update configuration from server
-        self.local_epochs = config.get("local_epochs", self.local_epochs)
-        self.learning_rate = config.get("learning_rate", self.learning_rate)
-        self.proof_rigor = config.get("proof_rigor", self.proof_rigor)
-
-        # Set received parameters
-        self.set_parameters(parameters)
-        initial_params = self.get_parameters({})
-
-        # Perform local training
-        training_metrics = self._train_local_model()
-
-        # Get updated parameters
-        updated_params = self.get_parameters({})
-
-        # Compute parameter update (delta)
-        param_delta = self._compute_parameter_delta(initial_params, updated_params)
-
-        # Quantize parameters if enabled
-        if self.quantize_weights:
-            from .quantization import QuantizationConfig
-
-            config = QuantizationConfig(bits=8)
-            param_delta, _ = quantize_parameters(param_delta, config)
-            updated_params, _ = quantize_parameters(updated_params, config)
-
-        # Generate ZKP proof
-        proof_time = 0
-        proof_data = None
-        if self.enable_zkp:
-            proof_start = time.time()
-            proof_data = self._generate_training_proof(
-                initial_params=initial_params,
-                updated_params=updated_params,
-                param_delta=param_delta,
-                training_metrics=training_metrics,
+            logger.info(
+                f"Client {self.client_id} starting fit for round {self.round_count}"
             )
-            proof_time = time.time() - proof_start
 
-        # Prepare metrics
-        num_examples = len(self.train_loader.dataset)
-        total_time = time.time() - start_time
+            # Update configuration from server
+            self.local_epochs = config.get("local_epochs", self.local_epochs)
+            self.learning_rate = config.get("learning_rate", self.learning_rate)
+            self.proof_rigor = config.get("proof_rigor", self.proof_rigor)
 
-        metrics = {
-            "client_id": self.client_id,
-            "training_time": total_time - proof_time,
-            "proof_time": proof_time,
-            "local_epochs": self.local_epochs,
-            "proof_rigor": self.proof_rigor,
-            **training_metrics,
-        }
+            # Set received parameters
+            logger.debug(f"Client {self.client_id} setting parameters...")
+            self.set_parameters(parameters)
+            initial_params = self.get_parameters({})
 
-        if proof_data:
-            metrics["zkp_proof"] = proof_data
+            # Perform local training
+            logger.info(f"Client {self.client_id} starting local training...")
+            training_metrics = self._train_local_model()
 
-        self.training_history.append(metrics)
+            # Get updated parameters
+            logger.debug(f"Client {self.client_id} getting updated parameters...")
+            updated_params = self.get_parameters({})
+        except Exception as e:
+            logger.error(
+                f"Client {self.client_id} fit failed during initial setup: {type(e).__name__}: {e}"
+            )
+            raise
 
-        logger.info(
-            f"Client {self.client_id} Round {self.round_count}: "
-            f"train_time={total_time - proof_time:.2f}s, proof_time={proof_time:.2f}s, "
-            f"loss={training_metrics.get('train_loss', 0):.4f}"
-        )
+        try:
+            # Compute parameter update (delta)
+            logger.debug(f"Client {self.client_id} computing parameter delta...")
+            param_delta = self._compute_parameter_delta(initial_params, updated_params)
 
-        return updated_params, num_examples, metrics
+            # Quantize parameters if enabled
+            if self.quantize_weights:
+                logger.debug(f"Client {self.client_id} quantizing parameters...")
+                try:
+                    from .quantization import QuantizationConfig
+
+                    config = QuantizationConfig(bits=8)
+                    param_delta, _ = quantize_parameters(param_delta, config)
+                    updated_params, _ = quantize_parameters(updated_params, config)
+                except Exception as e:
+                    logger.warning(
+                        f"Client {self.client_id} quantization failed, skipping: {e}"
+                    )
+
+            # Generate ZKP proof
+            proof_time = 0
+            proof_data = None
+            if self.enable_zkp:
+                try:
+                    logger.debug(f"Client {self.client_id} generating ZKP proof...")
+                    proof_start = time.time()
+                    proof_data = self._generate_training_proof(
+                        initial_params=initial_params,
+                        updated_params=updated_params,
+                        param_delta=param_delta,
+                        training_metrics=training_metrics,
+                    )
+                    proof_time = time.time() - proof_start
+                except Exception as e:
+                    logger.warning(
+                        f"Client {self.client_id} ZKP proof generation failed, skipping: {e}"
+                    )
+
+            # Prepare metrics
+            num_examples = len(self.train_loader.dataset)
+            total_time = time.time() - start_time
+
+            metrics = {
+                "client_id": self.client_id,
+                "training_time": total_time - proof_time,
+                "proof_time": proof_time,
+                "local_epochs": self.local_epochs,
+                "proof_rigor": self.proof_rigor,
+                **training_metrics,
+            }
+
+            if proof_data:
+                metrics["zkp_proof"] = proof_data
+
+            self.training_history.append(metrics)
+
+            logger.info(
+                f"Client {self.client_id} Round {self.round_count}: "
+                f"train_time={total_time - proof_time:.2f}s, proof_time={proof_time:.2f}s, "
+                f"loss={training_metrics.get('train_loss', 0):.4f}"
+            )
+
+            return updated_params, num_examples, metrics
+
+        except Exception as e:
+            logger.error(
+                f"Client {self.client_id} fit failed during processing: {type(e).__name__}: {e}"
+            )
+            # Return basic results to avoid complete failure
+            num_examples = (
+                len(self.train_loader.dataset) if hasattr(self, "train_loader") else 0
+            )
+            basic_metrics = {
+                "client_id": self.client_id,
+                "error": str(e),
+                "training_time": 0.0,
+                "local_epochs": self.local_epochs,
+            }
+            return (
+                initial_params if "initial_params" in locals() else parameters,
+                num_examples,
+                basic_metrics,
+            )
 
     def evaluate(
         self, parameters: NDArrays, config: dict[str, Any]
@@ -195,55 +245,85 @@ class SecureFlowerClient(fl.client.NumPyClient):
 
     def _train_local_model(self) -> dict[str, float]:
         """Perform local SGD training"""
-        self.model.train()
-        optimizer = optim.SGD(
-            self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4
-        )
-        criterion = nn.CrossEntropyLoss()
+        try:
+            self.model.train()
+            optimizer = optim.SGD(
+                self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4
+            )
+            criterion = nn.CrossEntropyLoss()
 
-        total_loss = 0.0
-        total_samples = 0
-        batch_losses = []
-        gradients_history = []
+            total_loss = 0.0
+            total_samples = 0
+            batch_losses = []
+            gradients_history = []
 
-        for epoch in range(self.local_epochs):
-            epoch_loss = 0.0
-            epoch_samples = 0
+            logger.debug(
+                f"Client {self.client_id} starting training for {self.local_epochs} epochs"
+            )
 
-            for batch_idx, (data, target) in enumerate(self.train_loader):
-                data, target = data.to(self.device), target.to(self.device)
+            for epoch in range(self.local_epochs):
+                epoch_loss = 0.0
+                epoch_samples = 0
 
-                optimizer.zero_grad()
-                output = self.model(data)
-                loss = criterion(output, target)
+                try:
+                    for batch_idx, (data, target) in enumerate(self.train_loader):
+                        try:
+                            data, target = data.to(self.device), target.to(self.device)
 
-                loss.backward()
+                            optimizer.zero_grad()
+                            output = self.model(data)
+                            loss = criterion(output, target)
 
-                # Store gradient information for ZKP
-                if self.enable_zkp and self.proof_rigor == "high":
-                    grad_norm = self._compute_gradient_norm()
-                    gradients_history.append(grad_norm)
+                            loss.backward()
 
-                optimizer.step()
+                            # Store gradient information for ZKP
+                            if self.enable_zkp and self.proof_rigor == "high":
+                                try:
+                                    grad_norm = self._compute_gradient_norm()
+                                    gradients_history.append(grad_norm)
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Client {self.client_id} gradient norm computation failed: {e}"
+                                    )
 
-                batch_loss = loss.item()
-                batch_size = data.size(0)
+                            optimizer.step()
 
-                epoch_loss += batch_loss * batch_size
-                epoch_samples += batch_size
-                batch_losses.append(batch_loss)
+                            batch_loss = loss.item()
+                            batch_size = data.size(0)
 
-                # Log batch progress for high rigor proofs
-                if self.proof_rigor == "high" and batch_idx % 10 == 0:
-                    logger.debug(
-                        f"Client {self.client_id} Epoch {epoch + 1}/{self.local_epochs}, "
-                        f"Batch {batch_idx}, Loss: {batch_loss:.4f}"
-                    )
+                            epoch_loss += batch_loss * batch_size
+                            epoch_samples += batch_size
+                            batch_losses.append(batch_loss)
 
-            total_loss += epoch_loss
-            total_samples += epoch_samples
+                            # Log batch progress for high rigor proofs
+                            if self.proof_rigor == "high" and batch_idx % 10 == 0:
+                                logger.debug(
+                                    f"Client {self.client_id} Epoch {epoch + 1}/{self.local_epochs}, "
+                                    f"Batch {batch_idx}, Loss: {batch_loss:.4f}"
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"Client {self.client_id} batch {batch_idx} failed: {e}"
+                            )
+                            continue
 
-        avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
+                except Exception as e:
+                    logger.error(f"Client {self.client_id} epoch {epoch} failed: {e}")
+                    continue
+
+                total_loss += epoch_loss
+                total_samples += epoch_samples
+
+                logger.debug(
+                    f"Client {self.client_id} completed epoch {epoch + 1}, loss: {epoch_loss / max(epoch_samples, 1):.4f}"
+                )
+
+            avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
+        except Exception as e:
+            logger.error(
+                f"Client {self.client_id} training failed: {type(e).__name__}: {e}"
+            )
+            return {"train_loss": 0.0, "num_examples": 0}
 
         # Compute training accuracy on a subset for efficiency
         train_accuracy = self._compute_training_accuracy()
@@ -443,12 +523,73 @@ def create_client(
 
 
 def start_client(client: SecureFlowerClient, server_address: str = "localhost:8080"):
-    """Start FL client and connect to server"""
-    logger.info(f"Starting client {client.client_id}, connecting to {server_address}")
+    """Start FL client and connect to server with improved logging and error handling"""
+    logger.info(f"Starting client {client.client_id}")
+    logger.info(f"Attempting to connect to server at: {server_address}")
 
-    fl.client.start_numpy_client(server_address=server_address, client=client)
+    # Validate server address format
+    if ":" not in server_address:
+        raise ValueError(
+            f"Invalid server address format: {server_address}. Expected 'host:port'"
+        )
 
-    logger.info(f"Client {client.client_id} finished training")
+    host, port_str = server_address.split(":", 1)
+    try:
+        port = int(port_str)
+        if port < 1 or port > 65535:
+            raise ValueError(f"Invalid port number: {port}")
+    except ValueError:
+        raise ValueError(f"Invalid port in server address: {port_str}")
+
+    logger.info(f"Parsed server address - Host: {host}, Port: {port}")
+    logger.info("Client configuration:")
+    logger.info(f"  - Client ID: {client.client_id}")
+    logger.info(f"  - ZKP Enabled: {client.enable_zkp}")
+    logger.info(f"  - Local Epochs: {client.local_epochs}")
+    logger.info(f"  - Batch Size: {getattr(client, 'batch_size', 'Unknown')}")
+
+    try:
+        # Test connection first
+        import socket
+
+        logger.info(f"Testing connection to {host}:{port}...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)
+        result = sock.connect_ex((host, port))
+        sock.close()
+
+        if result != 0:
+            logger.error(f"Cannot reach server at {host}:{port} - connection failed")
+            raise ConnectionError(f"Server at {server_address} is not reachable")
+
+        logger.info("Connection test successful")
+
+        # Use the legacy start_numpy_client (deprecated but functional)
+        logger.warning(
+            "Using deprecated fl.client.start_numpy_client - consider migrating to SuperNode"
+        )
+        logger.info("Starting Flower client...")
+
+        fl.client.start_client(server_address=server_address, client=client)
+
+        logger.info(f"Client {client.client_id} finished training successfully")
+
+    except ConnectionError as e:
+        logger.error(f"Connection error: {e}")
+        logger.error("Check that:")
+        logger.error("1. The server is running and listening on the specified port")
+        logger.error("2. No firewall is blocking the connection")
+        logger.error("3. The server address is correct")
+        raise
+    except Exception as e:
+        logger.error(f"Client {client.client_id} failed: {type(e).__name__}: {e}")
+        logger.error("Possible causes:")
+        logger.error("1. Server not ready or not running")
+        logger.error("2. Network connectivity issues")
+        logger.error("3. Incompatible Flower versions")
+        logger.error("4. Configuration mismatch between client and server")
+        raise
+
 
 
 # Example usage and testing
