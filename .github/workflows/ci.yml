@@ -8,9 +8,6 @@ on:
     branches: [main, develop]
   release:
     types: [published]
-  schedule:
-    # Run nightly builds
-    - cron: "0 2 * * *"
   workflow_dispatch:
     # Allow manual triggers
 
