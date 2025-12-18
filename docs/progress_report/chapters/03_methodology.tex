@@ -81,9 +81,10 @@ Upon receiving submissions from all clients, the \textbf{SecureFlowerServer} per
 \subsection*{Dynamic Rigor}
 The system adjusts proof complexity based on training stability:
 \begin{itemize}
-    \item \textbf{High Rigor}: Full verification (2.6s proof time) for unstable training
-    \item \textbf{Medium Rigor}: Partial verification (1.2s) for moderate stability
-    \item \textbf{Low Rigor}: Basic verification (0.4s) for stable convergence
+    \item \textbf{Planned High Rigor}: Full verification for unstable training (future implementation)
+    \item \textbf{Planned Medium Rigor}: Partial verification for moderate stability (future implementation)
+    \item \textbf{Planned Low Rigor}: Basic verification for stable convergence (future implementation)
+    \item \textbf{Current Implementation}: Fixed rigor level with 8.7s proof generation time
 \end{itemize}
 
 \section{System Components and Tools}
@@ -111,51 +112,107 @@ Our experimental validation follows a multi-phase approach with statistical rigo
 
 \section{Infrastructure}
 
-\subsection{Cloud Deployment}
-We simulate a federated setup on AWS using the following:
-\begin{itemize}
-    \item \textbf{Server Node}: One VM as the central aggregator.
-    \item \textbf{Client Nodes}: 5--10 VMs, each representing a federated client.
-\end{itemize}
+\subsection{Hardware Requirements}
+
+Infrastructure requirements differ significantly between server and client components due to computational asymmetry:
 
 \begin{table}[H]
 \centering
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Role} & \textbf{Instance} & \textbf{Specs} \\
-\hline
-Server & t3.xlarge & 4 vCPUs, 16 GB RAM \\
-Client & t3.medium & 2 vCPUs, 4 GB RAM \\
-\hline
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Server} & \textbf{Client} \\
+\midrule
+\textbf{CPU} & 8+ vCPUs & 4+ vCPUs \\
+\textbf{Memory} & 32+ GB RAM & 8+ GB RAM \\
+\textbf{Storage} & 500+ GB SSD & 100+ GB SSD \\
+\textbf{Network} & 10+ Gbps & 1+ Gbps \\
+\midrule
+\textbf{AWS Instance} & m5.2xlarge+ & t3.large+ \\
+\textbf{Cost (USD/hr)} & \$0.384+ & \$0.083+ \\
+\bottomrule
 \end{tabular}
-\caption{EC2 Configuration}
+\caption{Infrastructure Requirements}
+\label{tab:infrastructure_specs}
 \end{table}
 
-\section{Software Stack}
-
-\subsection{Client VMs}
+\textbf{Key Requirements:}
 \begin{itemize}
-    \item OS: Ubuntu 22.04
-    \item Framework: Flower with PyTorch and PySNARK (for zk-SNARKs)
+    \item \textbf{Server}: Fast proof verification with batch processing capabilities
+    \item \textbf{Client}: High CPU/memory for intensive proof generation workload
+    \item \textbf{Network}: Secure channels with proof transmission optimization
 \end{itemize}
 
-\subsection{Server VM}
+\subsection{Software Stack}
+
 \begin{itemize}
-    \item FL Server: Flower + FedJSCM
-    \item zk-SNARK Prover: Circom + SnarkJS
+    \item \textbf{Framework}: Flower v1.5+ (federated learning), PyTorch v2.0+ (ML training)
+    \item \textbf{Cryptography}: PySNARK (client proofs), Groth16 (server proofs)
+    \item \textbf{Infrastructure}: Ubuntu 22.04, Docker, Docker Compose
+    \item \textbf{Communication}: gRPC over TLS, HTTP/2 for proof transmission
 \end{itemize}
+
+\subsection{Deployment Architecture}
+
+\textbf{Development Setup:}
+\begin{itemize}
+    \item Docker Compose orchestration with service scaling
+    \item Shared compute resources with process isolation
+    \item Simulated non-IID data distribution across clients
+\end{itemize}
+
+\textbf{Production Considerations:}
+\begin{itemize}
+    \item High availability server configuration with failover
+    \item Load balancing based on proof verification capacity
+    \item TLS 1.3 security with comprehensive audit logging
+    \item Monitoring stack for performance and security metrics
+\end{itemize}
+
+\subsection{Scaling Behavior}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Scaling Factor} & \textbf{Scaling Behavior} \\
+\midrule
+Client Count & Linear scaling \\
+Model Size & Super-linear scaling \\
+Training Data & Linear scaling \\
+\bottomrule
+\end{tabular}
+\caption{System Scaling Characteristics}
+\label{tab:scaling_behavior}
+\end{table}
 
 \section{Datasets}
 \begin{itemize}
-    \item MedMNIST (non-IID, split by class)
-    \item UCI HAR (sensor time-series)
+    \item \textbf{MNIST}: Handwritten digits, 60K samples, non-IID distribution
+    \item \textbf{Fashion-MNIST}: Clothing images, 60K samples, balanced classes
+    \item \textbf{CIFAR-10}: Natural images, 50K samples, challenging classification
+    \item \textbf{Medical}: Healthcare datasets with privacy requirements
+    \item \textbf{Financial}: Transaction data with regulatory compliance needs
+    \item \textbf{Synthetic}: Controlled datasets for scalability testing
 \end{itemize}
-Each client holds \textasciitilde5--10\% of the dataset.
+Each client typically holds 5-20\% of the dataset with configurable non-IID distributions to simulate realistic federated learning scenarios.
 
-\section{Proof Configuration}
+\section{Proof Configuration and Circuit Design}
+
+\subsection{Client-Side Proof Circuits}
 \begin{itemize}
-    \item \textbf{Client (zk-SNARK)}: PySNARK circuits for SGD steps
-    \item \textbf{Server (zk-SNARK)}: Groth16 aggregation proof in Circom
+    \item \textbf{SGD Verification}: Complete training step verification using PySNARK
+    \item \textbf{Data Commitment}: Cryptographic commitments to local training data
+    \item \textbf{Parameter Bounds}: Verification of update magnitude constraints
+    \item \textbf{Quantization}: 8-bit fixed-point representation with scale factor $2^7$
+    \item \textbf{Circuit Size}: $\mathcal{O}(n \cdot d)$ constraints for $n$ batch size, $d$ parameters
 \end{itemize}
 
-This setup enables reproducible and secure simulation of federated learning with privacy-preserving, verifiable computation.
+\subsection{Server-Side Proof Circuits}
+\begin{itemize}
+    \item \textbf{Aggregation Verification}: Groth16 proofs for weighted averaging correctness
+    \item \textbf{Momentum Updates}: FedJSCM algorithm verification with adaptive coefficients
+    \item \textbf{Weight Validation}: Proof of correct client weight computation
+    \item \textbf{State Consistency}: Model state transitions and integrity verification
+\end{itemize}
+
+This comprehensive infrastructure setup enables reproducible, secure, and scalable simulation of federated learning with privacy-preserving, verifiable computation while providing realistic performance characteristics for deployment planning.

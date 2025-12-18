@@ -67,7 +67,7 @@ The experimental evaluation reveals significant computational overhead associate
 \textbf{Performance Metric} & \textbf{Baseline FL} & \textbf{Secure FL} & \textbf{Overhead} \\
 \midrule
 Mean Training Time & 11.51 ± 0.16 ms & 11.51 ± 0.16 ms & 1.0x \\
-Proof Generation Time & 0 ms & 8,734 ± 51 ms & ∞ \\
+Proof Generation Time & 0 ms & 8,734 ± 51 ms & $\infty$ \\
 Total Client Time & 11.51 ms & 8,745 ms & \textbf{759x} \\
 Throughput & 86.9 ops/sec & 0.114 ops/sec & 0.13\% \\
 \midrule
@@ -127,8 +127,8 @@ Performance impact varies significantly with model complexity:
 \textbf{Model Architecture} & \textbf{Baseline Time} & \textbf{Secure FL Time} & \textbf{Overhead} \\
 \midrule
 Small Model (32 units) & 11.66 ms & 8.73 s & 748x \\
-Medium Model (128+64) & 13.24 ms & ≈35 s & ≈2,600x \\
-Large Model (256+128+64) & 14.85 ms & ≈75 s & ≈5,050x \\
+Medium Model (128+64) & 13.24 ms & $\approx$35 s & $\approx$2,600x \\
+Large Model (256+128+64) & 14.85 ms & $\approx$75 s & $\approx$5,050x \\
 \bottomrule
 \end{tabular}
 \caption{Performance Impact Across Model Architectures}
@@ -158,7 +158,7 @@ Financial & 81.7\% ± 1.5\% & 80.2\% ± 1.3\% & -1.8\% \\
 \end{tabular}
 \caption{Accuracy Performance Analysis Across Datasets}
 \label{tab:accuracy_analysis}
-\end{table>
+\end{table}
 
 While some datasets show accuracy degradation, this is primarily due to the challenging non-IID federated learning setup rather than the ZKP verification overhead. The cryptographic constraints provide verifiable security guarantees.
 
@@ -180,7 +180,7 @@ Research/Development & Suitable & Any Size & Performance Secondary \\
 \end{tabular}
 \caption{Production Deployment Viability Analysis}
 \label{tab:deployment_viability}
-\end{table>
+\end{table}
 
 The 759x computational overhead limits practical deployment to scenarios where security guarantees justify the performance cost, particularly in high-stakes applications requiring cryptographic verification.
 
@@ -225,34 +225,10 @@ Model Broadcast & 1.0s & 2.1s & 3.2s & 6.1\% \\
 \bottomrule
 \end{tabular}
 \caption{End-to-End FL Round Performance Breakdown}
-\label{tab:round_performance}
+\label{tab:round_performance_breakdown}
 \end{table}
 
 The analysis shows that ZKP overhead represents the dominant factor in training time (759x increase), presenting significant challenges for production deployment that require careful consideration of use case requirements.
-
-\section{Security and Robustness Evaluation}
-
-\subsection{Attack Resistance Analysis}
-
-The framework was tested against various attack scenarios:
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lccc}
-\toprule
-\textbf{Attack Type} & \textbf{Detection Rate} & \textbf{False Positive} & \textbf{Response Time} \\
-\midrule
-Model Poisoning & 99.7\% & 0.1\% & <100ms \\
-Byzantine Behavior & 98.9\% & 0.3\% & <150ms \\
-Gradient Inversion & 100\% & 0.0\% & N/A \\
-Data Poisoning & 96.2\% & 0.5\% & <200ms \\
-\bottomrule
-\end{tabular}
-\caption{Security Evaluation Results}
-\label{tab:security_evaluation}
-\end{table}
-
-The cryptographic verification provides near-perfect protection against various attack vectors while maintaining low false positive rates.
 
 \section{Comparative Analysis with State-of-the-Art}
 
@@ -292,7 +268,7 @@ Our framework provides the strongest cryptographic security guarantees with comp
     \item \textbf{Strongest Security}: Offers the highest level of cryptographic security guarantees among all federated learning approaches
     \item \textbf{Practical Insights}: 759x overhead measurement provides realistic deployment guidance for high-stakes applications
     \item \textbf{Research Foundation}: Establishes baseline performance metrics for future optimization research in cryptographic federated learning
-\end{itemize>
+\end{itemize}
 
 \section{Production Deployment Insights}
 
@@ -323,7 +299,7 @@ Large ($\leq$200 clients) & 4 CPU, 8GB RAM & 16 CPU, 32GB RAM & 1 Gbps & 2TB \\
     \item \textbf{Security Benefits}: Complete elimination of trust requirements with mathematical guarantees
     \item \textbf{Compliance Value}: Strongest possible regulatory compliance through cryptographic proofs
     \item \textbf{ROI}: Positive only for highest-value applications where security justifies cost
-\end{itemize>
+\end{itemize}
 
 \section{Key Findings and Insights}
 
@@ -334,7 +310,7 @@ Large ($\leq$200 clients) & 4 CPU, 8GB RAM & 16 CPU, 32GB RAM & 1 Gbps & 2TB \\
     \item \textbf{Consistent Performance}: Overhead remains proportional across different client configurations
     \item \textbf{Memory Efficiency}: Memory overhead remains manageable at +35\% despite computational cost
     \item \textbf{Network Efficiency}: Consistent 15\% communication overhead across all configurations
-\end{enumerate>
+\end{enumerate}
 
 \subsection{Security Insights}
 
@@ -343,7 +319,7 @@ Large ($\leq$200 clients) & 4 CPU, 8GB RAM & 16 CPU, 32GB RAM & 1 Gbps & 2TB \\
     \item \textbf{No Trust Dependencies}: Cryptographic guarantees eliminate need for trusted parties
     \item \textbf{Privacy Preservation}: Zero-knowledge properties protect sensitive training data
     \item \textbf{Audit Trail}: Comprehensive verification records for compliance and forensics
-\end{enumerate>
+\end{enumerate}
 
 \subsection{Practical Deployment Insights}
 
