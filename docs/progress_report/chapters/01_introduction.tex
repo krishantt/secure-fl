@@ -37,9 +37,9 @@ The key objectives to be achieved in this project are:
     \item Design and implement a dual-verifiable federated learning framework where both clients and the server provide ZKPs using our implemented SecureFlowerClient and SecureFlowerStrategy classes.
     \item Implement zk-SNARK-based proof generation for client-side local training verification using PySNARK integration in our ClientProofManager.
     \item Develop the FedJSCM (Federated Joint Server-Client Momentum) aggregation algorithm with momentum-based parameter updates.
-    \item Create a dynamic proof rigor adjustment system with three complexity levels (high, medium, low) through our StabilityMonitor component.
-    \item Validate the system performance across multiple datasets demonstrating minimal accuracy degradation.
-    \item Demonstrate practical deployment capabilities with efficient proof generation and verification times.
+    \item Design a dynamic proof rigor adjustment system with three complexity levels (high, medium, low) for future implementation to optimize performance.
+    \item Validate the system performance across multiple datasets with comprehensive overhead analysis.
+    \item Assess deployment feasibility and identify optimization requirements for practical use.
 \end{itemize}
 
 \section{Scope}
@@ -61,7 +61,7 @@ The key objectives to be achieved in this project are:
 
 \textbf{Zero-Knowledge Proof Framework:}
 \begin{itemize}
-    \item \textbf{Multi-Level Rigor}: Dynamic proof complexity adjustment (high, medium, low rigor)
+    \item \textbf{Multi-Level Rigor}: Planned dynamic proof complexity adjustment (high, medium, low rigor)
     \item \textbf{Dual Verification}: Client-side training proofs and server-side aggregation proofs
     \item \textbf{Efficient Verification}: Fast proof verification with batch processing optimization
     \item \textbf{Circuit Optimization}: Advanced constraint reduction and memory management

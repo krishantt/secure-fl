@@ -16,9 +16,9 @@ Our experimental validation follows a rigorous multi-phase approach designed to 
 \textbf{Phase 2: Secure FL Evaluation}
 \begin{itemize}
     \item Same datasets and distributions with ZKP verification enabled
-    \item Multiple proof rigor levels (High, Medium, Low)
+    \item Single proof rigor level (fixed complexity circuit)
     \item Comprehensive performance and security analysis
-\end{itemize}
+\end{itemize>
 
 \textbf{Phase 3: Comparative Analysis}
 \begin{itemize}
@@ -112,31 +112,25 @@ All experiments use consistent FL hyperparameters to ensure fair comparison:
 
 \subsection{ZKP Configuration Parameters}
 
-\textbf{Proof Rigor Configurations:}
+\textbf{Current Implementation Configuration:}
 
-\textit{High Rigor:}
+\textit{Fixed Rigor Level:}
 \begin{itemize}
-    \item Client proofs: Full SGD trace verification with complete gradient computation
+    \item Client proofs: Complete training verification with gradient computation
     \item Server proofs: Generated every round with full aggregation verification
-    \item Quantization: 16-bit fixed point with scale $2^{15}$
-    \item Constraint complexity: $\mathcal{O}(n \cdot d \cdot E)$ where $n$ is batch size, $d$ is parameter count, $E$ is epochs
-\end{itemize}
-
-\textit{Medium Rigor:}
-\begin{itemize}
-    \item Client proofs: Single-step update verification with parameter bounds
-    \item Server proofs: Generated every 2 rounds
     \item Quantization: 8-bit fixed point with scale $2^7$
-    \item Constraint complexity: $\mathcal{O}(d)$ (linear in parameter count)
+    \item Constraint complexity: $\mathcal{O}(n \cdot d)$ where $n$ is batch size, $d$ is parameter count
+    \item Proof generation time: 8.734 ± 0.051 seconds per client
+    \item Memory usage: 67 MB per client (49% increase over baseline)
 \end{itemize}
 
-\textit{Low Rigor:}
+\textbf{Planned Dynamic Rigor Levels (Future Implementation):}
 \begin{itemize}
-    \item Client proofs: Lightweight norm constraints and data commitment
-    \item Server proofs: Generated every 5 rounds
-    \item Quantization: 8-bit with relaxed precision
-    \item Constraint complexity: $\mathcal{O}(\log d)$ (logarithmic in parameter count)
-\end{itemize}
+    \item High Rigor: Full verification for unstable training phases
+    \item Medium Rigor: Balanced verification for normal training
+    \item Low Rigor: Lightweight verification for convergence phases
+    \item Adaptive switching based on training stability metrics
+\end{itemize>
 
 \section{Performance Measurement}
 
